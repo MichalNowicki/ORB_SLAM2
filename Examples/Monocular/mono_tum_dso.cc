@@ -60,7 +60,7 @@ int main(int argc, char **argv)
 
 
     // Create SLAM system. It initializes all system threads and gets ready to process frames.
-    ORB_SLAM2::System SLAM(argv[1],argv[2],ORB_SLAM2::System::MONOCULAR,false);
+    ORB_SLAM2::System SLAM(argv[1],argv[2],ORB_SLAM2::System::MONOCULAR,true);
 
     Eigen::Matrix3f K;
     int w;
@@ -86,7 +86,7 @@ int main(int argc, char **argv)
         img = reader->getImage(i, imgOpenCV);
         delete img;
 
-        std::cout <<"ImgOpenCV: " << imgOpenCV.rows << " " << imgOpenCV.cols << std::endl;
+        std::cout <<"Processing image : " << ii << std::endl;
 
         // Pass the image to the SLAM system
         SLAM.TrackMonocular(imgOpenCV,timesToPlayAt[ii]);
