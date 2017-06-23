@@ -122,6 +122,8 @@ public:
     std::vector<MapPoint*> GetTrackedMapPoints();
     std::vector<cv::KeyPoint> GetTrackedKeyPointsUn();
 
+    void ChangeCalibration(float fx, float fy, float cx, float cy, float k1, float k2, float p1, float p2, float k3);
+
 private:
 
     // Input sensor

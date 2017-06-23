@@ -38,12 +38,25 @@ endif()
 
 find_package(Eigen3 3.1.0 REQUIRED)
 find_package(Pangolin REQUIRED)
+find_package(Boost COMPONENTS system thread) 
+find_package(LibZip QUIET)
+
+
+if (LIBZIP_LIBRARY)
+	message("--- found ziplib (${LIBZIP_VERSION}), compiling with zip capability.")
+	add_definitions(-DHAS_ZIPLIB=1)
+	include_directories( ${LIBZIP_INCLUDE_DIR_ZIP} ${LIBZIP_INCLUDE_DIR_ZIPCONF} ) 
+else()
+	message("--- not found ziplib (${LIBZIP_LIBRARY}), compiling without zip capability.")
+	set(LIBZIP_LIBRARY "")
+endif()
 
 include_directories(
 ${PROJECT_SOURCE_DIR}
 ${PROJECT_SOURCE_DIR}/include
 ${EIGEN3_INCLUDE_DIR}
 ${Pangolin_INCLUDE_DIRS}
+${PROJECT_SOURCE_DIR}/Thirdparty/Sophus
 )
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
@@ -68,6 +81,10 @@ src/KeyFrameDatabase.cc
 src/Sim3Solver.cc
 src/Initializer.cc
 src/Viewer.cc
+Modifications/Undistort.cpp
+Modifications/ImageRW_OpenCV.cpp
+Modifications/settings.cpp
+Modifications/globalCalib.cpp
 )
 
 target_link_libraries(${PROJECT_NAME}
@@ -111,3 +128,6 @@ add_executable(mono_euroc
 Examples/Monocular/mono_euroc.cc)
 target_link_libraries(mono_euroc ${PROJECT_NAME})
 
+add_executable(mono_tum_dso
+        Examples/Monocular/mono_tum_dso.cc)
+target_link_libraries(mono_tum_dso boost_system boost_thread ${LIBZIP_LIBRARY} ${PROJECT_NAME})

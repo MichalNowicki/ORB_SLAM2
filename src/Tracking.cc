@@ -317,6 +317,7 @@ void Tracking::Track()
             }
             else
             {
+                // TODO MN: TURNED OFF FOR COMPARISON
                 bOK = Relocalization();
             }
         }
@@ -1581,6 +1582,32 @@ void Tracking::ChangeCalibration(const string &strSettingPath)
 
     Frame::mbInitialComputations = true;
 }
+
+    void Tracking::ChangeCalibration(float fx, float fy, float cx, float cy, float k1, float k2, float p1, float p2, float k3)
+    {
+
+        cv::Mat K = cv::Mat::eye(3,3,CV_32F);
+        K.at<float>(0,0) = fx;
+        K.at<float>(1,1) = fy;
+        K.at<float>(0,2) = cx;
+        K.at<float>(1,2) = cy;
+        K.copyTo(mK);
+
+        cv::Mat DistCoef(4,1,CV_32F);
+        DistCoef.at<float>(0) = k1;
+        DistCoef.at<float>(1) = k2;
+        DistCoef.at<float>(2) = p1;
+        DistCoef.at<float>(3) = p2;
+        if(k3!=0)
+        {
+            DistCoef.resize(5);
+            DistCoef.at<float>(4) = k3;
+        }
+        DistCoef.copyTo(mDistCoef);
+
+
+        Frame::mbInitialComputations = true;
+    }
 
 void Tracking::InformOnlyTracking(const bool &flag)
 {

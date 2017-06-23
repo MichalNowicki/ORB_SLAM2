@@ -33,6 +33,7 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
                const bool bUseViewer):mSensor(sensor), mpViewer(static_cast<Viewer*>(NULL)), mbReset(false),mbActivateLocalizationMode(false),
         mbDeactivateLocalizationMode(false)
 {
+
     // Output welcome message
     cout << endl <<
     "ORB-SLAM2 Copyright (C) 2014-2016 Raul Mur-Artal, University of Zaragoza." << endl <<
@@ -56,7 +57,6 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
        cerr << "Failed to open settings file at: " << strSettingsFile << endl;
        exit(-1);
     }
-
 
     //Load ORB Vocabulary
     cout << endl << "Loading ORB Vocabulary. This could take a while..." << endl;
@@ -92,6 +92,8 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
 
     //Initialize the Loop Closing thread and launch
     mpLoopCloser = new LoopClosing(mpMap, mpKeyFrameDatabase, mpVocabulary, mSensor!=MONOCULAR);
+
+    //TODO MN: TURNED OFF FOR COMPARISON
     mptLoopClosing = new thread(&ORB_SLAM2::LoopClosing::Run, mpLoopCloser);
 
     //Initialize the Viewer thread and launch
@@ -487,6 +489,11 @@ vector<cv::KeyPoint> System::GetTrackedKeyPointsUn()
 {
     unique_lock<mutex> lock(mMutexState);
     return mTrackedKeyPointsUn;
+}
+
+void System::ChangeCalibration(float fx, float fy, float cx, float cy, float k1, float k2, float p1, float p2, float k3)
+{
+    mpTracker->ChangeCalibration(fx, fy, cx, cy, k1, k2, p1, p2, k3);
 }
 
 } //namespace ORB_SLAM
