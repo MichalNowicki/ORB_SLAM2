@@ -78,10 +78,10 @@ for seq in sequences:
 	for runId in range(0, runsPerSequence):
 		print("Current sequence: " + seq);
 
-		print('./Examples/Monocular/mono_tum_dso Vocabulary/ORBvoc.txt Examples/Monocular/TUM_MONO_DSO.yaml ' + str(mainDatasetPath) +'/' + seq +'/');
+		print('./Examples/Monocular/mono_tum_dso Vocabulary/ORBvoc.txt Examples/Monocular/TUM_MONO_DSO.yaml ' + str(mainDatasetPath) +'/sequence_' + seq +'/');
 
 		# Copy to currently used settings
-		call('./Examples/Monocular/mono_tum_dso Vocabulary/ORBvoc.txt Examples/Monocular/TUM_MONO_DSO.yaml ' + str(mainDatasetPath) +'/' + seq +'/', shell=True);
+		call('./Examples/Monocular/mono_tum_dso Vocabulary/ORBvoc.txt Examples/Monocular/TUM_MONO_DSO.yaml ' + str(mainDatasetPath) +'/sequence_' + seq +'/', shell=True);
 		
 		# Run software
 		call('mv KeyFrameTrajectory.txt results/sequence_' + str(seq) + '_' + str(runId) + '.txt', shell=True);
