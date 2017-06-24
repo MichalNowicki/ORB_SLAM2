@@ -69,7 +69,7 @@ sequences = [
 runsPerSequence = 1;
 
 
-mainDatasetPath = '/home/michal/dsoDataset';
+mainDatasetPath = '/mnt/data/Datasets/dso';
 
 
 for seq in sequences:
