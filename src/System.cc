@@ -63,14 +63,14 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
 
     mpVocabulary = new ORBVocabulary();
     //TODO MN: TURNED OFF FOR COMPARISON
-//    bool bVocLoad = mpVocabulary->loadFromTextFile(strVocFile);
-//    if(!bVocLoad)
-//    {
-//        cerr << "Wrong path to vocabulary. " << endl;
-//        cerr << "Falied to open at: " << strVocFile << endl;
-//        exit(-1);
-//    }
-//    cout << "Vocabulary loaded!" << endl << endl;
+    bool bVocLoad = mpVocabulary->loadFromTextFile(strVocFile);
+    if(!bVocLoad)
+    {
+        cerr << "Wrong path to vocabulary. " << endl;
+        cerr << "Falied to open at: " << strVocFile << endl;
+        exit(-1);
+    }
+    cout << "Vocabulary loaded!" << endl << endl;
 
     //Create KeyFrame Database
     mpKeyFrameDatabase = new KeyFrameDatabase(*mpVocabulary);
@@ -95,7 +95,7 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
     mpLoopCloser = new LoopClosing(mpMap, mpKeyFrameDatabase, mpVocabulary, mSensor!=MONOCULAR);
 
     //TODO MN: TURNED OFF FOR COMPARISON
-//    mptLoopClosing = new thread(&ORB_SLAM2::LoopClosing::Run, mpLoopCloser);
+    mptLoopClosing = new thread(&ORB_SLAM2::LoopClosing::Run, mpLoopCloser);
 
     //Initialize the Viewer thread and launch
     if(bUseViewer)

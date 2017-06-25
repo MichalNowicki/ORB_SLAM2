@@ -318,7 +318,7 @@ void Tracking::Track()
             else
             {
                 // TODO MN: TURNED OFF FOR COMPARISON
-//                bOK = Relocalization();
+                bOK = Relocalization();
             }
         }
         else
@@ -970,7 +970,7 @@ bool Tracking::TrackLocalMap()
 
 
     // TODO MN: Changed as done by DSO paper
-    if(mnMatchesInliers<10) // ORIGNALLY: 30
+    if(mnMatchesInliers<30) // ORIGNALLY: 30
         return false;
     else
         return true;
@@ -1522,14 +1522,14 @@ void Tracking::Reset()
 
     // TODO MN: Have to turn it off
     // Reset Loop Closing
-//    cout << "Reseting Loop Closing...";
-//    mpLoopClosing->RequestReset();
-//    cout << " done" << endl;
-//
-//    // Clear BoW Database
-//    cout << "Reseting Database...";
-//    mpKeyFrameDB->clear();
-//    cout << " done" << endl;
+    cout << "Reseting Loop Closing...";
+    mpLoopClosing->RequestReset();
+    cout << " done" << endl;
+
+    // Clear BoW Database
+    cout << "Reseting Database...";
+    mpKeyFrameDB->clear();
+    cout << " done" << endl;
 
     // Clear Map (this erase MapPoints and KeyFrames)
     mpMap->clear();
