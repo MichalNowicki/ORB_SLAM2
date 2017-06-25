@@ -39,13 +39,16 @@ int main(int argc, char **argv)
     reader->setGlobalCalibration();
 
     std::vector<int> idsToPlay;
-    std::vector<double> timesToPlayAt;
+    std::vector<double> timesToPlayAt, timestamps;
     int lstart=0;
     int lend=100000;
     int linc = 1;
     for(int i=lstart;i>= 0 && i< reader->getNumImages() && linc*i < linc*lend;i+=linc)
     {
         idsToPlay.push_back(i);
+        double tsThis = reader->getTimestamp(idsToPlay[idsToPlay.size()-1]);
+        timestamps.push_back(tsThis);
+
         if(timesToPlayAt.size() == 0)
         {
             timesToPlayAt.push_back((double)0);
@@ -55,12 +58,13 @@ int main(int argc, char **argv)
             double tsThis = reader->getTimestamp(idsToPlay[idsToPlay.size()-1]);
             double tsPrev = reader->getTimestamp(idsToPlay[idsToPlay.size()-2]);
             timesToPlayAt.push_back(timesToPlayAt.back() +  fabs(tsThis-tsPrev));
+            //printf("tsThis = %f\n", tsThis);
         }
     }
 
 
     // Create SLAM system. It initializes all system threads and gets ready to process frames.
-    ORB_SLAM2::System SLAM(argv[1],argv[2],ORB_SLAM2::System::MONOCULAR,false);
+    ORB_SLAM2::System SLAM(argv[1],argv[2],ORB_SLAM2::System::MONOCULAR,true);
 
     Eigen::Matrix3f K;
     int w;
@@ -86,10 +90,13 @@ int main(int argc, char **argv)
         img = reader->getImage(i, imgOpenCV);
         delete img;
 
-        std::cout <<"Processing image : " << ii << std::endl;
+        printf ("Processing image : %d \tTimestamp %f\r\n", ii, timestamps[ii]);
 
         // Pass the image to the SLAM system
-        SLAM.TrackMonocular(imgOpenCV,timesToPlayAt[ii]);
+//        SLAM.TrackMonocular(imgOpenCV,timesToPlayAt[ii]);
+        SLAM.TrackMonocular(imgOpenCV,timestamps[ii]);
+
+
 
         bool skipFrame = false;
         struct timeval tv_now;
