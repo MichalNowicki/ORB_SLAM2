@@ -69,8 +69,8 @@ sequences = [
 runsPerSequence = 1;
 
 
-# mainDatasetPath = '/mnt/data/Datasets/dso';
-mainDatasetPath = '/media/michalnowicki/MNowicki-Private/DSO/sequences/';
+mainDatasetPath = '/mnt/data/Datasets/dso';
+#mainDatasetPath = '/media/michalnowicki/MNowicki-Private/DSO/sequences/';
 
 for seq in sequences:
 
