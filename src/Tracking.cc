@@ -318,7 +318,9 @@ void Tracking::Track()
             else
             {
                 // TODO MN: TURNED OFF FOR COMPARISON
-                bOK = Relocalization();
+                printf("Reocalization activated!\n");
+                bOK = false;
+//                bOK = Relocalization();
             }
         }
         else
