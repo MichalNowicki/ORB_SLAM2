@@ -9,7 +9,7 @@ import fileinput
 def setYamlFile(detector):
 
     outLines = []
-    with open("TUM_MONO_DSO.yaml", 'r') as f_in:
+    with open("Examples/Monocular/TUM_MONO_DSO.yaml", 'r') as f_in:
         for line in f_in:
             if "ORBextractor.detectorType" in line:
                 outLines.append("ORBextractor.detectorType: %s\n" % detector);
