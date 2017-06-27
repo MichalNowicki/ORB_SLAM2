@@ -2,9 +2,7 @@
 #	author: Michal Nowicki
 #
 from subprocess import call
-import subprocess
 import sys
-import glob
 import os
 
 # Path to save main results - create if needed
@@ -69,20 +67,39 @@ sequences = [
 runsPerSequence = 1;
 
 
-mainDatasetPath = '/mnt/data/Datasets/dso';
-#mainDatasetPath = '/media/michalnowicki/MNowicki-Private/DSO/sequences/';
+if len(sys.argv) != 2:
+    print('Please provide the name of the host machine, e.g. python orbslamRun.py lrm2')
+else:
 
-for seq in sequences:
+    mainDatasetPath = '';
 
+    # PPCM
+    if "ppcm" in sys.argv[1]:
+        mainDatasetPath = '/home/michal/dsoDataset';
 
-	for runId in range(0, runsPerSequence):
-		print("Current sequence: " + seq);
+    # LRM2
+    if "lrm2" in sys.argv[1]:
+        mainDatasetPath = '/mnt/data/Datasets/dso';
 
-		print('./Examples/Monocular/mono_tum_dso Vocabulary/ORBvoc.txt Examples/Monocular/TUM_MONO_DSO.yaml ' + str(mainDatasetPath) +'/sequence_' + seq +'/');
+    # Toshiba Portege Z30
+    if "local" in sys.argv[1]:
+        mainDatasetPath = '/media/michalnowicki/MNowicki-Private/DSO/sequences';
 
-		# Copy to currently used settings
-		call('./Examples/Monocular/mono_tum_dso Vocabulary/ORBvoc.txt Examples/Monocular/TUM_MONO_DSO.yaml ' + str(mainDatasetPath) +'/sequence_' + seq +'/', shell=True);
-		
-		# Run software
-		call('mv KeyFrameTrajectory.txt results/sequence_' + str(seq) + '_' + str(runId) + '.txt', shell=True);
+    print 'mainDatasetPath: ' + mainDatasetPath
+
+    # For all selected sequences
+    for seq in sequences:
+
+        # For number of runs
+        for runId in range(0, runsPerSequence):
+            print("Current sequence: " + seq);
+
+            # We call this command
+            print('./Examples/Monocular/mono_tum_dso Vocabulary/ORBvoc.txt Examples/Monocular/TUM_MONO_DSO.yaml ' + str(mainDatasetPath) +'/sequence_' + seq +'/');
+
+            # Run code
+            call('./Examples/Monocular/mono_tum_dso Vocabulary/ORBvoc.txt Examples/Monocular/TUM_MONO_DSO.yaml ' + str(mainDatasetPath) +'/sequence_' + seq +'/', shell=True);
+
+            # Copy results
+            call('mv KeyFrameTrajectory.txt results/sequence_' + str(seq) + '_' + str(runId) + '.txt', shell=True);
 

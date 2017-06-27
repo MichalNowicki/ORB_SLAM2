@@ -319,8 +319,8 @@ void Tracking::Track()
             {
                 // TODO MN: TURNED OFF FOR COMPARISON
                 printf("Reocalization activated!\n");
-//                bOK = false;
-                bOK = Relocalization();
+                bOK = false;
+//                bOK = Relocalization();
             }
         }
         else
@@ -972,7 +972,8 @@ bool Tracking::TrackLocalMap()
 
 
     // TODO MN: Changed as done by DSO paper
-    if(mnMatchesInliers<30) // ORIGNALLY: 30
+//    if(mnMatchesInliers<30)
+    if(mnMatchesInliers<10)
         return false;
     else
         return true;
