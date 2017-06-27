@@ -4,6 +4,22 @@
 from subprocess import call
 import sys
 import os
+import fileinput
+
+def setYamlFile(detector):
+
+    outLines = []
+    with open("TUM_MONO_DSO.yaml", 'r') as f_in:
+        for line in f_in:
+            if "ORBextractor.detectorType" in line:
+                outLines.append("ORBextractor.detectorType: %s\n" % detector);
+            else:
+                outLines.append("%s" % line);
+    with open("TUM_MONO_DSO.yaml", 'w') as f_out:
+        for line in outLines:
+            f_out.write(line);
+
+
 
 # Path to save main results - create if needed
 if not os.path.exists("results"):
@@ -87,19 +103,36 @@ else:
 
     print 'mainDatasetPath: ' + mainDatasetPath
 
-    # For all selected sequences
-    for seq in sequences:
+    detectorTypes = ["HARRIS", "ShiTomasi"];
 
-        # For number of runs
-        for runId in range(0, runsPerSequence):
-            print("Current sequence: " + seq);
 
-            # We call this command
-            print('./Examples/Monocular/mono_tum_dso Vocabulary/ORBvoc.txt Examples/Monocular/TUM_MONO_DSO.yaml ' + str(mainDatasetPath) +'/sequence_' + seq +'/');
+    # For chosen detector
+    for detector in detectorTypes:
 
-            # Run code
-            call('./Examples/Monocular/mono_tum_dso Vocabulary/ORBvoc.txt Examples/Monocular/TUM_MONO_DSO.yaml ' + str(mainDatasetPath) +'/sequence_' + seq +'/', shell=True);
+        setYamlFile(detector);
 
-            # Copy results
-            call('mv KeyFrameTrajectory.txt results/sequence_' + str(seq) + '_' + str(runId) + '.txt', shell=True);
+        # Create dir for chosen detector
+        if not os.path.exists("results/" + detector):
+            os.makedirs("results/" + detector);
+        else:
+            call('rm results/' + detector + '/*', shell=True);
+
+
+        # For all selected sequences
+        for seq in sequences:
+
+            # For number of runs
+            for runId in range(0, runsPerSequence):
+                print("Current sequence: " + seq);
+
+                # We call this command
+                print('./Examples/Monocular/mono_tum_dso Vocabulary/ORBvoc.txt Examples/Monocular/TUM_MONO_DSO.yaml ' + str(mainDatasetPath) +'/sequence_' + seq +'/');
+
+                # Run code
+                call('./Examples/Monocular/mono_tum_dso Vocabulary/ORBvoc.txt Examples/Monocular/TUM_MONO_DSO.yaml ' + str(mainDatasetPath) +'/sequence_' + seq +'/', shell=True);
+
+                # Copy results
+                call('mv KeyFrameTrajectory.txt results/' + detector + '/sequence_' + str(seq) + '_' + str(runId) + '.txt', shell=True);
+
+
 

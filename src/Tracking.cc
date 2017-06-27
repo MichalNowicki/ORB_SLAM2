@@ -116,13 +116,25 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
     int fIniThFAST = fSettings["ORBextractor.iniThFAST"];
     int fMinThFAST = fSettings["ORBextractor.minThFAST"];
 
-    mpORBextractorLeft = new ORBextractor(nFeatures,fScaleFactor,nLevels,fIniThFAST,fMinThFAST);
+
+    ORBextractor::DetectorType detectorType = ORBextractor::DetectorType::FAST;;
+    if (fSettings["ORBextractor.detectorType"] == "FAST")
+        detectorType = ORBextractor::DetectorType::FAST;
+    if (fSettings["ORBextractor.detectorType"] == "Harris")
+        detectorType = ORBextractor::DetectorType::HARRIS;
+    if (fSettings["ORBextractor.detectorType"] == "ShiTomasi")
+        detectorType = ORBextractor::DetectorType::SHITOMASI;
+    float qualityLevel = fSettings["ORBextractor.qualityLevel"];
+    float minDistanceOfFeatures = fSettings["ORBextractor.minDistanceOfFeatures"];
+    float harrisK = fSettings["ORBextractor.HarrisK"];//0.04;
+
+    mpORBextractorLeft = new ORBextractor(nFeatures,fScaleFactor,nLevels,detectorType, fIniThFAST,fMinThFAST,qualityLevel, minDistanceOfFeatures, harrisK);
 
     if(sensor==System::STEREO)
-        mpORBextractorRight = new ORBextractor(nFeatures,fScaleFactor,nLevels,fIniThFAST,fMinThFAST);
+        mpORBextractorRight = new ORBextractor(nFeatures,fScaleFactor,nLevels,detectorType,fIniThFAST,fMinThFAST,qualityLevel, minDistanceOfFeatures, harrisK);
 
     if(sensor==System::MONOCULAR)
-        mpIniORBextractor = new ORBextractor(2*nFeatures,fScaleFactor,nLevels,fIniThFAST,fMinThFAST);
+        mpIniORBextractor = new ORBextractor(2*nFeatures,fScaleFactor,nLevels,detectorType,fIniThFAST,fMinThFAST,qualityLevel, minDistanceOfFeatures, harrisK);
 
     cout << endl  << "ORB Extractor Parameters: " << endl;
     cout << "- Number of Features: " << nFeatures << endl;
@@ -130,6 +142,17 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
     cout << "- Scale Factor: " << fScaleFactor << endl;
     cout << "- Initial Fast Threshold: " << fIniThFAST << endl;
     cout << "- Minimum Fast Threshold: " << fMinThFAST << endl;
+    cout << "----" << endl;
+    cout << "- detectorType: " ;
+    if (detectorType == ORBextractor::DetectorType::FAST)
+        cout<< "FAST" << endl;
+    else if (detectorType == ORBextractor::DetectorType::HARRIS)
+        cout<< "Harris" << endl;
+    else if (detectorType == ORBextractor::DetectorType::SHITOMASI)
+        cout<< "ShiTomasi" << endl;
+    cout << "- qualityLevel: " << qualityLevel << endl;
+    cout << "- minDistanceOfFeatures: " << minDistanceOfFeatures << endl;
+    cout << "- harrisK: " << harrisK << endl;
 
     if(sensor==System::STEREO || sensor==System::RGBD)
     {
@@ -972,8 +995,8 @@ bool Tracking::TrackLocalMap()
 
 
     // TODO MN: Changed as done by DSO paper
-//    if(mnMatchesInliers<30)
-    if(mnMatchesInliers<10)
+    if(mnMatchesInliers<30)
+//    if(mnMatchesInliers<10)
         return false;
     else
         return true;
@@ -1523,7 +1546,6 @@ void Tracking::Reset()
     mpLocalMapper->RequestReset();
     cout << " done" << endl;
 
-    // TODO MN: Have to turn it off
     // Reset Loop Closing
     cout << "Reseting Loop Closing...";
     mpLoopClosing->RequestReset();
