@@ -43,10 +43,10 @@ ORBextractor.minThFAST: 7
 
 #### Parameters for tests
 # FAST Harris ShiTomasi
-ORBextractor.detectorType: Harris
+ORBextractor.detectorType: HARRIS
 ORBextractor.qualityLevel: 0.01
 ORBextractor.minDistanceOfFeatures: 0
-ORBextractor.HarrisK: 0.01
+ORBextractor.HarrisK: 0.002000
 
 #--------------------------------------------------------------------------------------------
 # Viewer Parameters

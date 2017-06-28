@@ -6,16 +6,19 @@ import sys
 import os
 import fileinput
 
-def setYamlFile(detector):
+def setYamlFile(detector, harrisK):
+    print "Setting detector = " + detector + " harrisK = " + str(harrisK);
 
     outLines = []
     with open("Examples/Monocular/TUM_MONO_DSO.yaml", 'r') as f_in:
         for line in f_in:
             if "ORBextractor.detectorType" in line:
                 outLines.append("ORBextractor.detectorType: %s\n" % detector);
+            elif "ORBextractor.HarrisK" in line:
+                outLines.append("ORBextractor.HarrisK: %f\n" % harrisK);
             else:
                 outLines.append("%s" % line);
-    with open("TUM_MONO_DSO.yaml", 'w') as f_out:
+    with open("Examples/Monocular/TUM_MONO_DSO.yaml", 'w') as f_out:
         for line in outLines:
             f_out.write(line);
 
@@ -103,19 +106,22 @@ else:
 
     print 'mainDatasetPath: ' + mainDatasetPath
 
-    detectorTypes = ["HARRIS", "ShiTomasi"];
-
+    # -------------------------------------------
+    # Parameters
+    detectorTypes = ["HARRIS", "HARRIS"];#, "ShiTomasi"];
+    #harrisK = [0.002, 0.005, 0.01, 0.02, 0.04, 0.08]; Those were used in DSO
+    harrisKs = [0.002, 0.005]
 
     # For chosen detector
-    for detector in detectorTypes:
+    for (detector, harrisK) in zip(detectorTypes, harrisKs):
 
-        setYamlFile(detector);
+        setYamlFile(detector, harrisK);
 
         # Create dir for chosen detector
-        if not os.path.exists("results/" + detector):
-            os.makedirs("results/" + detector);
+        if not os.path.exists("results/" + detector + "_harrisK_" + str(harrisK)):
+            os.makedirs("results/" + detector+ "_harrisK_" + str(harrisK));
         else:
-            call('rm results/' + detector + '/*', shell=True);
+            call('rm results/' + detector+ "_harrisK_" + str(harrisK) + '/*', shell=True);
 
 
         # For all selected sequences
