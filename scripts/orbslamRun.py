@@ -139,7 +139,7 @@ else:
                 call('./Examples/Monocular/mono_tum_dso Vocabulary/ORBvoc.txt Examples/Monocular/TUM_MONO_DSO.yaml ' + str(mainDatasetPath) +'/sequence_' + seq +'/', shell=True);
 
                 # Copy results
-                call('mv KeyFrameTrajectory.txt results/' + detector+ "_harrisK_" + str(harrisK) ++ '/sequence_' + str(seq) + '_' + str(runId) + '.txt', shell=True);
+                call('mv KeyFrameTrajectory.txt results/' + detector+ "_harrisK_" + str(harrisK) + '/sequence_' + str(seq) + '_' + str(runId) + '.txt', shell=True);
 
 
 
