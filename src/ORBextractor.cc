@@ -562,12 +562,19 @@ vector<cv::KeyPoint> ORBextractor::DistributeOctTree(const vector<cv::KeyPoint>&
         vpIniNodes[i] = &lNodes.back();
     }
 
+
     //Associate points to childs
     for(size_t i=0;i<vToDistributeKeys.size();i++)
     {
         const cv::KeyPoint &kp = vToDistributeKeys[i];
-        vpIniNodes[kp.pt.x/hX]->vKeys.push_back(kp);
+        int index = int(floor(kp.pt.x/hX)); // TODO: May it go outside the wanted interval with round?
+
+        if (index >= 0 && index < nIni)
+            vpIniNodes[index]->vKeys.push_back(kp);
+        else
+            printf("IT SHOULD NOT HAPPEN-> index: %d, kp.pt.x: %f, hX: %f\n", index, kp.pt.x, hX);
     }
+
 
     list<ExtractorNode>::iterator lit = lNodes.begin();
 
@@ -590,6 +597,7 @@ vector<cv::KeyPoint> ORBextractor::DistributeOctTree(const vector<cv::KeyPoint>&
 
     vector<pair<int,ExtractorNode*> > vSizeAndPointerToNode;
     vSizeAndPointerToNode.reserve(lNodes.size()*4);
+
 
     while(!bFinish)
     {
@@ -738,6 +746,7 @@ vector<cv::KeyPoint> ORBextractor::DistributeOctTree(const vector<cv::KeyPoint>&
         }
     }
 
+
     // Retain the best point in each node
     vector<cv::KeyPoint> vResultKeys;
     vResultKeys.reserve(nfeatures);
@@ -769,6 +778,7 @@ void ORBextractor::ComputeKeyPointsOctTree(vector<vector<KeyPoint> >& allKeypoin
 
     const float W = 30;
 
+
     for (int level = 0; level < nlevels; ++level)
     {
         const int minBorderX = EDGE_THRESHOLD-3;
@@ -787,6 +797,7 @@ void ORBextractor::ComputeKeyPointsOctTree(vector<vector<KeyPoint> >& allKeypoin
         const int wCell = ceil(width/nCols);
         const int hCell = ceil(height/nRows);
 
+        int countSubPixCorrected = 0;
         for(int i=0; i<nRows; i++)
         {
             const float iniY =minBorderY+i*hCell;
@@ -811,11 +822,36 @@ void ORBextractor::ComputeKeyPointsOctTree(vector<vector<KeyPoint> >& allKeypoin
                 int wantedNo = mnFeaturesPerLevel[level] * 1.5 / (nRows * nCols) ;
                 if (detectorType == DetectorType::FAST) {
                     cv::FAST(mvImagePyramid[level].rowRange(iniY,maxY).colRange(iniX,maxX), vKeysCell,iniThFAST,true);
+
+
                     if(vKeysCell.empty())
                     {
                         cv::FAST(mvImagePyramid[level].rowRange(iniY,maxY).colRange(iniX,maxX), vKeysCell,minThFAST,true);
                     }
 
+                    if (!vKeysCell.empty())
+                    {
+                        //Code for subpix precision
+                        // TODO: Turn off if not needed
+                        vector<Point2f> corners;
+                        cv::KeyPoint::convert(vKeysCell, corners);
+                        cv::TermCriteria termCriteria(cv::TermCriteria::EPS + cv::TermCriteria::MAX_ITER, 10, 0.001);
+                        cv::cornerSubPix(mvImagePyramid[level].rowRange(iniY,maxY).colRange(iniX,maxX), corners, cv::Size(5,5), cv::Size(-1,-1),termCriteria);
+
+                        auto itCorner = corners.begin();
+                        auto itKey = vKeysCell.begin();
+                        for (; itCorner != corners.end(); ++itCorner, ++itKey)
+                        {
+                            cv::Point2f cornerPoint = cv::Point2f(itCorner->x, itCorner->y);
+                            double d = cv::norm(cornerPoint - itKey->pt);
+                            if (d < 1.4142) {
+                                itKey->pt.x = itCorner->x;
+                                itKey->pt.y = itCorner->y;
+                                countSubPixCorrected++;
+                            }
+                        }
+
+                    }
                 }
                 else if (detectorType == DetectorType::SHITOMASI) {
                     vector<Point2f> corners;
@@ -841,6 +877,31 @@ void ORBextractor::ComputeKeyPointsOctTree(vector<vector<KeyPoint> >& allKeypoin
                                                 corners, wantedNo, qualityLevel *0.000001, minDistanceOfFeatures,
                                                 noArray(), 3, true, harrisK);
                     }
+
+                    if (!corners.empty())
+                    {
+                        //Code for subpix precision
+                        // TODO: It duplicates the code for FAST
+                        vector<Point2f> cornersSubPix(corners);
+                        cv::TermCriteria termCriteria(cv::TermCriteria::EPS + cv::TermCriteria::MAX_ITER, 10, 0.001);
+                        cv::cornerSubPix(mvImagePyramid[level].rowRange(iniY,maxY).colRange(iniX,maxX), cornersSubPix, cv::Size(5,5), cv::Size(-1,-1),termCriteria);
+
+                        auto itCornerSubPix = cornersSubPix.begin();
+                        auto itCorner = corners.begin();
+                        for (; itCornerSubPix != cornersSubPix.end(); ++itCornerSubPix, ++itCorner)
+                        {
+                            cv::Point2f cornerSubPixPoint = cv::Point2f(itCornerSubPix->x, itCornerSubPix->y);
+                            cv::Point2f cornerPoint = cv::Point2f(itCorner->x, itCorner->y);
+                            double d = cv::norm(cornerSubPixPoint - cornerPoint);
+                            if (d < 1.4142) {
+                                itCorner->x = itCornerSubPix->x;
+                                itCorner->y = itCornerSubPix->y;
+                                countSubPixCorrected++;
+                            }
+                        }
+
+                    }
+
                     cv::KeyPoint::convert(corners, vKeysCell);
                 }
                 else
@@ -863,6 +924,8 @@ void ORBextractor::ComputeKeyPointsOctTree(vector<vector<KeyPoint> >& allKeypoin
 
             }
         }
+
+//        printf("Subpix corrected: %d vs all: %d\n", countSubPixCorrected, vToDistributeKeys.size());
 
         vector<KeyPoint> & keypoints = allKeypoints[level];
         keypoints.reserve(nfeatures);

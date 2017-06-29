@@ -108,8 +108,9 @@ else:
 
     # -------------------------------------------
     # Parameters
-    detectorTypes = ["Harris", "Harris", "Harris", "Harris", "Harris"];#, "ShiTomasi"];
-    harrisKs = [0.002, 0.005, 0.01, 0.02, 0.04]; # Those were used in DSO
+    detectorTypes = ["FAST", "Harris"];#, "ShiTomasi"];
+    harrisKs = [0, 0.01];
+    #harrisKs = [0.002, 0.005, 0.01, 0.02, 0.04]; # Those were used in DSO
 
     # For chosen detector
     for (detector, harrisK) in zip(detectorTypes, harrisKs):
