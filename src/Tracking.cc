@@ -118,11 +118,11 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
 
 
     ORBextractor::DetectorType detectorType = ORBextractor::DetectorType::FAST;;
-    if (fSettings["ORBextractor.detectorType"] == "FAST")
+    if (fSettings["ORBextractor.detectorType"] == "Fast" || fSettings["ORBextractor.detectorType"] == "FAST")
         detectorType = ORBextractor::DetectorType::FAST;
-    if (fSettings["ORBextractor.detectorType"] == "Harris")
+    if (fSettings["ORBextractor.detectorType"] == "Harris" || fSettings["ORBextractor.detectorType"] == "HARRIS")
         detectorType = ORBextractor::DetectorType::HARRIS;
-    if (fSettings["ORBextractor.detectorType"] == "ShiTomasi")
+    if (fSettings["ORBextractor.detectorType"] == "ShiTomasi" || fSettings["ORBextractor.detectorType"] == "SHITOMASI")
         detectorType = ORBextractor::DetectorType::SHITOMASI;
     float qualityLevel = fSettings["ORBextractor.qualityLevel"];
     float minDistanceOfFeatures = fSettings["ORBextractor.minDistanceOfFeatures"];
