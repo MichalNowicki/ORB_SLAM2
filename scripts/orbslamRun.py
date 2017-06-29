@@ -108,7 +108,7 @@ else:
 
     # -------------------------------------------
     # Parameters
-    detectorTypes = ["HARRIS"];#, "ShiTomasi"];
+    detectorTypes = ["Harris"];#, "ShiTomasi"];
     #harrisK = [0.002, 0.005, 0.01, 0.02, 0.04, 0.08]; Those were used in DSO
     harrisKs = [0.01]
 
