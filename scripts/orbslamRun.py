@@ -126,7 +126,7 @@ else:
                 os.makedirs("results/" + detector+ "_lambdaThreshold_" + str(lambdaThreshold));
             else:
                 call('rm results/' + detector+ "_lambdaThreshold_" + str(lambdaThreshold) + '/*', shell=True);
-        elif "Harris":
+        elif "Harris" in detector:
             if not os.path.exists("results/" + detector + "_harrisK_" + str(harrisK)):
                 os.makedirs("results/" + detector+ "_harrisK_" + str(harrisK));
             else:
@@ -154,7 +154,7 @@ else:
                 # Copy results
                 if "HarrisCE" in detector:
                     call('mv KeyFrameTrajectory.txt results/' + detector+ "_harrisK_" + str(harrisK) + '/sequence_' + str(seq) + '_' + str(runId) + '.txt', shell=True);
-                elif "Harris":
+                elif "Harris" in detector:
                     call('mv KeyFrameTrajectory.txt results/' + detector+ "_lambdaThreshold_" + str(lambdaThreshold) + '/sequence_' + str(seq) + '_' + str(runId) + '.txt', shell=True);
                 else:
                     call('mv KeyFrameTrajectory.txt results/' + detector + '/sequence_' + str(seq) + '_' + str(runId) + '.txt', shell=True);
