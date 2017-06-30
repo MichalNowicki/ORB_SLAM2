@@ -920,6 +920,9 @@ bool Tracking::TrackWithMotionModel()
     if(nmatches<20)
         return false;
 
+
+    // TODO: Here is a possibility to go subpixel with patches
+
     // Optimize frame pose with all matches
     Optimizer::PoseOptimization(&mCurrentFrame);
 
