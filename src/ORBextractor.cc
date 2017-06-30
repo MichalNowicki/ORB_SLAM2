@@ -61,7 +61,7 @@
 #include <vector>
 
 #include "ORBextractor.h"
-
+#include "../Modifications/cornerEdgeHarris.h"
 
 using namespace cv;
 using namespace std;
@@ -408,9 +408,9 @@ static int bit_pattern_31_[256*4] =
 };
 
 ORBextractor::ORBextractor(int _nfeatures, float _scaleFactor, int _nlevels, DetectorType _detectorType,
-                           int _iniThFAST, int _minThFAST, double _qualityLevel, double _minDistanceOfFeatures, double _harrisK) :
+                           int _iniThFAST, int _minThFAST, double _qualityLevel, double _minDistanceOfFeatures, double _harrisK, double _lambdaThreshold) :
     nfeatures(_nfeatures), scaleFactor(_scaleFactor), nlevels(_nlevels), detectorType(_detectorType),
-    iniThFAST(_iniThFAST), minThFAST(_minThFAST), qualityLevel(_qualityLevel), minDistanceOfFeatures(_minDistanceOfFeatures), harrisK(_harrisK)
+    iniThFAST(_iniThFAST), minThFAST(_minThFAST), qualityLevel(_qualityLevel), minDistanceOfFeatures(_minDistanceOfFeatures), harrisK(_harrisK), lambdaThreshold(_lambdaThreshold)
 {
     mvScaleFactor.resize(nlevels);
     mvLevelSigma2.resize(nlevels);
@@ -901,6 +901,19 @@ void ORBextractor::ComputeKeyPointsOctTree(vector<vector<KeyPoint> >& allKeypoin
                         }
 
                     }
+
+                    cv::KeyPoint::convert(corners, vKeysCell);
+                }
+
+                else if (detectorType == DetectorType::HARRIS_CE) {
+
+                    // Our modification of HARRIS corner/edge extractor
+                    vector<Point2f> corners;
+                    vector<cv::Vec6f> lambdasVectors; // Not used but important due
+
+                    cornerEdgeHarrisExtractor(mvImagePyramid[level].rowRange(iniY, maxY).colRange(iniX, maxX), corners,
+                                              lambdasVectors, wantedNo, 10e-80, minDistanceOfFeatures, noArray(), 3,
+                                              lambdaThreshold);
 
                     cv::KeyPoint::convert(corners, vKeysCell);
                 }

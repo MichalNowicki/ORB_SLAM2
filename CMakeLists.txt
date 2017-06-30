@@ -85,6 +85,7 @@ Modifications/Undistort.cpp
 Modifications/ImageRW_OpenCV.cpp
 Modifications/settings.cpp
 Modifications/globalCalib.cpp
+Modifications/cornerEdgeHarris.cpp
 )
 
 target_link_libraries(${PROJECT_NAME}

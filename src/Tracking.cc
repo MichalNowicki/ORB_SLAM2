@@ -124,17 +124,20 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
         detectorType = ORBextractor::DetectorType::HARRIS;
     if (fSettings["ORBextractor.detectorType"] == "ShiTomasi" || fSettings["ORBextractor.detectorType"] == "SHITOMASI")
         detectorType = ORBextractor::DetectorType::SHITOMASI;
+    if (fSettings["ORBextractor.detectorType"] == "HarrisCE" || fSettings["ORBextractor.detectorType"] == "HARRISCE")
+        detectorType = ORBextractor::DetectorType::HARRIS_CE;
     float qualityLevel = fSettings["ORBextractor.qualityLevel"];
     float minDistanceOfFeatures = fSettings["ORBextractor.minDistanceOfFeatures"];
     float harrisK = fSettings["ORBextractor.HarrisK"];//0.04;
+    float lambdaThreshold = fSettings["ORBextractor.lambdaThreshold"];
 
-    mpORBextractorLeft = new ORBextractor(nFeatures,fScaleFactor,nLevels,detectorType, fIniThFAST,fMinThFAST,qualityLevel, minDistanceOfFeatures, harrisK);
+    mpORBextractorLeft = new ORBextractor(nFeatures,fScaleFactor,nLevels,detectorType, fIniThFAST,fMinThFAST,qualityLevel, minDistanceOfFeatures, harrisK, lambdaThreshold);
 
     if(sensor==System::STEREO)
-        mpORBextractorRight = new ORBextractor(nFeatures,fScaleFactor,nLevels,detectorType,fIniThFAST,fMinThFAST,qualityLevel, minDistanceOfFeatures, harrisK);
+        mpORBextractorRight = new ORBextractor(nFeatures,fScaleFactor,nLevels,detectorType,fIniThFAST,fMinThFAST,qualityLevel, minDistanceOfFeatures, harrisK, lambdaThreshold);
 
     if(sensor==System::MONOCULAR)
-        mpIniORBextractor = new ORBextractor(2*nFeatures,fScaleFactor,nLevels,detectorType,fIniThFAST,fMinThFAST,qualityLevel, minDistanceOfFeatures, harrisK);
+        mpIniORBextractor = new ORBextractor(2*nFeatures,fScaleFactor,nLevels,detectorType,fIniThFAST,fMinThFAST,qualityLevel, minDistanceOfFeatures, harrisK, lambdaThreshold);
 
     cout << endl  << "ORB Extractor Parameters: " << endl;
     cout << "- Number of Features: " << nFeatures << endl;
@@ -150,9 +153,12 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
         cout<< "Harris" << endl;
     else if (detectorType == ORBextractor::DetectorType::SHITOMASI)
         cout<< "ShiTomasi" << endl;
+    else if (detectorType == ORBextractor::DetectorType::HARRIS_CE)
+        cout<< "HarrisCE" << endl;
     cout << "- qualityLevel: " << qualityLevel << endl;
     cout << "- minDistanceOfFeatures: " << minDistanceOfFeatures << endl;
     cout << "- harrisK: " << harrisK << endl;
+    cout << "- lambdaThreshold: " << lambdaThreshold << endl;
 
     if(sensor==System::STEREO || sensor==System::RGBD)
     {

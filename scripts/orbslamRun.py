@@ -6,7 +6,7 @@ import sys
 import os
 import fileinput
 
-def setYamlFile(detector, harrisK):
+def setYamlFile(detector, harrisK, lambdaThreshold):
     print "Setting detector = " + detector + " harrisK = " + str(harrisK);
 
     outLines = []
@@ -16,6 +16,8 @@ def setYamlFile(detector, harrisK):
                 outLines.append("ORBextractor.detectorType: %s\n" % detector);
             elif "ORBextractor.HarrisK" in line:
                 outLines.append("ORBextractor.HarrisK: %f\n" % harrisK);
+            elif "ORBextractor.lambdaThreshold" in line:
+                outLines.append("ORBextractor.lambdaThreshold: %f\n" % lambdaThreshold);
             else:
                 outLines.append("%s" % line);
     with open("Examples/Monocular/TUM_MONO_DSO.yaml", 'w') as f_out:
@@ -108,20 +110,32 @@ else:
 
     # -------------------------------------------
     # Parameters
-    detectorTypes = ["FAST", "Harris"];#, "ShiTomasi"];
-    harrisKs = [0, 0.01];
+    detectorTypes = ["FAST", "Harris", "HarrisCE"];#, "ShiTomasi"];
+    harrisKs = [0, 0.01, 0.01];
+    lambdaThresholds = [0.01, 0.001, 0.001];
     #harrisKs = [0.002, 0.005, 0.01, 0.02, 0.04]; # Those were used in DSO
 
     # For chosen detector
-    for (detector, harrisK) in zip(detectorTypes, harrisKs):
+    for (detector, harrisK, lambdaThreshold) in zip(detectorTypes, harrisKs, lambdaThresholds):
 
-        setYamlFile(detector, harrisK);
+        setYamlFile(detector, harrisK, lambdaThreshold);
 
         # Create dir for chosen detector
-        if not os.path.exists("results/" + detector + "_harrisK_" + str(harrisK)):
-            os.makedirs("results/" + detector+ "_harrisK_" + str(harrisK));
+        if "HarrisCE" in detector:
+            if not os.path.exists("results/" + detector + "_lambdaThreshold_" + str(lambdaThreshold)):
+                os.makedirs("results/" + detector+ "_lambdaThreshold_" + str(lambdaThreshold));
+            else:
+                call('rm results/' + detector+ "_lambdaThreshold_" + str(lambdaThreshold) + '/*', shell=True);
+        elif "Harris":
+            if not os.path.exists("results/" + detector + "_harrisK_" + str(harrisK)):
+                os.makedirs("results/" + detector+ "_harrisK_" + str(harrisK));
+            else:
+                call('rm results/' + detector+ "_harrisK_" + str(harrisK) + '/*', shell=True);
         else:
-            call('rm results/' + detector+ "_harrisK_" + str(harrisK) + '/*', shell=True);
+            if not os.path.exists("results/" + detector ):
+                os.makedirs("results/" + detector );
+            else:
+                call('rm results/' + detector , shell=True);
 
 
         # For all selected sequences
@@ -138,7 +152,10 @@ else:
                 call('./Examples/Monocular/mono_tum_dso Vocabulary/ORBvoc.txt Examples/Monocular/TUM_MONO_DSO.yaml ' + str(mainDatasetPath) +'/sequence_' + seq +'/', shell=True);
 
                 # Copy results
-                call('mv KeyFrameTrajectory.txt results/' + detector+ "_harrisK_" + str(harrisK) + '/sequence_' + str(seq) + '_' + str(runId) + '.txt', shell=True);
-
-
+                if "HarrisCE" in detector:
+                    call('mv KeyFrameTrajectory.txt results/' + detector+ "_harrisK_" + str(harrisK) + '/sequence_' + str(seq) + '_' + str(runId) + '.txt', shell=True);
+                elif "Harris":
+                    call('mv KeyFrameTrajectory.txt results/' + detector+ "_lambdaThreshold_" + str(lambdaThreshold) + '/sequence_' + str(seq) + '_' + str(runId) + '.txt', shell=True);
+                else:
+                    call('mv KeyFrameTrajectory.txt results/' + detector + '/sequence_' + str(seq) + '_' + str(runId) + '.txt', shell=True);
 
