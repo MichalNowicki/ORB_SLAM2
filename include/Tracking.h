@@ -143,6 +143,7 @@ protected:
 
     bool TrackLocalMap();
     void SearchLocalPoints();
+    void ComputeSubPixPositions();
 
     bool NeedNewKeyFrame();
     void CreateNewKeyFrame();

@@ -148,9 +148,13 @@ void LocalMapping::ProcessNewKeyFrame()
             {
                 if(!pMP->IsInKeyFrame(mpCurrentKeyFrame))
                 {
+                    // TODO: SUBPIX REFINEMENT
+                    pMP->RefineSubPix(mpCurrentKeyFrame, i);
+
                     pMP->AddObservation(mpCurrentKeyFrame, i);
                     pMP->UpdateNormalAndDepth();
                     pMP->ComputeDistinctiveDescriptors();
+
                 }
                 else // this can only happen for new stereo points inserted by the Tracking
                 {
@@ -162,6 +166,17 @@ void LocalMapping::ProcessNewKeyFrame()
 
     // Update links in the Covisibility Graph
     mpCurrentKeyFrame->UpdateConnections();
+
+//    const vector<KeyFrame*> vNeighKFs = mpCurrentKeyFrame->GetVectorCovisibleKeyFrames();
+//    for(int i=0, iend=vNeighKFs.size(); i<iend; i++)
+//    {
+//        KeyFrame* pKFi = vNeighKFs[i];
+//        if(!pKFi->isBad()) {
+//            pKFI
+//
+//
+//        }
+//    }
 
     // Insert Keyframe in Map
     mpMap->AddKeyFrame(mpCurrentKeyFrame);
@@ -551,6 +566,7 @@ cv::Mat LocalMapping::ComputeF12(KeyFrame *&pKF1, KeyFrame *&pKF2)
 
     return K1.t().inv()*t12x*R12*K2.inv();
 }
+
 
 void LocalMapping::RequestStop()
 {

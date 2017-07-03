@@ -971,6 +971,9 @@ bool Tracking::TrackLocalMap()
 
     SearchLocalPoints();
 
+    // TODO: Place to go subpix!
+    ComputeSubPixPositions();
+
     // Optimize Pose
     Optimizer::PoseOptimization(&mCurrentFrame);
     mnMatchesInliers = 0;
@@ -1228,6 +1231,7 @@ void Tracking::SearchLocalPoints()
             th=5;
         matcher.SearchByProjection(mCurrentFrame,mvpLocalMapPoints,th);
     }
+
 }
 
 void Tracking::UpdateLocalMap()
@@ -1651,6 +1655,9 @@ void Tracking::InformOnlyTracking(const bool &flag)
     mbOnlyTracking = flag;
 }
 
+void Tracking::ComputeSubPixPositions() {
 
+
+}
 
 } //namespace ORB_SLAM

@@ -76,10 +76,13 @@ public:
 
     void UpdateNormalAndDepth();
 
+    void RefineSubPix(KeyFrame* pKF,size_t idx);
+
     float GetMinDistanceInvariance();
     float GetMaxDistanceInvariance();
     int PredictScale(const float &currentDist, KeyFrame*pKF);
     int PredictScale(const float &currentDist, Frame* pF);
+
 
 public:
     long unsigned int mnId;
@@ -125,6 +128,9 @@ protected:
 
      // Best descriptor to fast matching
      cv::Mat mDescriptor;
+
+     // Patch
+     cv::Mat mPatch;
 
      // Reference KeyFrame
      KeyFrame* mpRefKF;

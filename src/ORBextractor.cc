@@ -829,29 +829,29 @@ void ORBextractor::ComputeKeyPointsOctTree(vector<vector<KeyPoint> >& allKeypoin
                         cv::FAST(mvImagePyramid[level].rowRange(iniY,maxY).colRange(iniX,maxX), vKeysCell,minThFAST,true);
                     }
 
-                    if (!vKeysCell.empty())
-                    {
-                        //Code for subpix precision
-                        // TODO: Turn off if not needed
-                        vector<Point2f> corners;
-                        cv::KeyPoint::convert(vKeysCell, corners);
-                        cv::TermCriteria termCriteria(cv::TermCriteria::EPS + cv::TermCriteria::MAX_ITER, 10, 0.001);
-                        cv::cornerSubPix(mvImagePyramid[level].rowRange(iniY,maxY).colRange(iniX,maxX), corners, cv::Size(5,5), cv::Size(-1,-1),termCriteria);
-
-                        auto itCorner = corners.begin();
-                        auto itKey = vKeysCell.begin();
-                        for (; itCorner != corners.end(); ++itCorner, ++itKey)
-                        {
-                            cv::Point2f cornerPoint = cv::Point2f(itCorner->x, itCorner->y);
-                            double d = cv::norm(cornerPoint - itKey->pt);
-                            if (d < 1.4142) {
-                                itKey->pt.x = itCorner->x;
-                                itKey->pt.y = itCorner->y;
-                                countSubPixCorrected++;
-                            }
-                        }
-
-                    }
+//                    TODO: Code for subpix precision - > Turn off if not needed
+//                    if (!vKeysCell.empty())
+//                    {
+//
+//                        vector<Point2f> corners;
+//                        cv::KeyPoint::convert(vKeysCell, corners);
+//                        cv::TermCriteria termCriteria(cv::TermCriteria::EPS + cv::TermCriteria::MAX_ITER, 10, 0.001);
+//                        cv::cornerSubPix(mvImagePyramid[level].rowRange(iniY,maxY).colRange(iniX,maxX), corners, cv::Size(5,5), cv::Size(-1,-1),termCriteria);
+//
+//                        auto itCorner = corners.begin();
+//                        auto itKey = vKeysCell.begin();
+//                        for (; itCorner != corners.end(); ++itCorner, ++itKey)
+//                        {
+//                            cv::Point2f cornerPoint = cv::Point2f(itCorner->x, itCorner->y);
+//                            double d = cv::norm(cornerPoint - itKey->pt);
+//                            if (d < 1.4142) {
+//                                itKey->pt.x = itCorner->x;
+//                                itKey->pt.y = itCorner->y;
+//                                countSubPixCorrected++;
+//                            }
+//                        }
+//
+//                    }
                 }
                 else if (detectorType == DetectorType::SHITOMASI) {
                     vector<Point2f> corners;
@@ -878,29 +878,29 @@ void ORBextractor::ComputeKeyPointsOctTree(vector<vector<KeyPoint> >& allKeypoin
                                                 noArray(), 3, true, harrisK);
                     }
 
-                    if (!corners.empty())
-                    {
-                        //Code for subpix precision
-                        // TODO: It duplicates the code for FAST
-                        vector<Point2f> cornersSubPix(corners);
-                        cv::TermCriteria termCriteria(cv::TermCriteria::EPS + cv::TermCriteria::MAX_ITER, 10, 0.001);
-                        cv::cornerSubPix(mvImagePyramid[level].rowRange(iniY,maxY).colRange(iniX,maxX), cornersSubPix, cv::Size(5,5), cv::Size(-1,-1),termCriteria);
 
-                        auto itCornerSubPix = cornersSubPix.begin();
-                        auto itCorner = corners.begin();
-                        for (; itCornerSubPix != cornersSubPix.end(); ++itCornerSubPix, ++itCorner)
-                        {
-                            cv::Point2f cornerSubPixPoint = cv::Point2f(itCornerSubPix->x, itCornerSubPix->y);
-                            cv::Point2f cornerPoint = cv::Point2f(itCorner->x, itCorner->y);
-                            double d = cv::norm(cornerSubPixPoint - cornerPoint);
-                            if (d < 1.4142) {
-                                itCorner->x = itCornerSubPix->x;
-                                itCorner->y = itCornerSubPix->y;
-                                countSubPixCorrected++;
-                            }
-                        }
-
-                    }
+//                    TODO: Code for subpix precision - > Turn off if not needed
+//                    if (!corners.empty())
+//                    {
+//                        vector<Point2f> cornersSubPix(corners);
+//                        cv::TermCriteria termCriteria(cv::TermCriteria::EPS + cv::TermCriteria::MAX_ITER, 10, 0.001);
+//                        cv::cornerSubPix(mvImagePyramid[level].rowRange(iniY,maxY).colRange(iniX,maxX), cornersSubPix, cv::Size(5,5), cv::Size(-1,-1),termCriteria);
+//
+//                        auto itCornerSubPix = cornersSubPix.begin();
+//                        auto itCorner = corners.begin();
+//                        for (; itCornerSubPix != cornersSubPix.end(); ++itCornerSubPix, ++itCorner)
+//                        {
+//                            cv::Point2f cornerSubPixPoint = cv::Point2f(itCornerSubPix->x, itCornerSubPix->y);
+//                            cv::Point2f cornerPoint = cv::Point2f(itCorner->x, itCorner->y);
+//                            double d = cv::norm(cornerSubPixPoint - cornerPoint);
+//                            if (d < 1.4142) {
+//                                itCorner->x = itCornerSubPix->x;
+//                                itCorner->y = itCornerSubPix->y;
+//                                countSubPixCorrected++;
+//                            }
+//                        }
+//
+//                    }
 
                     cv::KeyPoint::convert(corners, vKeysCell);
                 }
@@ -1152,8 +1152,26 @@ static void computeDescriptors(const Mat& image, vector<KeyPoint>& keypoints, Ma
         computeOrbDescriptor(keypoints[i], image, &pattern[0], descriptors.ptr((int)i));
 }
 
+static void computePatches(const Mat& image, vector<KeyPoint>& keypoints, vector<Mat> &patches, int size) {
+    int halfPatchSize = (size - 1) / 2;
+
+    // The detection is not made subpix -> change if it will be otherwise
+    for (auto &k : keypoints) {
+        int ymin = int(k.pt.y) - halfPatchSize;
+        int ymax = int(k.pt.y) + halfPatchSize;
+        int xmin = int(k.pt.x) - halfPatchSize;
+        int xmax = int(k.pt.x) + halfPatchSize;
+
+        // Check if the patch is still in image - empty matrix if not patch can be extracted
+        if (ymin < 0 || ymax > image.rows || xmin < 0 || xmax > image.cols)
+            patches.push_back(cv::Mat());
+        else
+            patches.push_back(image.rowRange(ymin, ymax+1).colRange(xmin, xmax+1));
+    }
+}
+
 void ORBextractor::operator()( InputArray _image, InputArray _mask, vector<KeyPoint>& _keypoints,
-                      OutputArray _descriptors)
+                      OutputArray _descriptors, vector<Mat> &patches)
 {
     if(_image.empty())
         return;
@@ -1200,6 +1218,10 @@ void ORBextractor::operator()( InputArray _image, InputArray _mask, vector<KeyPo
         // Compute the descriptors
         Mat desc = descriptors.rowRange(offset, offset + nkeypointsLevel);
         computeDescriptors(workingMat, keypoints, desc, pattern);
+
+        // Computing patches
+        computePatches(workingMat, keypoints, patches, 11);
+
 
         offset += nkeypointsLevel;
 

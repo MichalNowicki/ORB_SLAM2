@@ -149,6 +149,9 @@ public:
     // ORB descriptor, each row associated to a keypoint.
     cv::Mat mDescriptors, mDescriptorsRight;
 
+    // Patches, each row associated to a keypoint
+    std::vector<cv::Mat> mPatches, mPatchesRight;
+
     // MapPoints associated to keypoints, NULL pointer if no association.
     std::vector<MapPoint*> mvpMapPoints;
 

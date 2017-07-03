@@ -86,7 +86,7 @@ Modifications/ImageRW_OpenCV.cpp
 Modifications/settings.cpp
 Modifications/globalCalib.cpp
 Modifications/cornerEdgeHarris.cpp
-)
+        Modifications/PatchRefinement.cpp)
 
 target_link_libraries(${PROJECT_NAME}
 ${OpenCV_LIBS}
@@ -132,3 +132,9 @@ target_link_libraries(mono_euroc ${PROJECT_NAME})
 add_executable(mono_tum_dso
         Examples/Monocular/mono_tum_dso.cc)
 target_link_libraries(mono_tum_dso boost_system boost_thread ${LIBZIP_LIBRARY} ${PROJECT_NAME})
+
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/Examples/Test)
+
+add_executable(patch_test
+        Examples/Test/patchTest.cpp)
+target_link_libraries(patch_test boost_system boost_thread ${LIBZIP_LIBRARY} ${PROJECT_NAME})

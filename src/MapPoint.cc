@@ -20,7 +20,7 @@
 
 #include "MapPoint.h"
 #include "ORBmatcher.h"
-
+#include <Eigen/Eigen>
 #include<mutex>
 
 namespace ORB_SLAM2
@@ -64,6 +64,7 @@ MapPoint::MapPoint(const cv::Mat &Pos, Map* pMap, Frame* pFrame, const int &idxF
     mfMinDistance = mfMaxDistance/pFrame->mvScaleFactors[nLevels-1];
 
     pFrame->mDescriptors.row(idxF).copyTo(mDescriptor);
+    pFrame->mPatches[idxF].copyTo(mPatch);
 
     // MapPoints can be created from Tracking and Local Mapping. This mutex avoid conflicts with id.
     unique_lock<mutex> lock(mpMap->mMutexPointCreation);
@@ -123,7 +124,7 @@ void MapPoint::EraseObservation(KeyFrame* pKF)
 
             mObservations.erase(pKF);
 
-            if(mpRefKF==pKF)
+            if(mpRefKF==pKF) // TODO: When we change ref keyframe, it is necessary to recompute patch matchings
                 mpRefKF=mObservations.begin()->first;
 
             // If only 2 observations or less, discard point
@@ -370,6 +371,70 @@ void MapPoint::UpdateNormalAndDepth()
     }
 }
 
+void MapPoint::RefineSubPix(KeyFrame* currentKF, size_t idx)
+{
+    // Retrieve the current pose of feature observations
+    map<KeyFrame*,size_t> observations;
+    {
+        unique_lock<mutex> lock1(mMutexFeatures);
+        if(mbBad)
+            return;
+        observations=mObservations;
+    }
+
+    // We end if no observations are available
+    if(observations.empty())
+        return;
+
+    // Current patch
+    mPatch = currentKF->mPatches[idx];
+
+    // Finding the refPatch of the original detection
+    cv::Mat refPatch;
+    for(map<KeyFrame*,size_t>::iterator mit=observations.begin(), mend=observations.end(); mit!=mend; mit++) {
+        KeyFrame *pKF = mit->first;
+        int idx2 = mit->second;
+        if (pKF == mpRefKF) {
+            refPatch = mpRefKF->mPatches[idx2];
+            break;
+        }
+    }
+
+    if (!mPatch.empty() && !refPatch.empty()) {
+
+        // Code for patch refinement
+
+    }
+    else
+        std::cout << "Patch missing" << std::endl;
+
+//    double minNormalError = 0;
+//
+//    cv::Mat currentNormal = mWorldPos - currentKF->GetCameraCenter();
+//     Let's find the keyframe with the closest normal to current
+//    for(map<KeyFrame*,size_t>::iterator mit=observations.begin(), mend=observations.end(); mit!=mend; mit++)
+//    {
+//        KeyFrame* pKF = mit->first;
+//        int idx = mit->second;
+//
+//        if(!pKF->isBad()) {
+//            cv::Mat Owi = pKF->GetCameraCenter();
+//            cv::Mat normali = mWorldPos - Owi;
+//
+//            double error = cv::norm(currentNormal, normali);
+//            if (minIter == mit || minNormalError > error ) {
+//                minNormalError = error;
+//            }
+//        }
+//    }
+//
+//    KeyFrame* relativeKF = minIter->first;
+//    int relativeKF_idx = minIter->second;
+
+
+
+}
+
 float MapPoint::GetMinDistanceInvariance()
 {
     unique_lock<mutex> lock(mMutexPos);
@@ -415,7 +480,6 @@ int MapPoint::PredictScale(const float &currentDist, Frame* pF)
 
     return nScale;
 }
-
 
 
 } //namespace ORB_SLAM
