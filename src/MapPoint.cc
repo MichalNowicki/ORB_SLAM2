@@ -432,6 +432,11 @@ void MapPoint::RefineSubPix(KeyFrame* currentKF, size_t idx)
 //    int relativeKF_idx = minIter->second;
 
 
+//        cv::Mat Tpc = currentKF->GetPoseInverse() * mWorldPos;
+//        float depth = Tpc.at<float>(2);
+//        ComputeHomography(mpRefKF, currentKF, mNormalVector, depth);
+
+
 
 }
 

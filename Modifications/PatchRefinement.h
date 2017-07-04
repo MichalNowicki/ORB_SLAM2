@@ -5,172 +5,120 @@
 #ifndef ORB_SLAM2_PATCHREFINEMENT_H
 #define ORB_SLAM2_PATCHREFINEMENT_H
 
-#include<opencv2/core/core.hpp>
 #include <Eigen/Eigen>
+#include <opencv2/core/core.hpp>
 #include <iostream>
 #include <vector>
+#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv/cv.hpp>
+#include <opencv2/core/eigen.hpp>
 
 class PatchRefinement {
 
 public:
-    PatchRefinement(cv::Mat img) {
-         int size = img.rows;
-
-        // Each point saves larger patch but for refinement below value is used. The rest of the patch is used for warping.
-        static int patchSize = 5;
-
-        // Steps:
-        // 1. Compute image gradient for mPatch
-        // 2. Warp refPatch by R,t
-        // 3. Prepare
-        std::vector<Eigen::Vector2f> gradient(size*size, Eigen::Vector2f::Zero());
-
-        // compute gradient
-        Eigen::Matrix2f Hessian = Eigen::Matrix2f::Zero(), HessianInv;
-        for (int i = 1; i<size-1;i++)
-        {
-            for (int j = 1;j<size-1;j++) {
-                Eigen::Vector2f Jacobian;
-                Jacobian[0] = 0.5 * (img.at<uchar>(i,j+1) - img.at<uchar>(i,j-1));
-                Jacobian[1] = 0.5 * (img.at<uchar>(i+1,j) - img.at<uchar>(i-1,j));
-                gradient[j+i*size] = Jacobian;
-
-                Hessian += Jacobian * Jacobian.transpose();
-            }
-        }
-        HessianInv = Hessian.inverse();
-
-
-//        std::cout << "Gradient X:" << std::endl;
-//        for (int i=0;i<gradient.size();i++) {
-//            std::cout << gradient[i][0] << " " ;
-//            if (i%size == size - 1)
-//                std::cout << std::endl;
-//        }
-//        std::cout << "Gradient Y:" << std::endl;
-//        for (int i=0;i<gradient.size();i++) {
-//            std::cout << gradient[i][1] << " ";
-//            if (i % size == size - 1)
-//                std::cout << std::endl;
-//        }
-
-
-        // Create some patches to test
-        double origX = 100.0, origY = 45.0;
-        std::vector<Eigen::Vector2f> gd(patchSize*patchSize, Eigen::Vector2f::Zero());
-        std::vector<double> patch = computePatch(img, origX, origY, size, patchSize, gradient, gd);
-
-        std::cout <<"Original patch for " << origX << " " << origY << std::endl;
-        printPatch(patch, patchSize);
-
-
-        // Lets optimize position
-        float optX = 100.0, optY = 46;
-
-        for (int i = 0; i < 1000; i++) {
-            std::cout <<"----------- Simulated patch for " << optX << " " << optY << std::endl;
-            std::vector<double> simulatedPatch = computePatch(img, optX, optY, size, patchSize, gradient, gd);
-            printPatch(simulatedPatch, patchSize);
-
-
-            Eigen::Vector2f res = patchDiff(patch, simulatedPatch, gd);
-            std::cout << "Error: " << std::endl << res.transpose() << std::endl;
-
-            Eigen::Vector2f step = HessianInv * res;
-            std::cout << "Proposed step: "<< std::endl << step.transpose() << std::endl;
-
-            optX = optX + step[0];
-            optY = optY + step[1];
-        }
-
+    PatchRefinement() {
     };
 
-    void printPatch(std::vector<double> patch, int patchSize) {
-        for (int i=0;i<patch.size();i++)
-        {
-            std::cout << patch[i] <<" " ;
-            if (i%patchSize == patchSize - 1)
-                std::cout<< std::endl;
-        }
-    }
+    /*
+     * Computes the difference between patches and weights the error with the provided gradient vector
+     */
+    Eigen::Vector2d computePatchDifference(std::vector<double> patch, std::vector<double> optimizedPatch,
+                                           std::vector<Eigen::Vector2d> imageGradient);
+
+    /*
+    * Computes the difference between patches
+    */
+    double computePatchDifference(std::vector<double> patch, std::vector<double> optimizedPatch);
 
 
+    /*
+     * Prints the values of the patch to the console
+     */
+    void printPatch(std::vector<double> patch, int patchSize);
+
+    /*
+     * Creates a window with the provided name to visualize the patch
+     */
+    void showPatch(std::vector<double> patch, int patchSize, std::string windowName);
+
+    /*
+     * Methods that computes the homography based on:
+     * - Taw -> Pose of a coordinate system A in the World coordinate system
+     * - Tbw -> Pose of a coordinate system B in the World coordinate system
+     * - n   -> Normal of the plane in a coordinate system A. It should be normalized!
+     * - d   -> The closest distance to the plane in a coordinate system A. If you only know point use getDistanceToPlane
+     * - Ka  -> Camera matrix for a coordinate system a
+     * - Kb  -> Camera matrix for a coordinate system b
+     */
+    cv::Mat ComputeHomography(cv::Mat Taw, cv::Mat Tbw, cv::Mat n, double d, cv::Mat Ka, cv::Mat Kb);
+
+    /*
+     * Returns the rotational part of transformation
+     */
+    cv::Mat extractRotation(cv::Mat T);
+
+    /*
+    * Returns the translational part of transformation
+    */
+    cv::Mat extractTranslation(cv::Mat T);
+
+    /*
+     * Returns the closest distance to the plane when the position of 1 point and normal is known
+     */
+    double getDistanceToPlane(const cv::Mat &point3D, const cv::Mat &normal);
+
+    /*
+     * Takes 3D points and normalizes it to achieve 2D point
+     */
+    cv::Mat normalize2D(cv::Mat p);
 
 
-    Eigen::Vector2f patchDiff(std::vector<double> patch, std::vector<double> optimizedPatch, std::vector<Eigen::Vector2f> imageGradient) {
-        float averagePatch = std::accumulate( patch.begin(), patch.end(), 0.0)/patch.size();
-        float averageOptPatch = std::accumulate( optimizedPatch.begin(), optimizedPatch.end(), 0.0)/optimizedPatch.size();
+    /*
+     * Computes the patch with homography. It takes point (px,py) in image2 (and its patch surroundings),
+     * transforms them to image 1 (p1 = H * p2), performs bilinear interpolation and returns patch as single vector
+     * (data is stored row by row and the vector length is patchSize*patchSize)
+     *
+     * The method can be used to compute patch of original image with H = Identity()
+     */
+    std::vector<double> computePatch(cv::Mat img, double px, double py, int patchSize, Eigen::Matrix3d H);
 
 
-        Eigen::Vector2f res = Eigen::Vector2f::Zero();
-        for (int i=0;i<patch.size();i++) {
-                float d = (optimizedPatch[i]-averageOptPatch) - (patch[i] - averagePatch);
-
-                res += imageGradient[i] * (-d);
-        }
-        return res;
-    }
-
-    //
-    std::vector<double> computePatch(cv::Mat img, double x, double y, int size, int patchSize, std::vector<Eigen::Vector2f> gradient, std::vector<Eigen::Vector2f> &gd) {
-
-        const double xInt = int(x), yInt = int(y);
-        const double xSub = x - xInt, ySub = y - yInt;
-
-        // From wiki: http://upload.wikimedia.org/math/9/b/4/9b4e1064436ecccd069ea238b656c063.png
-        const double topLeft = (1.0 - xSub) * (1.0 - ySub);
-        const double topRight = xSub * (1.0 - ySub);
-        const double bottomLeft = (1.0 - xSub) * ySub;
-        const double bottomRight = xSub * ySub;
-
-        std::vector<double> patch (patchSize*patchSize, 0.0);
-
-        int halfPatchSize = (patchSize - 1)/2;
-        int index = 0;
-        for (int j = yInt - halfPatchSize; j < yInt + halfPatchSize + 1; j++) {
-            for (int i = xInt - halfPatchSize; i < xInt + halfPatchSize + 1; i++) {
-
-                float value = topLeft * img.at<uchar>(j, i) + topRight * img.at<uchar>(j, i + 1) +
-                              bottomLeft * img.at<uchar>(j + 1, i) + bottomRight * img.at<uchar>(j + 1, i + 1);
-                patch[index] = value;
-
-                gd[index] = topLeft * gradient[j*size+i] + topRight * gradient[j*size+i+1] +
-                                    bottomLeft * gradient[(j+1)*size+i] + bottomRight * gradient[(j+1)*size+i+1];
-
-                index++;
-            }
-        }
-
-        return patch;
-    }
+    /*
+     * Computes the patch around point (x,y) in img while also computing gradient in those subpix positions based on precomputed gradient
+     *
+     * size is number of elements in a row of a gradient vector (not nice)
+     */
+    std::vector<double>
+    computePatch(cv::Mat img, double x, double y, int size, int patchSize, std::vector<Eigen::Vector2d> gradient,
+                 std::vector<Eigen::Vector2d> &gd);
 
 
+    /*
+     * It computes the image gradient on image "img" and stores it row by row in variable gradient. The inverse Hessian is also computed
+     *
+     * Attention! It assumes square image as all patches will be square!
+     */
+    void computeImageGradient(cv::Mat &img, std::vector<Eigen::Vector2d> &gradient, Eigen::Matrix2d &HessianInv);
 
 
+    /*
+     * Tests optimization on provided image (img) with selected size of a patch (patchSize). The original patch is taken at originalPoint
+     * and the optimization starts at testPoint. The optimization is stopped when 100 iterations are performed or the proposed step is smaller than minimalStep
+     */
+    void testOptimization(cv::Mat img, int patchSize, Eigen::Vector2d originalPoint, Eigen::Vector2d testPoint,
+                          double minimalStep = 1e-6);
 
-    // TODO: Not sure about the coordinate systems! Something is wrong!
-//        cv::Mat Tpc = currentKF->GetPoseInverse() * mWorldPos;
-//        float depth = Tpc.at<float>(2);
-//        ComputeHomography(mpRefKF, currentKF, mNormalVector, depth);
 
-//    cv::Mat ComputeHomography(KeyFrame *&pKF1, KeyFrame *&pKF2, cv::Mat n, double d)
-//    {
-//        cv::Mat R1w = pKF1->GetRotation();
-//        cv::Mat t1w = pKF1->GetTranslation();
-//        cv::Mat R2w = pKF2->GetRotation();
-//        cv::Mat t2w = pKF2->GetTranslation();
-//
-//        cv::Mat R12 = R1w*R2w.t();
-//        cv::Mat t12 = -R1w*R2w.t()*t2w+t1w;
-//
-//        const cv::Mat &K1 = pKF1->mK;
-//        const cv::Mat &K2 = pKF2->mK;
-//
-//        // K1'* (R - tn' / d)*K^-1
-//        return K1.t()* (R12 -  t12 * n / d )*K2.inv();
-//    }
+    /*
+     * Tests the homography estimation on image2, one 3D point, two camera matrices, and pose of cs B in A (R,t) given patchSize
+     */
+    void testHomography(cv::Mat image2, cv::Mat point3DInImg1, cv::Mat K1, cv::Mat K2, cv::Mat R, cv::Mat t, int patchSize);
+
 
 };
+
+
+
 
 
 #endif //ORB_SLAM2_PATCHREFINEMENT_H
