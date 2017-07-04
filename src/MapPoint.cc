@@ -21,6 +21,8 @@
 #include "MapPoint.h"
 #include "ORBmatcher.h"
 #include <Eigen/Eigen>
+
+#include "Modifications/PatchRefinement.h"
 #include<mutex>
 
 namespace ORB_SLAM2
@@ -390,19 +392,69 @@ void MapPoint::RefineSubPix(KeyFrame* currentKF, size_t idx)
     mPatch = currentKF->mPatches[idx];
 
     // Finding the refPatch of the original detection
-    cv::Mat refPatch;
+    int refIdx = 0;
     for(map<KeyFrame*,size_t>::iterator mit=observations.begin(), mend=observations.end(); mit!=mend; mit++) {
         KeyFrame *pKF = mit->first;
-        int idx2 = mit->second;
         if (pKF == mpRefKF) {
-            refPatch = mpRefKF->mPatches[idx2];
+            refIdx = mit->second;
             break;
         }
     }
 
+
+    cv::Mat refPatch = mpRefKF->mPatches[refIdx];
+    cv::KeyPoint refKp = mpRefKF->mvKeys[refIdx];
+    const int refLevel = mpRefKF->mvKeys[refIdx].octave;
+    const float refLevelScaleFactor =  mpRefKF->mvScaleFactors[refLevel];
+
     if (!mPatch.empty() && !refPatch.empty()) {
+        // Data we need to use
+        //      mPatch      - patch in the current frame A
+        //      refPatch    - patch in the previous frame B
+        //                  - pose of B in A
+        //                  - normal of the patch
+        //                  - d of the plane
+        //                  - keypoint positions and corresponding scale
+        std::cout <<"Subpix refinement " << std::endl;
+
+        float dataNormal[3] = { 0, 0, -1 };
+        cv::Mat n = cv::Mat(3, 1, CV_32F, dataNormal);
+        std::cout <<"normal: " << n.t() << std::endl;
+
+        double pDepth = mWorldPos.at<float>(0,2);
+        std::cout <<"pointDepth: " << pDepth << std::endl;
+
+        cv::Mat Taw = mpRefKF->GetPoseInverse();
+        cv::Mat Tbw = currentKF->GetPose();
+        cv::Mat Tba = Taw.inv() * Tbw;
+        std::cout <<"Tba: " << std::endl << Tba << std::endl;
+
+        std::cout << "Keypoints: " << std::endl << refKp.pt.x << " " << refKp.pt.y << " vs " << currentKF->mvKeys[idx].pt.x << " " << currentKF->mvKeys[idx].pt.y << std::endl;
+
+        const int level = currentKF->mvKeys[idx].octave;
+        const float levelScaleFactor =  currentKF->mvScaleFactors[level];
+        std::cout<< "LevelScaleFactor: " << refLevelScaleFactor << " " << levelScaleFactor << std::endl;
+
+
+        // TODO: Something wrong with Ka and Kb
+        cv::Mat Ka = mpRefKF->getCameraMatrix();
+        std::cout << "Ka " << std::endl << Ka << std::endl;
+
+        cv::Mat Kb = currentKF->getCameraMatrix();
+        std::cout << "Kb " << std::endl << Kb << std::endl;
+
+        int size = 5;
+        int halfPatchSize = (size - 1)/ 2;
+
+
+
 
         // Code for patch refinement
+        PatchRefinement patchRefinement;
+
+        double d = patchRefinement.getDistanceToPlane(mWorldPos, n);
+        cv::Mat H = patchRefinement.ComputeHomography(Taw, Tbw, n, d, Ka, Kb);
+
 
     }
     else

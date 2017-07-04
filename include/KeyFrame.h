@@ -116,6 +116,10 @@ public:
         return pKF1->mnId<pKF2->mnId;
     }
 
+    cv::Mat getCameraMatrix() {
+        float dataK[9] = { fx, 0, cx, 0, fy, cy, 0, 0, 1};
+        return cv::Mat(3, 3, CV_32F, dataK);
+    }
 
     // The following variables are accesed from only 1 thread or never change (no mutex needed).
 public:
