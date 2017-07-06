@@ -379,7 +379,7 @@ bool MapPoint::RefineSubPix(KeyFrame* currentKF, size_t idx, int patchSize)
 {
     // TODO: Some settings to test
     enum PATCHAGAINST {FIRST, CLOSEST};
-    PATCHAGAINST patchAgainst = PATCHAGAINST::CLOSEST;
+    PATCHAGAINST patchAgainst = PATCHAGAINST::FIRST;
     static const bool verbose = 0;
     const double homographyReprojThreshold = 3;
     const int maxNumberOfOpt = 100;
