@@ -50,7 +50,8 @@ public:
     enum DetectorType{FAST, SHITOMASI, HARRIS, HARRIS_CE};
 
     ORBextractor(int nfeatures, float scaleFactor, int nlevels, DetectorType detectorType,
-                 int iniThFAST, int minThFAST, double qualityLevel, double minDistanceOfFeatures, double harrisK, double lambdaThreshold);
+                 int iniThFAST, int minThFAST, double qualityLevel, double minDistanceOfFeatures, double harrisK, double lambdaThreshold,
+                int patchSize);
 
     ~ORBextractor(){}
 
@@ -111,6 +112,7 @@ protected:
     double minDistanceOfFeatures = 2;
     double harrisK = 0.4;
     double lambdaThreshold = 0.0001;
+    int largePatchSize = 11;
 
 
     std::vector<int> mnFeaturesPerLevel;

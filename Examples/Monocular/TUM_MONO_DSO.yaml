@@ -49,6 +49,10 @@ ORBextractor.minDistanceOfFeatures: 0
 ORBextractor.HarrisK: 0.000000
 ORBextractor.lambdaThreshold: 0.000000
 
+# Doing patches -> patchSize is not properly connected to code, largePatch is
+ORBextractor.patchSize: 5
+ORBextractor.largePatchSize: 21
+
 #--------------------------------------------------------------------------------------------
 # Viewer Parameters
 #--------------------------------------------------------------------------------------------

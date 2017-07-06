@@ -94,6 +94,17 @@ public:
 
 
     /*
+     * TODO
+     */
+    std::vector<double> computePatchOnSubImage(cv::Mat img, int patchSize, Eigen::Matrix3d H, cv::Point2f img2kp, double scaleKp2, cv::Point2f img1kp, double scaleKp1);
+    Eigen::Matrix3d cv2eigen(cv::Mat H) {
+        Eigen::Matrix3d Heigen;
+        cv::cv2eigen(H, Heigen);
+        return Heigen;
+    };
+
+
+    /*
      * It computes the image gradient on image "img" and stores it row by row in variable gradient. The inverse Hessian is also computed
      *
      * Attention! It assumes square image as all patches will be square!

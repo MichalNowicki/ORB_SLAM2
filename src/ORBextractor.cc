@@ -408,9 +408,10 @@ static int bit_pattern_31_[256*4] =
 };
 
 ORBextractor::ORBextractor(int _nfeatures, float _scaleFactor, int _nlevels, DetectorType _detectorType,
-                           int _iniThFAST, int _minThFAST, double _qualityLevel, double _minDistanceOfFeatures, double _harrisK, double _lambdaThreshold) :
+                           int _iniThFAST, int _minThFAST, double _qualityLevel, double _minDistanceOfFeatures, double _harrisK, double _lambdaThreshold, int _largePatchSize) :
     nfeatures(_nfeatures), scaleFactor(_scaleFactor), nlevels(_nlevels), detectorType(_detectorType),
-    iniThFAST(_iniThFAST), minThFAST(_minThFAST), qualityLevel(_qualityLevel), minDistanceOfFeatures(_minDistanceOfFeatures), harrisK(_harrisK), lambdaThreshold(_lambdaThreshold)
+    iniThFAST(_iniThFAST), minThFAST(_minThFAST), qualityLevel(_qualityLevel), minDistanceOfFeatures(_minDistanceOfFeatures), harrisK(_harrisK), lambdaThreshold(_lambdaThreshold),
+    largePatchSize(_largePatchSize)
 {
     mvScaleFactor.resize(nlevels);
     mvLevelSigma2.resize(nlevels);
@@ -1163,7 +1164,7 @@ static void computePatches(const Mat& image, vector<KeyPoint>& keypoints, vector
         int xmax = int(k.pt.x) + halfPatchSize;
 
         // Check if the patch is still in image - empty matrix if not patch can be extracted
-        if (ymin < 0 || ymax > image.rows || xmin < 0 || xmax > image.cols)
+        if (ymin < 0 || ymax >= image.rows || xmin < 0 || xmax >= image.cols)
             patches.push_back(cv::Mat());
         else
             patches.push_back(image.rowRange(ymin, ymax+1).colRange(xmin, xmax+1));
@@ -1220,7 +1221,7 @@ void ORBextractor::operator()( InputArray _image, InputArray _mask, vector<KeyPo
         computeDescriptors(workingMat, keypoints, desc, pattern);
 
         // Computing patches
-        computePatches(workingMat, keypoints, patches, 11);
+        computePatches(workingMat, keypoints, patches, largePatchSize);
 
 
         offset += nkeypointsLevel;

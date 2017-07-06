@@ -46,10 +46,10 @@ void PatchRefinement::showPatch(std::vector<double> patch, int patchSize, std::s
     imshow(windowName, patchToShow);
 }
 
-cv::Mat PatchRefinement::ComputeHomography(cv::Mat Taw, cv::Mat Tbw, cv::Mat n, double d, cv::Mat Ka, cv::Mat Kb)
+cv::Mat PatchRefinement::ComputeHomography(cv::Mat Twa, cv::Mat Twb, cv::Mat n, double d, cv::Mat Ka, cv::Mat Kb)
 {
-    // Pose of c.s. B in A
-    cv::Mat Tba = Tbw * Taw.inv();
+    // Pose of c.s. A in B
+    cv::Mat Tba = Twb.inv() * Twa;
 
     // Getting R,t
     cv::Mat R21 = extractRotation(Tba);
@@ -94,6 +94,62 @@ std::vector<double> PatchRefinement::computePatch(cv::Mat img, double px, double
             Eigen::Vector3d pIn1 = H * pIn2;
             pIn1 = pIn1 / pIn1(2);
 
+            const double xInt = int(pIn1(0)), yInt = int(pIn1(1));
+            const double xSub = pIn1(0) - xInt, ySub = pIn1(1) - yInt;
+
+            // From wiki: http://upload.wikimedia.org/math/9/b/4/9b4e1064436ecccd069ea238b656c063.png
+            const double topLeft = (1.0 - xSub) * (1.0 - ySub);
+            const double topRight = xSub * (1.0 - ySub);
+            const double bottomLeft = (1.0 - xSub) * ySub;
+            const double bottomRight = xSub * ySub;
+
+
+            float value = topLeft * img.at<uchar>(yInt, xInt) + topRight * img.at<uchar>(yInt, xInt + 1) +
+                          bottomLeft * img.at<uchar>(yInt + 1, xInt) + bottomRight * img.at<uchar>(yInt + 1, xInt + 1);
+            patch[index] = value;
+
+            index++;
+        }
+    }
+
+    return patch;
+}
+
+std::vector<double> PatchRefinement::computePatchOnSubImage(cv::Mat img, int patchSize, Eigen::Matrix3d H, cv::Point2f img2kp, double scaleKp2, cv::Point2f img1kp, double scaleKp1) {
+
+    std::vector<double> patch (patchSize*patchSize, 0.0);
+
+    int halfPatchSize = (patchSize - 1)/2;
+    int index = 0;
+
+
+
+    for (int j = - halfPatchSize; j <  halfPatchSize + 1; j++) {
+        for (int i = - halfPatchSize; i < halfPatchSize + 1; i++) {
+
+            // The patch size is defined in detection octave -> it will be different size on full img
+            double x = img2kp.x + i * scaleKp2;
+            double y = img2kp.y + j * scaleKp2;
+
+            // We find the position on the image1 based on (x,y) in image2 and H
+            Eigen::Vector3d pIn2(x,y,1);
+            Eigen::Vector3d pIn1 = H * pIn2;
+            pIn1 = pIn1 / pIn1(2);
+
+            // We only have a image part in image 1 !
+            // Therefore, we find the point with respect to keypoint, scale that distance by octave's scale and just moves it to the center of stored patch
+            int centerPos = (img.rows - 1) / 2;
+            pIn1(0) = (pIn1(0) - img1kp.x)/scaleKp1 + centerPos;
+            pIn1(1) = (pIn1(1) - img1kp.y)/scaleKp1 + centerPos;
+
+            // Warped outside of the image
+            if ( pIn1(0) < 0 || pIn1(0) > img.cols - 1 || pIn1(1) < 0 || pIn1(1) > img.rows - 1)
+            {
+               //    printf("\t Our subimage is too small to compute warped patch!\n");
+                return std::vector<double>();
+            }
+
+            // We can do warping
             const double xInt = int(pIn1(0)), yInt = int(pIn1(1));
             const double xSub = pIn1(0) - xInt, ySub = pIn1(1) - yInt;
 
@@ -248,14 +304,14 @@ void PatchRefinement::testHomography(cv::Mat image2, cv::Mat point3DInImg1, cv::
     std::cout << "-> T2w = " << std::endl << T2w << std::endl;
 
     // We assume planar normal
-    float dataNormal[3] = { 0, 0, -1 };
+    float dataNormal[3] = { 0, 0, 1 };
     cv::Mat n = cv::Mat(3, 1, CV_32F, dataNormal);
     n = n / cv::norm(n);
     std::cout << "-> n = " << std::endl << n << std::endl;
 
     // We have to find how much the plane is moved from the origin of the coordinate system
     double d = getDistanceToPlane(point3DInImg1, n);
-    std::cout << "-> d = " << std::endl << std::endl;
+    std::cout << "-> d = " << d << std::endl;
 
     // We compute the homography
     cv::Mat H = ComputeHomography(T1w, T2w, n, d, K1, K2);
@@ -265,8 +321,11 @@ void PatchRefinement::testHomography(cv::Mat image2, cv::Mat point3DInImg1, cv::
     std::cout << "----------------------"<< std::endl;
     std::cout << "Verifying homography" << std::endl;
 
-    double diff = cv::norm(projPInImg2 - H.inv()*projPInImg1);
-    double diff2 = cv::norm(projPInImg1 - H*projPInImg2);
+    double diff = cv::norm(projPInImg2 - normalize2D(H*projPInImg1));
+    double diff2 = cv::norm(projPInImg1 - normalize2D(H.inv()*projPInImg2));
+    std :: cout << "Img1: " << projPInImg1.t() << " " << normalize2D(H.inv()*projPInImg2) << std::endl;
+    std :: cout << "Img2: " << projPInImg2.t() << " " << normalize2D(H*projPInImg1) << std::endl;
+
     if ( diff < 0.0001 && diff2 < 0.0001)
         std::cout << "\t Homography is OK!" << std::endl;
     else

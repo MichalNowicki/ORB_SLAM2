@@ -118,7 +118,7 @@ public:
 
     cv::Mat getCameraMatrix() {
         float dataK[9] = { fx, 0, cx, 0, fy, cy, 0, 0, 1};
-        return cv::Mat(3, 3, CV_32F, dataK);
+        return cv::Mat(3, 3, CV_32F, dataK).clone();
     }
 
     // The following variables are accesed from only 1 thread or never change (no mutex needed).
@@ -164,8 +164,9 @@ public:
     const int N;
 
     // KeyPoints, stereo coordinate and descriptors (all associated by an index)
-    const std::vector<cv::KeyPoint> mvKeys;
-    const std::vector<cv::KeyPoint> mvKeysUn;
+    //TODO: It cannot be const as subpix precision changes the position of those points
+    std::vector<cv::KeyPoint> mvKeys;
+    std::vector<cv::KeyPoint> mvKeysUn;
     const std::vector<float> mvuRight; // negative value for monocular points
     const std::vector<float> mvDepth; // negative value for monocular points
     const cv::Mat mDescriptors;

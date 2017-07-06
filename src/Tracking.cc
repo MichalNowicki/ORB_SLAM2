@@ -130,14 +130,16 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
     float minDistanceOfFeatures = fSettings["ORBextractor.minDistanceOfFeatures"];
     float harrisK = fSettings["ORBextractor.HarrisK"];//0.04;
     float lambdaThreshold = fSettings["ORBextractor.lambdaThreshold"];
+    int patchSize = fSettings["ORBextractor.patchSize"];
+    int largePatchSize = fSettings["ORBextractor.largePatchSize"];
 
-    mpORBextractorLeft = new ORBextractor(nFeatures,fScaleFactor,nLevels,detectorType, fIniThFAST,fMinThFAST,qualityLevel, minDistanceOfFeatures, harrisK, lambdaThreshold);
+    mpORBextractorLeft = new ORBextractor(nFeatures,fScaleFactor,nLevels,detectorType, fIniThFAST,fMinThFAST,qualityLevel, minDistanceOfFeatures, harrisK, lambdaThreshold, largePatchSize);
 
     if(sensor==System::STEREO)
-        mpORBextractorRight = new ORBextractor(nFeatures,fScaleFactor,nLevels,detectorType,fIniThFAST,fMinThFAST,qualityLevel, minDistanceOfFeatures, harrisK, lambdaThreshold);
+        mpORBextractorRight = new ORBextractor(nFeatures,fScaleFactor,nLevels,detectorType,fIniThFAST,fMinThFAST,qualityLevel, minDistanceOfFeatures, harrisK, lambdaThreshold, largePatchSize);
 
     if(sensor==System::MONOCULAR)
-        mpIniORBextractor = new ORBextractor(2*nFeatures,fScaleFactor,nLevels,detectorType,fIniThFAST,fMinThFAST,qualityLevel, minDistanceOfFeatures, harrisK, lambdaThreshold);
+        mpIniORBextractor = new ORBextractor(2*nFeatures,fScaleFactor,nLevels,detectorType,fIniThFAST,fMinThFAST,qualityLevel, minDistanceOfFeatures, harrisK, lambdaThreshold, largePatchSize);
 
     cout << endl  << "ORB Extractor Parameters: " << endl;
     cout << "- Number of Features: " << nFeatures << endl;

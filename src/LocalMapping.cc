@@ -139,6 +139,7 @@ void LocalMapping::ProcessNewKeyFrame()
     // Associate MapPoints to the new keyframe and update normal and descriptor
     const vector<MapPoint*> vpMapPointMatches = mpCurrentKeyFrame->GetMapPointMatches();
 
+    int countRefined = 0, possibleForSubPix = 0;
     for(size_t i=0; i<vpMapPointMatches.size(); i++)
     {
         MapPoint* pMP = vpMapPointMatches[i];
@@ -148,8 +149,13 @@ void LocalMapping::ProcessNewKeyFrame()
             {
                 if(!pMP->IsInKeyFrame(mpCurrentKeyFrame))
                 {
+                    possibleForSubPix++;
+
                     // TODO: SUBPIX REFINEMENT
-                    pMP->RefineSubPix(mpCurrentKeyFrame, i);
+                    const int patchSize = 11;
+                    bool refined = pMP->RefineSubPix(mpCurrentKeyFrame, i, patchSize);
+                    if (refined)
+                        countRefined++;
 
                     pMP->AddObservation(mpCurrentKeyFrame, i);
                     pMP->UpdateNormalAndDepth();
@@ -162,7 +168,10 @@ void LocalMapping::ProcessNewKeyFrame()
                 }
             }
         }
-    }    
+    }
+    std::cout << "++++++" << std::endl;
+    std::cout << "Subpixel refinement for " << countRefined << " / " << possibleForSubPix << " | All obs: " << vpMapPointMatches.size() << std::endl;
+    std::cout << "++++++" << std::endl;
 
     // Update links in the Covisibility Graph
     mpCurrentKeyFrame->UpdateConnections();
