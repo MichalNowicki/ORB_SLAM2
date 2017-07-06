@@ -46,11 +46,8 @@ void PatchRefinement::showPatch(std::vector<double> patch, int patchSize, std::s
     imshow(windowName, patchToShow);
 }
 
-cv::Mat PatchRefinement::ComputeHomography(cv::Mat Twa, cv::Mat Twb, cv::Mat n, double d, cv::Mat Ka, cv::Mat Kb)
+cv::Mat PatchRefinement::ComputeHomography(cv::Mat Tba, cv::Mat n, double d, cv::Mat Ka, cv::Mat Kb)
 {
-    // Pose of c.s. A in B
-    cv::Mat Tba = Twb.inv() * Twa;
-
     // Getting R,t
     cv::Mat R21 = extractRotation(Tba);
     cv::Mat t21 = extractTranslation(Tba);
@@ -314,7 +311,9 @@ void PatchRefinement::testHomography(cv::Mat image2, cv::Mat point3DInImg1, cv::
     std::cout << "-> d = " << d << std::endl;
 
     // We compute the homography
-    cv::Mat H = ComputeHomography(T1w, T2w, n, d, K1, K2);
+    // Pose of c.s. A in B
+    cv::Mat Tba = T2w.inv() * T1w;
+    cv::Mat H = ComputeHomography(Tba, n, d, K1, K2);
     std::cout << "-> H = " << std::endl << H << std::endl;
 
     //// Let's verify the homography
@@ -351,7 +350,7 @@ void PatchRefinement::testHomography(cv::Mat image2, cv::Mat point3DInImg1, cv::
     // Patch we observe in image 1
     Eigen::Matrix3d Heigen;
     cv::cv2eigen(H, Heigen);
-    std::vector<double> patchImg1 = computePatch(image1, x, y, patchSize, Heigen);
+    std::vector<double> patchImg1 = computePatch(image1, x, y, patchSize, Heigen.inverse());
 
     std::cout << "Patch 1!" << std::endl;
     printPatch(patchImg1, patchSize);

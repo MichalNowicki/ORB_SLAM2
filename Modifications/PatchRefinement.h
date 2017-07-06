@@ -43,14 +43,13 @@ public:
 
     /*
      * Methods that computes the homography based on:
-     * - Taw -> Pose of a coordinate system A in the World coordinate system
-     * - Tbw -> Pose of a coordinate system B in the World coordinate system
+     * - Tba -> Pose of a coordinate system A in the B's coordinate system (Moves point in A to B)
      * - n   -> Normal of the plane in a coordinate system A. It should be normalized!
      * - d   -> The closest distance to the plane in a coordinate system A. If you only know point use getDistanceToPlane
      * - Ka  -> Camera matrix for a coordinate system a
      * - Kb  -> Camera matrix for a coordinate system b
      */
-    cv::Mat ComputeHomography(cv::Mat Taw, cv::Mat Tbw, cv::Mat n, double d, cv::Mat Ka, cv::Mat Kb);
+    cv::Mat ComputeHomography(cv::Mat Tba, cv::Mat n, double d, cv::Mat Ka, cv::Mat Kb);
 
     /*
      * Returns the rotational part of transformation

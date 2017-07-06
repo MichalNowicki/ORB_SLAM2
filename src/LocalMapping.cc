@@ -169,23 +169,11 @@ void LocalMapping::ProcessNewKeyFrame()
             }
         }
     }
-    std::cout << "++++++" << std::endl;
-    std::cout << "Subpixel refinement for " << countRefined << " / " << possibleForSubPix << " | All obs: " << vpMapPointMatches.size() << std::endl;
-    std::cout << "++++++" << std::endl;
+
+    std::cout << "\t Subpixel refinement for " << countRefined << " / " << possibleForSubPix << " | All obs: " << vpMapPointMatches.size() << std::endl;
 
     // Update links in the Covisibility Graph
     mpCurrentKeyFrame->UpdateConnections();
-
-//    const vector<KeyFrame*> vNeighKFs = mpCurrentKeyFrame->GetVectorCovisibleKeyFrames();
-//    for(int i=0, iend=vNeighKFs.size(); i<iend; i++)
-//    {
-//        KeyFrame* pKFi = vNeighKFs[i];
-//        if(!pKFi->isBad()) {
-//            pKFI
-//
-//
-//        }
-//    }
 
     // Insert Keyframe in Map
     mpMap->AddKeyFrame(mpCurrentKeyFrame);
