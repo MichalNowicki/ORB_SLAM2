@@ -15,9 +15,29 @@
 
 class PatchRefinement {
 
+
 public:
-    PatchRefinement() {
+    PatchRefinement(int _patchSize, double _minIterStep) {
+        patchSize = _patchSize;
+        minIterStep = _minIterStep;
+
+        iterationNumber = 15;
+        stepStopThreshold = 0.01;
     };
+
+
+    /*
+     * Optimizes the position of the feature
+     */
+    bool optimizePosition(cv::Mat refImg, cv::Point2f refP, float refScale, cv::Mat curImg, cv::Point2f curP,
+                                     float curScale, Eigen::Matrix3d H, cv::Point2f &correction);
+
+    /*
+     * TODO: Remove it
+     */
+    void performOptimizationForTestS(cv::Mat refImg, cv::Point2f refP, float refScale, cv::Mat curImg, cv::Point2f curP,
+                                     float curScale, Eigen::Matrix3d H);
+
 
     /*
      * Computes the difference between patches and weights the error with the provided gradient vector
@@ -40,6 +60,11 @@ public:
      * Creates a window with the provided name to visualize the patch
      */
     void showPatch(std::vector<double> patch, int patchSize, std::string windowName);
+
+    /*
+     *
+     */
+    void printGradient(std::vector<Eigen::Vector2d> gradient);
 
     /*
      * Methods that computes the homography based on:
@@ -79,7 +104,8 @@ public:
      *
      * The method can be used to compute patch of original image with H = Identity()
      */
-    std::vector<double> computePatch(cv::Mat img, double px, double py, int patchSize, Eigen::Matrix3d H);
+    std::vector<double> computePatch(cv::Mat img, cv::Point2f kp, Eigen::Matrix3d H);
+    std::vector<double> computePatch(cv::Mat img, Eigen::Vector2d kp, Eigen::Matrix3d H);
 
 
     /*
@@ -88,14 +114,15 @@ public:
      * size is number of elements in a row of a gradient vector (not nice)
      */
     std::vector<double>
-    computePatch(cv::Mat img, double x, double y, int size, int patchSize, std::vector<Eigen::Vector2d> gradient,
+    computePatch(cv::Mat img, Eigen::Vector2d kp, std::vector<Eigen::Vector2d> gradient,
                  std::vector<Eigen::Vector2d> &gd);
 
 
     /*
      * TODO
      */
-    std::vector<double> computePatchOnSubImage(cv::Mat img, int patchSize, Eigen::Matrix3d H, cv::Point2f img2kp, double scaleKp2, cv::Point2f img1kp, double scaleKp1);
+    std::vector<double> computePatchOnSubImage(cv::Mat img, Eigen::Matrix3d H, cv::Point2f img2kp, double scaleKp2, cv::Point2f img1kp, double scaleKp1);
+
     Eigen::Matrix3d cv2eigen(cv::Mat H) {
         Eigen::Matrix3d Heigen;
         cv::cv2eigen(H, Heigen);
@@ -108,22 +135,14 @@ public:
      *
      * Attention! It assumes square image as all patches will be square!
      */
-    void computeImageGradient(cv::Mat &img, std::vector<Eigen::Vector2d> &gradient, Eigen::Matrix2d &HessianInv);
+    void computeImageGradient(cv::Mat &img, cv::Point2f kp, std::vector<Eigen::Vector2d> &gradient, Eigen::Matrix2d &HessianInv);
 
+private:
+    int patchSize;
+    double minIterStep;
 
-    /*
-     * Tests optimization on provided image (img) with selected size of a patch (patchSize). The original patch is taken at originalPoint
-     * and the optimization starts at testPoint. The optimization is stopped when 100 iterations are performed or the proposed step is smaller than minimalStep
-     */
-    void testOptimization(cv::Mat img, int patchSize, Eigen::Vector2d originalPoint, Eigen::Vector2d testPoint,
-                          double minimalStep = 1e-6);
-
-
-    /*
-     * Tests the homography estimation on image2, one 3D point, two camera matrices, and pose of cs B in A (R,t) given patchSize
-     */
-    void testHomography(cv::Mat image2, cv::Mat point3DInImg1, cv::Mat K1, cv::Mat K2, cv::Mat R, cv::Mat t, int patchSize);
-
+    int iterationNumber;
+    double stepStopThreshold;
 
 };
 

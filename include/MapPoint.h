@@ -134,6 +134,7 @@ protected:
 
      // Reference KeyFrame
      KeyFrame* mpRefKF;
+     bool refKFChanged;
 
      // Tracking counters
      int mnVisible;

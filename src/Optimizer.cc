@@ -711,7 +711,8 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
     vector<pair<KeyFrame*,MapPoint*> > vToErase;
     vToErase.reserve(vpEdgesMono.size()+vpEdgesStereo.size());
 
-    // Check inlier observations       
+    // Check inlier observations
+    std::vector<double> chi2Statistics;
     for(size_t i=0, iend=vpEdgesMono.size(); i<iend;i++)
     {
         g2o::EdgeSE3ProjectXYZ* e = vpEdgesMono[i];
@@ -725,7 +726,10 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
             KeyFrame* pKFi = vpEdgeKFMono[i];
             vToErase.push_back(make_pair(pKFi,pMP));
         }
+
+        chi2Statistics.push_back(e->chi2());
     }
+    std::cout <<"\tLocalBA: avg chi2() = " << accumulate( chi2Statistics.begin(), chi2Statistics.end(), 0.0)/chi2Statistics.size()  << " over " << chi2Statistics.size() << " measurements"<< std::endl;
 
     for(size_t i=0, iend=vpEdgesStereo.size(); i<iend;i++)
     {

@@ -35,7 +35,7 @@ MapPoint::MapPoint(const cv::Mat &Pos, KeyFrame *pRefKF, Map* pMap):
     mnFirstKFid(pRefKF->mnId), mnFirstFrame(pRefKF->mnFrameId), nObs(0), mnTrackReferenceForFrame(0),
     mnLastFrameSeen(0), mnBALocalForKF(0), mnFuseCandidateForKF(0), mnLoopPointForKF(0), mnCorrectedByKF(0),
     mnCorrectedReference(0), mnBAGlobalForKF(0), mpRefKF(pRefKF), mnVisible(1), mnFound(1), mbBad(false),
-    mpReplaced(static_cast<MapPoint*>(NULL)), mfMinDistance(0), mfMaxDistance(0), mpMap(pMap)
+    mpReplaced(static_cast<MapPoint*>(NULL)), mfMinDistance(0), mfMaxDistance(0), mpMap(pMap), refKFChanged(false)
 {
     Pos.copyTo(mWorldPos);
     mNormalVector = cv::Mat::zeros(3,1,CV_32F);
@@ -49,7 +49,7 @@ MapPoint::MapPoint(const cv::Mat &Pos, Map* pMap, Frame* pFrame, const int &idxF
     mnFirstKFid(-1), mnFirstFrame(pFrame->mnId), nObs(0), mnTrackReferenceForFrame(0), mnLastFrameSeen(0),
     mnBALocalForKF(0), mnFuseCandidateForKF(0),mnLoopPointForKF(0), mnCorrectedByKF(0),
     mnCorrectedReference(0), mnBAGlobalForKF(0), mpRefKF(static_cast<KeyFrame*>(NULL)), mnVisible(1),
-    mnFound(1), mbBad(false), mpReplaced(NULL), mpMap(pMap)
+    mnFound(1), mbBad(false), mpReplaced(NULL), mpMap(pMap), refKFChanged(false)
 {
     Pos.copyTo(mWorldPos);
     cv::Mat Ow = pFrame->GetCameraCenter();
@@ -127,7 +127,7 @@ void MapPoint::EraseObservation(KeyFrame* pKF)
             mObservations.erase(pKF);
 
             if(mpRefKF==pKF) {// TODO: When we change ref keyframe, it is necessary to recompute patch matchings
-//                std::cout << "Ref keyframe changed - possible issues with subpix precision!" << mObservations.size() << std::endl;
+                refKFChanged = true;
                 mpRefKF = mObservations.begin()->first;
             }
 
@@ -380,10 +380,12 @@ bool MapPoint::RefineSubPix(KeyFrame* currentKF, size_t idx, int patchSize)
     // TODO: Some settings to test
     enum PATCHAGAINST {FIRST, CLOSEST};
     PATCHAGAINST patchAgainst = PATCHAGAINST::FIRST;
+    // Class for patch refinement
+    PatchRefinement patchRefinement(patchSize, 0.01);
     static const bool verbose = 0;
-    const double homographyReprojThreshold = 3;
-    const int maxNumberOfOpt = 100;
-    const double stepStopThreshold = 0.0001;
+    const double homographyReprojThreshold = 2;
+    const int maxNumberOfIter = 100;
+    const double stepStopThreshold = 0.01;
 
     // We get the copy of the observations and world position of point
     map<KeyFrame*,size_t> observations;
@@ -466,8 +468,13 @@ bool MapPoint::RefineSubPix(KeyFrame* currentKF, size_t idx, int patchSize)
     const int refOctave = patchRefKF->mvKeys[refIdx].octave;
     const float refKpScale =  patchRefKF->mvScaleFactors[refOctave];
 
+    // TODO:
+    // Once it works, it is possible to just exchange the reference frame and recompute everything
+//    if ( refKFChanged )
+//        std::cout << "Feature rejected due to keyframe changed!" << std::endl;
+
     // We check if both patches exist - it may not exist if feature is located close to image border
-    if (!mPatch.empty() && !refPatch.empty()) {
+    if (!mPatch.empty() && !refPatch.empty() && !refKFChanged) {
 
         if (verbose) {
             std::cout << "-------------------------------" << std::endl;
@@ -490,9 +497,6 @@ bool MapPoint::RefineSubPix(KeyFrame* currentKF, size_t idx, int patchSize)
         cv::Mat Ka = patchRefKF->getCameraMatrix();
         cv::Mat Kb = currentKF->getCameraMatrix();
 
-        // Class for patch refinement
-        PatchRefinement patchRefinement;
-
         // Computation of the reprojection error
         cv::Mat pointInA = patchRefKF->GetRotation() * mWorldPos + patchRefKF->GetTranslation();
         cv::Mat projectionInA =  Ka * pointInA;
@@ -500,10 +504,10 @@ bool MapPoint::RefineSubPix(KeyFrame* currentKF, size_t idx, int patchSize)
         cv::Mat pointInB = currentKF->GetRotation() * mWorldPos + currentKF->GetTranslation();
         cv::Mat projectionInB =  Kb * pointInB;
         projectionInB = patchRefinement.normalize2D(projectionInB);
-        float img1ReprojError = std::sqrt(pow(projectionInA.at<float>(0,0) - refKp.x, 2) + pow(projectionInA.at<float>(1,0) - refKp.y, 2));
-        float img2ReprojError = std::sqrt(pow(projectionInB.at<float>(0,0) - currentKp.x, 2) + pow(projectionInB.at<float>(1,0) - currentKp.y, 2));
+        float img1ReprojError = std::sqrt(pow(projectionInA.at<float>(0,0) - refKp.x, 2) + pow(projectionInA.at<float>(1,0) - refKp.y, 2)) / refKpScale ;
+        float img2ReprojError = std::sqrt(pow(projectionInB.at<float>(0,0) - currentKp.x, 2) + pow(projectionInB.at<float>(1,0) - currentKp.y, 2)) / currentKpScale;
 
-        // We comput the distance to patch plane and the homography
+        // We compute the distance to patch plane and the homography
         double d = patchRefinement.getDistanceToPlane(pointInA, n);
 
         cv::Mat Twa = patchRefKF->GetPoseInverse();
@@ -512,10 +516,8 @@ bool MapPoint::RefineSubPix(KeyFrame* currentKF, size_t idx, int patchSize)
         cv::Mat H = patchRefinement.ComputeHomography(Tba, n, d, Ka, Kb);
 
 
-        // Lets compute the warped patch
-        Eigen::Matrix3d Heig = patchRefinement.cv2eigen(H);
-
         // Homography error
+        Eigen::Matrix3d Heig = patchRefinement.cv2eigen(H);
         Eigen::Vector3d kp1 = Eigen::Vector3d(refKp.x,refKp.y, 1.0), kp2 = Eigen::Vector3d(currentKp.x,currentKp.y, 1.0);
         Eigen::Vector3d kp2In1 = Heig.inverse()*kp2, kp1In2 = Heig * kp1;
         kp1In2 = kp1In2 / kp1In2[2];
@@ -528,108 +530,37 @@ bool MapPoint::RefineSubPix(KeyFrame* currentKF, size_t idx, int patchSize)
             std::cout << "minAngle: " << minAngle * 180/3.1415265 << "\t DistHomographyA: " << distA << " DistHomographyB: " << distB <<
                       " ReprojA: " << img1ReprojError<< " ReprojB: " << img2ReprojError << std::endl;
 
+        // If reprojection is small, then the homography also should be small
+//        if ( (img1ReprojError < homographyReprojThreshold && img2ReprojError < homographyReprojThreshold) && (distA > 2* homographyReprojThreshold || distB > 2* homographyReprojThreshold))
+//        {
+//            std::cout << "HOMOGRAPHY IS BAD !!!!" << std::endl;
+//            std::cout << "minAngle: " << minAngle * 180/3.1415265 << "\t DistHomographyA: " << distA << " DistHomographyB: " << distB <<
+//                      " ReprojA: " << img1ReprojError<< " ReprojB: " << img2ReprojError << std::endl;
+////            exit(0);
+//        }
+
         // The subpix refinement is only made when reprojection and homography errors are below threshold
         if ( distA < homographyReprojThreshold && distB < homographyReprojThreshold
              && img1ReprojError < homographyReprojThreshold && img2ReprojError < homographyReprojThreshold ) {
 
-            // Some helpful variable
-            int halfPatchSize = (patchSize - 1)/ 2;
+            // Let's optimize the final position
+            cv::Point2f correction;
+            bool success = patchRefinement.optimizePosition(refPatch, refKp, refKpScale, mPatch, currentKp,
+                    currentKpScale, Heig, correction);
 
-            // The index of the centre of the larger patch
-            double centerPos = (refPatch.rows - 1) / 2;
-
-            // Computation of the ref patch
-            // TODO: The undistorted point in B is moved to A with homography. Should we distort it before we take the patch?
-            std::vector<double> refPatchDouble = patchRefinement.computePatchOnSubImage(refPatch, patchSize, Heig.inverse(),
-                                                                                        currentKp, currentKpScale,
-                                                                                        refKp, refKpScale);
-
-            // The warp was outside the saved neighbourhood
-            if (refPatchDouble.size()  == 0) {
+            // Success -> update the positon of the feature
+            if ( success )
+            {
                 if (verbose)
-                    std::cout << "\tRefPatch is empty -> warp was outside saved subImg" << std::endl;
-                return false;
+                    std::cout << "\tSuccess !" << std::endl;
+
+                // We add those increments to the mvKeys positions
+                currentKF->mvKeys[idx].pt = currentKF->mvKeys[idx].pt + correction;
+
+                // TODO: We should remove distortion again in those points. For now it is ok as dist = undist
+                currentKF->mvKeysUn[idx].pt = currentKF->mvKeys[idx].pt;
             }
 
-            // Compute gradient on the current image
-            std::vector<Eigen::Vector2d> gradient;
-            Eigen::Matrix2d HessianInv;
-            patchRefinement.computeImageGradient(mPatch, gradient, HessianInv);
-
-            // We will have to find also the subpix gradient
-            std::vector<Eigen::Vector2d> subPosGradient(patchSize * patchSize, Eigen::Vector2d::Zero());
-
-            // Computation of the current patch
-            std::vector<double> currentPatch = patchRefinement.computePatch(mPatch, centerPos, centerPos,
-                                                                             mPatch.rows, patchSize, gradient,
-                                                                             subPosGradient);
-
-            // Lets start the optimization
-            //  It is started in (centerPos, centerPos) of the saved images neighbourhood
-            float optX = centerPos, optY = centerPos;
-
-            // We perform 100 iterations or until stop condition is met
-            for (int i = 0; i < maxNumberOfOpt; i++) {
-                if(verbose)
-                    std::cout <<"Iteration: " << i << " Position: " << optX << ", " << optY << std::endl;
-
-                // The coordinates might be nan when hessian is not invertible
-                if(isnan(optX) || isnan(optY)) {
-                    if (verbose)
-                        std::cout << "\tNaN positions. Probably Hessian is not invertible" << std::endl;
-                    return false;
-                }
-
-                // Compute current patch in new location
-                std::vector<double> currentPatch = patchRefinement.computePatch(mPatch, optX, optY,
-                                                                                mPatch.rows, patchSize, gradient,
-                                                                                subPosGradient);
-
-                // Residuals
-                Eigen::Vector2d res = patchRefinement.computePatchDifference(refPatchDouble, currentPatch, subPosGradient);
-
-                // Obtained error
-                if(verbose)
-                    std::cout << "Error: " << std::endl << res.transpose() << std::endl;
-
-                // Step based on Hessian
-                Eigen::Vector2d step = HessianInv * res;
-
-                // Obtained step
-                if(verbose)
-                    std::cout << "Proposed step: " << std::endl << step.transpose() << std::endl;
-
-                // Stop condition
-                if (step.squaredNorm() < stepStopThreshold)
-                    break;
-
-                // Do the step
-                optX = optX + step[0];
-                optY = optY + step[1];
-
-                // There is a limit how much we can and should move less than 1/4 of the saved patch
-                if(optX > (centerPos + halfPatchSize / 2) || optX < (centerPos - halfPatchSize / 2) || optY > (centerPos + halfPatchSize / 2) || optY < (centerPos - halfPatchSize / 2)) {
-                    if (verbose)
-                        std::cout << "\tWe moved too much! optX = " << optX << " optY = " << optY << std::endl;
-                    return false;
-                }
-
-            }
-
-            if(verbose) {
-                std::cout << "Base image changed by: " << (optX - centerPos) * currentKpScale << ", "
-                          << (optY - centerPos) * currentKpScale << std::endl;
-            }
-
-            // We add those increments to the mvKeys positions
-            currentKF->mvKeys[idx].pt.x = currentKF->mvKeys[idx].pt.x + (optX - centerPos)*currentKpScale;
-            currentKF->mvKeys[idx].pt.y = currentKF->mvKeys[idx].pt.y + (optY - centerPos)*currentKpScale;
-
-            // TODO: We should remove distortion again in those points. For now it is ok as dist = undist
-            currentKF->mvKeysUn[idx].pt = currentKF->mvKeys[idx].pt;
-
-            if (verbose)
-                std::cout << "\tSuccess !" << std::endl;
             return true;
         }
         else if (verbose)
