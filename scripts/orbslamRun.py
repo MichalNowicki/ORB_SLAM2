@@ -154,8 +154,11 @@ else:
                 # Copy results
                 if "HarrisCE" in detector:
                     call('mv KeyFrameTrajectory.txt results/' + detector+ "_harrisK_" + str(harrisK) + '/sequence_' + str(seq) + '_' + str(runId) + '.txt', shell=True);
+                    call('mv BA_chi2.txt results/' + detector+ "_harrisK_" + str(harrisK) + '/sequence_' + str(seq) + '_' + str(runId) + '.txt', shell=True);
                 elif "Harris" in detector:
                     call('mv KeyFrameTrajectory.txt results/' + detector+ "_lambdaThreshold_" + str(lambdaThreshold) + '/sequence_' + str(seq) + '_' + str(runId) + '.txt', shell=True);
+                    call('mv BA_chi2.txt results/' + detector+ "_lambdaThreshold_" + str(lambdaThreshold) + '/sequence_' + str(seq) + '_' + str(runId) + '.txt', shell=True);
                 else:
                     call('mv KeyFrameTrajectory.txt results/' + detector + '/sequence_' + str(seq) + '_' + str(runId) + '.txt', shell=True);
+                    call('mv BA_chi2.txt results/' + detector + '/sequence_' + str(seq) + '_' + str(runId) + '.txt', shell=True);
 

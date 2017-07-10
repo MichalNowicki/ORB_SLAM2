@@ -450,7 +450,7 @@ int Optimizer::PoseOptimization(Frame *pFrame)
     return nInitialCorrespondences-nBad;
 }
 
-void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap)
+std::vector<double> Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap)
 {    
     // Local KeyFrames: First Breath Search from Current Keyframe
     list<KeyFrame*> lLocalKeyFrames;
@@ -654,7 +654,7 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
 
     if(pbStopFlag)
         if(*pbStopFlag)
-            return;
+            return std::vector<double>(); // TODO: Modified
 
     optimizer.initializeOptimization();
     optimizer.optimize(5);
@@ -726,8 +726,9 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
             KeyFrame* pKFi = vpEdgeKFMono[i];
             vToErase.push_back(make_pair(pKFi,pMP));
         }
-
-        chi2Statistics.push_back(e->chi2());
+        else {
+            chi2Statistics.push_back(e->chi2());
+        }
     }
     std::cout <<"\tLocalBA: avg chi2() = " << accumulate( chi2Statistics.begin(), chi2Statistics.end(), 0.0)/chi2Statistics.size()  << " over " << chi2Statistics.size() << " measurements"<< std::endl;
 
@@ -779,6 +780,8 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
         pMP->SetWorldPos(Converter::toCvMat(vPoint->estimate()));
         pMP->UpdateNormalAndDepth();
     }
+
+    return chi2Statistics;
 }
 
 

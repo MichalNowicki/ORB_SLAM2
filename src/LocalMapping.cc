@@ -25,6 +25,8 @@
 
 #include<mutex>
 
+#include <fstream>
+
 namespace ORB_SLAM2
 {
 
@@ -77,8 +79,11 @@ void LocalMapping::Run()
             if(!CheckNewKeyFrames() && !stopRequested())
             {
                 // Local BA
-                if(mpMap->KeyFramesInMap()>2)
-                    Optimizer::LocalBundleAdjustment(mpCurrentKeyFrame,&mbAbortBA, mpMap);
+                // TODO: Modified to return chi2 statistics
+                if(mpMap->KeyFramesInMap()>2) {
+                    std::vector<double> chi2 = Optimizer::LocalBundleAdjustment(mpCurrentKeyFrame, &mbAbortBA, mpMap);
+                    chi2statistics.push_back(chi2);
+                }
 
                 // Check redundant local Keyframes
                 KeyFrameCulling();
@@ -758,6 +763,17 @@ bool LocalMapping::CheckFinish()
 
 void LocalMapping::SetFinish()
 {
+    // TODO: Saving chi2 values
+    std::ofstream chi2stream("BA_chi2.txt");
+    for (auto vec : chi2statistics)
+    {
+        for (auto val : vec)
+        {
+            chi2stream << val << ",";
+        }
+        chi2stream << std::endl;
+    }
+
     unique_lock<mutex> lock(mMutexFinish);
     mbFinished = true;    
     unique_lock<mutex> lock2(mMutexStop);

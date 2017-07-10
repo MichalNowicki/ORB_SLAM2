@@ -121,6 +121,10 @@ protected:
 
     bool mbAcceptKeyFrames;
     std::mutex mMutexAccept;
+
+
+    // Modification
+    std::vector<std::vector<double>> chi2statistics;
 };
 
 } //namespace ORB_SLAM
