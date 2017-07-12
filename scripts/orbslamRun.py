@@ -112,9 +112,9 @@ else:
 
     # -------------------------------------------
     # Parameters
-    detectorTypes = ["FAST"]#, "Harris", "HarrisCE"];#, "ShiTomasi"];
-    harrisKs = [0]#, 0.01, 0.01];
-    lambdaThresholds = [0]#, 0.001, 0.001];
+    detectorTypes = ["FAST", "FAST", "FAST", "FAST"]#, "Harris", "HarrisCE"];#, "ShiTomasi"];
+    harrisKs = [0, 0, 0 ,0]#, 0.01, 0.01];
+    lambdaThresholds = [0, 0, 0 ,0]#, 0.001, 0.001];
     sigmas = [1.0, 0.75, 0.5, 0.35]
     #harrisKs = [0.002, 0.005, 0.01, 0.02, 0.04]; # Those were used in DSO
 
@@ -157,11 +157,14 @@ else:
                 # Copy results
                 if "HarrisCE" in detector:
                     call('mv KeyFrameTrajectory.txt results/' + detector+ "_harrisK_" + str(harrisK) + '/sequence_' + str(seq) + '_' + str(runId) + '.txt', shell=True);
-                    call('mv BA_chi2.txt results/' + detector+ "_harrisK_" + str(harrisK) + '/sequence_' + str(seq) + '_BA_chi2.txt', shell=True);
+                    call('mv GBA_chi2.txt results/' + detector+ "_harrisK_" + str(harrisK) + '/sequence_' + str(seq) + '_GBA_chi2.txt', shell=True);
+                    call('mv GBA_reproj.txt results/' + detector+ "_harrisK_" + str(harrisK) + '/sequence_' + str(seq) + '_GBA_reproj.txt', shell=True);
                 elif "Harris" in detector:
                     call('mv KeyFrameTrajectory.txt results/' + detector+ "_lambdaThreshold_" + str(lambdaThreshold) + '/sequence_' + str(seq) + '_' + str(runId) + '.txt', shell=True);
-                    call('mv BA_chi2.txt results/' + detector+ "_lambdaThreshold_" + str(lambdaThreshold) + '/sequence_' + str(seq) + '_BA_chi2.txt', shell=True);
+                    call('mv GBA_chi2.txt results/' + detector+ "_lambdaThreshold_" + str(lambdaThreshold) + '/sequence_' + str(seq) + '_GBA_chi2.txt', shell=True);
+                    call('mv GBA_reproj.txt results/' + detector+ "_lambdaThreshold_" + str(lambdaThreshold) + '/sequence_' + str(seq) + '_GBA_reproj.txt', shell=True);
                 else:
                     call('mv KeyFrameTrajectory.txt results/' + detector +"_sigma_" + str(sigma)+ '/sequence_' + str(seq) + '_' + str(runId) + '.txt', shell=True);
-                    call('mv BA_chi2.txt results/' + detector +"_sigma_" + str(sigma)+ '/sequence_' + str(seq) + '_BA_chi2.txt', shell=True);
+                    call('mv GBA_chi2.txt results/' + detector +"_sigma_" + str(sigma)+ '/sequence_' + str(seq) + '_GBA_chi2.txt', shell=True);
+                    call('mv GBA_reproj.txt results/' + detector +"_sigma_" + str(sigma)+ '/sequence_' + str(seq) + '_GBA_reproj.txt', shell=True);
 
