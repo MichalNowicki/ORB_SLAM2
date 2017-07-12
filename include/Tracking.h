@@ -218,6 +218,9 @@ protected:
     bool mbRGB;
 
     list<MapPoint*> mlpTemporalPoints;
+
+    // Sigma used in optimization
+    float sigma;
 };
 
 } //namespace ORB_SLAM

@@ -82,6 +82,8 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
     if(fps==0)
         fps=30;
 
+    sigma = fSettings["Optimization.sigma"];
+
     // Max/Min Frames to insert keyframes and to check relocalisation
     mMinFrames = 0;
     mMaxFrames = fps;
@@ -161,6 +163,9 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
     cout << "- minDistanceOfFeatures: " << minDistanceOfFeatures << endl;
     cout << "- harrisK: " << harrisK << endl;
     cout << "- lambdaThreshold: " << lambdaThreshold << endl;
+
+    cout << "----" << endl;
+    std::cout << "Optimization.sigma: " << sigma << std::endl;
 
     if(sensor==System::STEREO || sensor==System::RGBD)
     {
@@ -717,7 +722,8 @@ void Tracking::CreateInitialMapMonocular()
     // Bundle Adjustment
     cout << "New Map created with " << mpMap->MapPointsInMap() << " points" << endl;
 
-    Optimizer::GlobalBundleAdjustemnt(mpMap,20);
+    Optimizer::GlobalBundleAdjustemnt(mpMap,20, NULL, 0, true, sigma);
+
 
     // Set median depth to 1
     float medianDepth = pKFini->ComputeSceneMedianDepth(2);
@@ -806,7 +812,7 @@ bool Tracking::TrackReferenceKeyFrame()
     mCurrentFrame.mvpMapPoints = vpMapPointMatches;
     mCurrentFrame.SetPose(mLastFrame.mTcw);
 
-    Optimizer::PoseOptimization(&mCurrentFrame);
+    Optimizer::PoseOptimization(&mCurrentFrame, sigma);
 
     // Discard outliers
     int nmatchesMap = 0;
@@ -932,7 +938,7 @@ bool Tracking::TrackWithMotionModel()
     // TODO: Here is a possibility to go subpixel with patches
 
     // Optimize frame pose with all matches
-    Optimizer::PoseOptimization(&mCurrentFrame);
+    Optimizer::PoseOptimization(&mCurrentFrame, sigma);
 
     // Discard outliers
     int nmatchesMap = 0;
@@ -974,10 +980,10 @@ bool Tracking::TrackLocalMap()
     SearchLocalPoints();
 
     // TODO: Place to go subpix!
-    ComputeSubPixPositions();
+//    ComputeSubPixPositions();
 
     // Optimize Pose
-    Optimizer::PoseOptimization(&mCurrentFrame);
+    Optimizer::PoseOptimization(&mCurrentFrame, sigma);
     mnMatchesInliers = 0;
 
     // Update MapPoints Statistics
@@ -1481,7 +1487,7 @@ bool Tracking::Relocalization()
                         mCurrentFrame.mvpMapPoints[j]=NULL;
                 }
 
-                int nGood = Optimizer::PoseOptimization(&mCurrentFrame);
+                int nGood = Optimizer::PoseOptimization(&mCurrentFrame, sigma);
 
                 if(nGood<10)
                     continue;
@@ -1497,7 +1503,7 @@ bool Tracking::Relocalization()
 
                     if(nadditional+nGood>=50)
                     {
-                        nGood = Optimizer::PoseOptimization(&mCurrentFrame);
+                        nGood = Optimizer::PoseOptimization(&mCurrentFrame, sigma);
 
                         // If many inliers but still not enough, search by projection again in a narrower window
                         // the camera has been already optimized with many points
@@ -1512,7 +1518,7 @@ bool Tracking::Relocalization()
                             // Final optimization
                             if(nGood+nadditional>=50)
                             {
-                                nGood = Optimizer::PoseOptimization(&mCurrentFrame);
+                                nGood = Optimizer::PoseOptimization(&mCurrentFrame, sigma);
 
                                 for(int io =0; io<mCurrentFrame.N; io++)
                                     if(mCurrentFrame.mvbOutlier[io])

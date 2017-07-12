@@ -6,7 +6,7 @@ import sys
 import os
 import fileinput
 
-def setYamlFile(detector, harrisK, lambdaThreshold):
+def setYamlFile(detector, harrisK, lambdaThreshold, sigma):
     print "Setting detector = " + detector + " harrisK = " + str(harrisK);
 
     outLines = []
@@ -18,6 +18,8 @@ def setYamlFile(detector, harrisK, lambdaThreshold):
                 outLines.append("ORBextractor.HarrisK: %f\n" % harrisK);
             elif "ORBextractor.lambdaThreshold" in line:
                 outLines.append("ORBextractor.lambdaThreshold: %f\n" % lambdaThreshold);
+            elif "Optimization.sigma" in line:
+                outLines.append("Optimization.sigma: %f\n" % sigma);
             else:
                 outLines.append("%s" % line);
     with open("Examples/Monocular/TUM_MONO_DSO.yaml", 'w') as f_out:
@@ -113,12 +115,13 @@ else:
     detectorTypes = ["FAST"]#, "Harris", "HarrisCE"];#, "ShiTomasi"];
     harrisKs = [0]#, 0.01, 0.01];
     lambdaThresholds = [0]#, 0.001, 0.001];
+    sigmas = [1.0, 0.75, 0.5, 0.35]
     #harrisKs = [0.002, 0.005, 0.01, 0.02, 0.04]; # Those were used in DSO
 
     # For chosen detector
-    for (detector, harrisK, lambdaThreshold) in zip(detectorTypes, harrisKs, lambdaThresholds):
+    for (detector, harrisK, lambdaThreshold, sigma) in zip(detectorTypes, harrisKs, lambdaThresholds, sigmas):
 
-        setYamlFile(detector, harrisK, lambdaThreshold);
+        setYamlFile(detector, harrisK, lambdaThreshold, sigma);
 
         # Create dir for chosen detector
         if "HarrisCE" in detector:
@@ -132,10 +135,10 @@ else:
             else:
                 call('rm results/' + detector+ "_harrisK_" + str(harrisK) + '/*', shell=True);
         else:
-            if not os.path.exists("results/" + detector ):
-                os.makedirs("results/" + detector );
+            if not os.path.exists("results/" + detector +"_sigma_" + str(sigma) ):
+                os.makedirs("results/" + detector +"_sigma_" + str(sigma));
             else:
-                call('rm results/' + detector , shell=True);
+                call('rm results/' + detector +"_sigma_" + str(sigma), shell=True);
 
 
         # For all selected sequences
@@ -159,6 +162,6 @@ else:
                     call('mv KeyFrameTrajectory.txt results/' + detector+ "_lambdaThreshold_" + str(lambdaThreshold) + '/sequence_' + str(seq) + '_' + str(runId) + '.txt', shell=True);
                     call('mv BA_chi2.txt results/' + detector+ "_lambdaThreshold_" + str(lambdaThreshold) + '/sequence_' + str(seq) + '_BA_chi2.txt', shell=True);
                 else:
-                    call('mv KeyFrameTrajectory.txt results/' + detector + '/sequence_' + str(seq) + '_' + str(runId) + '.txt', shell=True);
-                    call('mv BA_chi2.txt results/' + detector + '/sequence_' + str(seq) + '_BA_chi2.txt', shell=True);
+                    call('mv KeyFrameTrajectory.txt results/' + detector +"_sigma_" + str(sigma)+ '/sequence_' + str(seq) + '_' + str(runId) + '.txt', shell=True);
+                    call('mv BA_chi2.txt results/' + detector +"_sigma_" + str(sigma)+ '/sequence_' + str(seq) + '_BA_chi2.txt', shell=True);
 

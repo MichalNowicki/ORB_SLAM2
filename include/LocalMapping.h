@@ -40,7 +40,7 @@ class Map;
 class LocalMapping
 {
 public:
-    LocalMapping(Map* pMap, const float bMonocular);
+    LocalMapping(Map* pMap, const float bMonocular, float sigma);
 
     void SetLoopCloser(LoopClosing* pLoopCloser);
 
@@ -124,7 +124,11 @@ protected:
 
 
     // Modification
-    std::vector<std::vector<double>> chi2statistics;
+//    std::vector<std::vector<double>> chi2statistics;
+    std::vector<double> chi2statistics;
+    std::vector<double> reprojectionStatistics;
+
+    float sigma;
 };
 
 } //namespace ORB_SLAM

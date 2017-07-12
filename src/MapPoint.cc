@@ -458,13 +458,13 @@ bool MapPoint::RefineSubPix(KeyFrame* currentKF, size_t idx, int patchSize)
 
     // Current patch
     mPatch = currentKF->mPatches[idx];
-    cv::Point2f currentKp = currentKF->mvKeysUn[idx].pt;
+    cv::Point2f currentKp = currentKF->mvKeys[idx].pt;
     const int currentOctave = currentKF->mvKeys[idx].octave;
     const float currentKpScale =  currentKF->mvScaleFactors[currentOctave];
 
     // Ref patch
     cv::Mat refPatch = patchRefKF->mPatches[refIdx];
-    cv::Point2f refKp = patchRefKF->mvKeysUn[refIdx].pt;
+    cv::Point2f refKp = patchRefKF->mvKeys[refIdx].pt;
     const int refOctave = patchRefKF->mvKeys[refIdx].octave;
     const float refKpScale =  patchRefKF->mvScaleFactors[refOctave];
 
@@ -558,7 +558,12 @@ bool MapPoint::RefineSubPix(KeyFrame* currentKF, size_t idx, int patchSize)
                 currentKF->mvKeys[idx].pt = currentKF->mvKeys[idx].pt + correction;
 
                 // TODO: We should remove distortion again in those points. For now it is ok as dist = undist
-                currentKF->mvKeysUn[idx].pt = currentKF->mvKeys[idx].pt;
+                currentKF->mvKeysUn[idx].pt = UndistortPoint(currentKF->mvKeys[idx].pt, currentKF->mK, currentKF->mDistCoef);
+
+//                std::cout << "Dist vs Undist: " << currentKF->mvKeys[idx].pt.x << " " << currentKF->mvKeys[idx].pt.y
+//                          << " " << currentKF->mvKeysUn[idx].pt.x << " " << currentKF->mvKeysUn[idx].pt.y << std::endl;
+
+//                currentKF->mvKeysUn[idx].pt = currentKF->mvKeys[idx].pt;
             }
 
             return true;
@@ -619,5 +624,57 @@ int MapPoint::PredictScale(const float &currentDist, Frame* pF)
     return nScale;
 }
 
+
+//cv::Point2f MapPoint::distortPoint(const cv::Point2f p, const float fx, const float fy, const float cx,
+//                                   const float cy, const float invfx, const float invfy, const cv::Mat mDistCoef) {
+//    float k1 = mDistCoef.at<float>(0);
+//    float k2 = mDistCoef.at<float>(1);
+//    float p1 = mDistCoef.at<float>(2);
+//    float p2 = mDistCoef.at<float>(3);
+//    float k3 = mDistCoef.at<float>(4);
+//
+//    // Normalized image coordinates
+//    float x = (p.x - cx) / invfx;
+//    float y = (p.y - cy) / invfy;
+//
+//    // r2 as it is easier to write those eq
+//    float r2 = x*x + y*y;
+//
+//    // Radial
+//    float xDis = x * (1 + k1 * r2 + k2 * r2 * r2 + k3 * r2 * r2 * r2);
+//    float yDis = y * (1 + k1 * r2 + k2 * r2 * r2 + k3 * r2 * r2 * r2);
+//
+//    // Tangential
+//    xDis = xDis + (2 * p1 * x * y + p2 * (r2 + 2 * x * x));
+//    yDis = yDis + (p1 * (r2 + 2 * y * y) + 2 * p2 * x * y);
+//
+//    // Unnormalize coordinates
+//    cv::Point2f ret;
+//    ret.x = xDis * fx + cx;
+//    ret.y = xDis * fy + cy;
+//
+//    return ret;
+//}
+
+cv::Point2f MapPoint::UndistortPoint(cv::Point2f p, const cv::Mat K, const cv::Mat mDistCoef) {
+    if (mDistCoef.at<float>(0) == 0.0)
+        return p;
+
+    // Fill matrix with point
+    cv::Mat mat(1, 2, CV_32F);
+
+    mat.at<float>(0) = p.x;
+    mat.at<float>(1) = p.y;
+
+    // Undistort points
+    mat=mat.reshape(2);
+    cv::undistortPoints(mat, mat, K, mDistCoef, cv::Mat(), K);
+    mat=mat.reshape(1);
+
+
+    p.x = mat.at<float>(0);
+    p.y = mat.at<float>(1);
+    return p;
+}
 
 } //namespace ORB_SLAM

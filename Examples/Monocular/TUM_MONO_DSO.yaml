@@ -32,7 +32,7 @@ ORBextractor.nFeatures: 1000
 ORBextractor.scaleFactor: 1.2
 
 # ORB Extractor: Number of levels in the scale pyramid	
-ORBextractor.nLevels: 8
+ORBextractor.nLevels: 8 # 8
 
 # ORB Extractor: Fast threshold
 # Image is divided in a grid. At each cell FAST are extracted imposing a minimum response.
@@ -52,6 +52,9 @@ ORBextractor.lambdaThreshold: 0.000000
 # Doing patches -> patchSize is not properly connected to code, largePatch is
 ORBextractor.patchSize: 5
 ORBextractor.largePatchSize: 21
+
+# Optimization sigma
+Optimization.sigma: 1.000000
 
 #--------------------------------------------------------------------------------------------
 # Viewer Parameters

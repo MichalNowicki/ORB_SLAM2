@@ -30,9 +30,9 @@
 namespace ORB_SLAM2
 {
 
-LocalMapping::LocalMapping(Map *pMap, const float bMonocular):
+LocalMapping::LocalMapping(Map *pMap, const float bMonocular, float _sigma):
     mbMonocular(bMonocular), mbResetRequested(false), mbFinishRequested(false), mbFinished(true), mpMap(pMap),
-    mbAbortBA(false), mbStopped(false), mbStopRequested(false), mbNotStop(false), mbAcceptKeyFrames(true)
+    mbAbortBA(false), mbStopped(false), mbStopRequested(false), mbNotStop(false), mbAcceptKeyFrames(true), sigma(_sigma)
 {
 }
 
@@ -81,8 +81,9 @@ void LocalMapping::Run()
                 // Local BA
                 // TODO: Modified to return chi2 statistics
                 if(mpMap->KeyFramesInMap()>2) {
-                    std::vector<double> chi2 = Optimizer::LocalBundleAdjustment(mpCurrentKeyFrame, &mbAbortBA, mpMap);
-                    chi2statistics.push_back(chi2);
+                    std::vector<double> chi2 = Optimizer::LocalBundleAdjustment(mpCurrentKeyFrame, &mbAbortBA, mpMap, sigma);
+//                    chi2statistics.push_back(chi2);
+                    chi2statistics = chi2;
                 }
 
                 // Check redundant local Keyframes
@@ -112,6 +113,59 @@ void LocalMapping::Run()
 
         usleep(3000);
     }
+
+    printf("Global BA\n");
+
+    bool mbStopGBA = false;
+    chi2statistics = Optimizer::GlobalBundleAdjustemnt(mpMap,10,&mbStopGBA,mpCurrentKeyFrame->mnId,false, sigma);
+
+    /*
+    * We verify the reprojection error
+    *
+    */
+//    vector<KeyFrame*> vpKFs = mpMap->GetAllKeyFrames();
+    vector<MapPoint*> vpMP = mpMap->GetAllMapPoints();
+
+    std::vector<double> reprojectionErr;
+    for(auto lit=vpMP.begin(), lend=vpMP.end(); lit!=lend; lit++) {
+        MapPoint *pMP = *lit;
+        cv::Mat mWorldPos = pMP->GetWorldPos();
+
+        const map<KeyFrame *, size_t> observations = pMP->GetObservations();
+
+        //Set edges
+        for (map<KeyFrame *, size_t>::const_iterator mit = observations.begin(), mend = observations.end();
+             mit != mend; mit++) {
+            KeyFrame *pKFi = mit->first;
+
+            if (!pKFi->isBad()) {
+                const cv::KeyPoint &kpUn = pKFi->mvKeysUn[mit->second];
+
+                cv::Mat pointInA = pKFi->GetRotation() * mWorldPos + pKFi->GetTranslation();
+                cv::Mat projectionInA =  pKFi->mK * pointInA;
+                double z = projectionInA.at<float>(2,0);
+                projectionInA.col(0) = projectionInA.col(0) / z;
+
+
+                const float refKpScale =  pKFi->mvScaleFactors[kpUn.octave];
+
+                float img1ReprojError = std::sqrt(pow(projectionInA.at<float>(0,0) - kpUn.pt.x, 2) + pow(projectionInA.at<float>(1,0) - kpUn.pt.y, 2))  / refKpScale  ;
+
+                if ( std::isnan(img1ReprojError) )
+                    std::cout <<"NAN" << std::endl;
+                else
+                    reprojectionErr.push_back(img1ReprojError);
+            }
+        }
+
+
+    }
+
+    std::cout << "\tAvg reprojection error : " << accumulate( reprojectionErr.begin(), reprojectionErr.end(), 0.0)/reprojectionErr.size() << std::endl;
+    reprojectionStatistics = reprojectionErr;
+
+
+    printf("Finished Global BA\n");
 
     SetFinish();
 }
@@ -157,7 +211,7 @@ void LocalMapping::ProcessNewKeyFrame()
                     possibleForSubPix++;
 
                     // TODO: SUBPIX REFINEMENT
-                    const int patchSize = 11;
+//                    const int patchSize = 11;
 //                    bool refined = pMP->RefineSubPix(mpCurrentKeyFrame, i, patchSize);
 //                    if (refined)
 //                        countRefined++;
@@ -764,15 +818,22 @@ bool LocalMapping::CheckFinish()
 void LocalMapping::SetFinish()
 {
     // TODO: Saving chi2 values
-    std::ofstream chi2stream("BA_chi2.txt");
-    for (auto vec : chi2statistics)
-    {
-        for (auto val : vec)
-        {
-            chi2stream << val << ",";
-        }
-        chi2stream << std::endl;
-    }
+    std::ofstream chi2stream("GBA_chi2.txt"), reprojstream("GBA_reproj.txt");
+//    for (auto vec : chi2statistics)
+//    {
+//        for (auto val : vec)
+//        {
+//            chi2stream << val << ",";
+//        }
+//        chi2stream << std::endl;
+//    }
+    for (auto val : chi2statistics)
+        chi2stream << val << ",";
+    for (auto val : reprojectionStatistics)
+        reprojstream << val << ",";
+
+    chi2stream.close();
+    reprojstream.close();
 
     unique_lock<mutex> lock(mMutexFinish);
     mbFinished = true;    

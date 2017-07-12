@@ -159,6 +159,7 @@ public:
 
     // Calibration parameters
     const float fx, fy, cx, cy, invfx, invfy, mbf, mb, mThDepth;
+    cv::Mat mDistCoef;
 
     // Number of KeyPoints
     const int N;

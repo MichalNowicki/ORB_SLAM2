@@ -38,16 +38,16 @@ namespace ORB_SLAM2
 {
 
 
-void Optimizer::GlobalBundleAdjustemnt(Map* pMap, int nIterations, bool* pbStopFlag, const unsigned long nLoopKF, const bool bRobust)
+std::vector<double> Optimizer::GlobalBundleAdjustemnt(Map* pMap, int nIterations, bool* pbStopFlag, const unsigned long nLoopKF, const bool bRobust, float sigma)
 {
     vector<KeyFrame*> vpKFs = pMap->GetAllKeyFrames();
     vector<MapPoint*> vpMP = pMap->GetAllMapPoints();
-    BundleAdjustment(vpKFs,vpMP,nIterations,pbStopFlag, nLoopKF, bRobust);
+    return BundleAdjustment(vpKFs,vpMP,nIterations,pbStopFlag, nLoopKF, bRobust, sigma);
 }
 
 
-void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<MapPoint *> &vpMP,
-                                 int nIterations, bool* pbStopFlag, const unsigned long nLoopKF, const bool bRobust)
+std::vector<double> Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<MapPoint *> &vpMP,
+                                 int nIterations, bool* pbStopFlag, const unsigned long nLoopKF, const bool bRobust, float sigma)
 {
     vector<bool> vbNotIncludedMP;
     vbNotIncludedMP.resize(vpMP.size());
@@ -84,6 +84,8 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
 
     const float thHuber2D = sqrt(5.99);
     const float thHuber3D = sqrt(7.815);
+
+    vector<g2o::EdgeSE3ProjectXYZ*> vpEdgesMono;
 
     // Set MapPoint vertices
     for(size_t i=0; i<vpMP.size(); i++)
@@ -124,7 +126,8 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
                 e->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(pKF->mnId)));
                 e->setMeasurement(obs);
                 const float &invSigma2 = pKF->mvInvLevelSigma2[kpUn.octave];
-                e->setInformation(Eigen::Matrix2d::Identity()*invSigma2);
+                const float assumedDetInvSigma2 = 1.0 / (sigma * sigma);
+                e->setInformation(Eigen::Matrix2d::Identity()*invSigma2*assumedDetInvSigma2);
 
                 if(bRobust)
                 {
@@ -139,6 +142,7 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
                 e->cy = pKF->cy;
 
                 optimizer.addEdge(e);
+                vpEdgesMono.push_back(e);
             }
             else
             {
@@ -152,7 +156,8 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
                 e->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(pKF->mnId)));
                 e->setMeasurement(obs);
                 const float &invSigma2 = pKF->mvInvLevelSigma2[kpUn.octave];
-                Eigen::Matrix3d Info = Eigen::Matrix3d::Identity()*invSigma2;
+                const float assumedDetInvSigma2 = 1.0 / (sigma * sigma);
+                Eigen::Matrix3d Info = Eigen::Matrix3d::Identity()*invSigma2 * assumedDetInvSigma2;
                 e->setInformation(Info);
 
                 if(bRobust)
@@ -234,9 +239,20 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
         }
     }
 
+
+
+    // Get chi2 error
+    // Check inlier observations
+    std::vector<double> chi2;
+    for(size_t i=0, iend=vpEdgesMono.size(); i<iend;i++)
+    {
+        g2o::EdgeSE3ProjectXYZ* e = vpEdgesMono[i];
+        chi2.push_back(e->chi2());
+    }
+    return chi2;
 }
 
-int Optimizer::PoseOptimization(Frame *pFrame)
+int Optimizer::PoseOptimization(Frame *pFrame,float sigma)
 {
     g2o::SparseOptimizer optimizer;
     g2o::BlockSolver_6_3::LinearSolverType * linearSolver;
@@ -297,7 +313,8 @@ int Optimizer::PoseOptimization(Frame *pFrame)
                 e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(0)));
                 e->setMeasurement(obs);
                 const float invSigma2 = pFrame->mvInvLevelSigma2[kpUn.octave];
-                e->setInformation(Eigen::Matrix2d::Identity()*invSigma2);
+                const float assumedDetInvSigma2 = 1.0 / (sigma * sigma);
+                e->setInformation(Eigen::Matrix2d::Identity()*invSigma2*assumedDetInvSigma2);
 
                 g2o::RobustKernelHuber* rk = new g2o::RobustKernelHuber;
                 e->setRobustKernel(rk);
@@ -333,7 +350,8 @@ int Optimizer::PoseOptimization(Frame *pFrame)
                 e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(0)));
                 e->setMeasurement(obs);
                 const float invSigma2 = pFrame->mvInvLevelSigma2[kpUn.octave];
-                Eigen::Matrix3d Info = Eigen::Matrix3d::Identity()*invSigma2;
+                const float assumedDetInvSigma2 = 1.0 / (sigma * sigma);
+                Eigen::Matrix3d Info = Eigen::Matrix3d::Identity()*invSigma2*assumedDetInvSigma2;
                 e->setInformation(Info);
 
                 g2o::RobustKernelHuber* rk = new g2o::RobustKernelHuber;
@@ -450,7 +468,7 @@ int Optimizer::PoseOptimization(Frame *pFrame)
     return nInitialCorrespondences-nBad;
 }
 
-std::vector<double> Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap)
+std::vector<double> Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap, float sigma)
 {    
     // Local KeyFrames: First Breath Search from Current Keyframe
     list<KeyFrame*> lLocalKeyFrames;
@@ -602,7 +620,8 @@ std::vector<double> Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStop
                     e->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(pKFi->mnId)));
                     e->setMeasurement(obs);
                     const float &invSigma2 = pKFi->mvInvLevelSigma2[kpUn.octave];
-                    e->setInformation(Eigen::Matrix2d::Identity()*invSigma2);
+                    const float assumedDetInvSigma2 = 1.0 / (sigma * sigma);
+                    e->setInformation(Eigen::Matrix2d::Identity()*invSigma2*assumedDetInvSigma2);
 
                     g2o::RobustKernelHuber* rk = new g2o::RobustKernelHuber;
                     e->setRobustKernel(rk);
@@ -630,7 +649,8 @@ std::vector<double> Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStop
                     e->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(pKFi->mnId)));
                     e->setMeasurement(obs);
                     const float &invSigma2 = pKFi->mvInvLevelSigma2[kpUn.octave];
-                    Eigen::Matrix3d Info = Eigen::Matrix3d::Identity()*invSigma2;
+                    const float assumedDetInvSigma2 = 1.0 / (sigma * sigma);
+                    Eigen::Matrix3d Info = Eigen::Matrix3d::Identity()*invSigma2 *assumedDetInvSigma2;
                     e->setInformation(Info);
 
                     g2o::RobustKernelHuber* rk = new g2o::RobustKernelHuber;
@@ -727,6 +747,10 @@ std::vector<double> Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStop
             vToErase.push_back(make_pair(pKFi,pMP));
         }
         else {
+//            double * err = e->errorData();
+//            double * inf = e->informationData();
+//            double eDist = std::sqrt(err[0] * err[0] + err[1] * err[1]);
+//            std::cout << "ERR: " <<  err[0] << " " <<  err[1] << " ReprojError: " << eDist <<" Chi2: " << e->chi2() << std::endl;
             chi2Statistics.push_back(e->chi2());
         }
     }
@@ -780,6 +804,47 @@ std::vector<double> Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStop
         pMP->SetWorldPos(Converter::toCvMat(vPoint->estimate()));
         pMP->UpdateNormalAndDepth();
     }
+
+
+    /*
+     * We verify the reprojection error
+     *
+     */
+    std::vector<double> reprojectionErr;
+    for(list<MapPoint*>::iterator lit=lLocalMapPoints.begin(), lend=lLocalMapPoints.end(); lit!=lend; lit++) {
+        MapPoint *pMP = *lit;
+        cv::Mat mWorldPos = pMP->GetWorldPos();
+
+        const map<KeyFrame *, size_t> observations = pMP->GetObservations();
+
+        //Set edges
+        for (map<KeyFrame *, size_t>::const_iterator mit = observations.begin(), mend = observations.end();
+             mit != mend; mit++) {
+            KeyFrame *pKFi = mit->first;
+
+            if (!pKFi->isBad()) {
+                const cv::KeyPoint &kpUn = pKFi->mvKeysUn[mit->second];
+
+                cv::Mat pointInA = pKFi->GetRotation() * mWorldPos + pKFi->GetTranslation();
+                cv::Mat projectionInA =  pKFi->mK * pointInA;
+                double z = projectionInA.at<float>(2,0);
+                projectionInA.col(0) = projectionInA.col(0) / z;
+
+
+                const float refKpScale =  pKFi->mvScaleFactors[kpUn.octave];
+
+                float img1ReprojError = std::sqrt(pow(projectionInA.at<float>(0,0) - kpUn.pt.x, 2) + pow(projectionInA.at<float>(1,0) - kpUn.pt.y, 2))  / refKpScale  ;
+
+                if ( std::isnan(img1ReprojError) )
+                    std::cout <<"NAN" << std::endl;
+                reprojectionErr.push_back(img1ReprojError);
+            }
+        }
+
+
+    }
+
+    std::cout << "\tAvg reprojection error : " << accumulate( reprojectionErr.begin(), reprojectionErr.end(), 0.0)/reprojectionErr.size() << std::endl;
 
     return chi2Statistics;
 }

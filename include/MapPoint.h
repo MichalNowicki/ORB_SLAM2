@@ -83,6 +83,10 @@ public:
     int PredictScale(const float &currentDist, KeyFrame*pKF);
     int PredictScale(const float &currentDist, Frame* pF);
 
+//    static cv::Point2f distortPoint(const cv::Point2f p, const float fx, const float fy, const float cx,
+//                                    const float cy, const float invfx, const float invfy, const cv::Mat mDistCoef);
+
+    static cv::Point2f UndistortPoint(cv::Point2f p, const cv::Mat K, const cv::Mat mDistCoef);
 
 public:
     long unsigned int mnId;
