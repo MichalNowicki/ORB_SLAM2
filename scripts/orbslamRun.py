@@ -112,10 +112,10 @@ else:
 
     # -------------------------------------------
     # Parameters
-    detectorTypes = ["FAST", "FAST", "FAST", "FAST"]#, "Harris", "HarrisCE"];#, "ShiTomasi"];
-    harrisKs = [0, 0, 0 ,0]#, 0.01, 0.01];
-    lambdaThresholds = [0, 0, 0 ,0]#, 0.001, 0.001];
-    sigmas = [0.35, 0.5, 0.75, 1.0]
+    detectorTypes = ["FAST"]#["FAST", "FAST", "FAST", "FAST"]#, "Harris", "HarrisCE"];#, "ShiTomasi"];
+    harrisKs = [0]#[0, 0, 0 ,0]#, 0.01, 0.01];
+    lambdaThresholds = [0]#[0, 0, 0 ,0]#, 0.001, 0.001];
+    sigmas = [1.0]#[0.35, 0.5, 0.75, 1.0]
     #harrisKs = [0.002, 0.005, 0.01, 0.02, 0.04]; # Those were used in DSO
 
     # For chosen detector
