@@ -88,7 +88,7 @@ void LocalMapping::Run()
 
                 // Check redundant local Keyframes
                 // TODO: Removing keyframe culling for now
-//                KeyFrameCulling();
+                KeyFrameCulling();
             }
 
             mpLoopCloser->InsertKeyFrame(mpCurrentKeyFrame);

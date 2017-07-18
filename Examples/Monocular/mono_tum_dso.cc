@@ -64,7 +64,7 @@ int main(int argc, char **argv)
 
 
     // Create SLAM system. It initializes all system threads and gets ready to process frames.
-    ORB_SLAM2::System SLAM(argv[1],argv[2],ORB_SLAM2::System::MONOCULAR,true);
+    ORB_SLAM2::System SLAM(argv[1],argv[2],ORB_SLAM2::System::MONOCULAR,false);
 
     Eigen::Matrix3f K;
     int w;
@@ -74,7 +74,7 @@ int main(int argc, char **argv)
     SLAM.ChangeCalibration(K(0,0), K(1,1), K(0,2), K(1,2), 0, 0, 0, 0, 0);
     
 
-    const float playbackSpeed = 0.2;
+    const float playbackSpeed = 0.4;
 
     struct timeval tv_start;
     gettimeofday(&tv_start, NULL);
@@ -91,6 +91,9 @@ int main(int argc, char **argv)
         delete img;
 
         printf ("Processing image : %d \tTimestamp %f\r\n", ii, timestamps[ii]);
+
+        if ( ii%2 == 1 )
+            break;
 
         // Pass the image to the SLAM system
 //        SLAM.TrackMonocular(imgOpenCV,timesToPlayAt[ii]);
