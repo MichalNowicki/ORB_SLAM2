@@ -7,8 +7,13 @@
 
 Eigen::Vector2d PatchRefinement::computePatchDifference(std::vector<double> patch, std::vector<double> optimizedPatch,
                                        std::vector<Eigen::Vector2d> imageGradient) {
-    float averagePatch = std::accumulate( patch.begin(), patch.end(), 0.0)/patch.size();
-    float averageOptPatch = std::accumulate( optimizedPatch.begin(), optimizedPatch.end(), 0.0)/optimizedPatch.size();
+
+    // TODO: Turned off mean for tests
+//    float averagePatch = std::accumulate( patch.begin(), patch.end(), 0.0)/patch.size();
+//    float averageOptPatch = std::accumulate( optimizedPatch.begin(), optimizedPatch.end(), 0.0)/optimizedPatch.size();
+
+    float averagePatch = 0.0;
+    float averageOptPatch = 0.0;
 
     Eigen::Vector2d res = Eigen::Vector2d::Zero();
     for (int i=0;i<patch.size();i++) {
@@ -29,7 +34,6 @@ bool PatchRefinement::optimizePosition(cv::Mat refImg, cv::Point2f refP, float r
     double centerPos = (refImg.rows - 1) / 2;
 
     // Computation of the ref patch
-    // TODO: The undistorted point in B is moved to A with homography. Should we distort it before we take the patch?
     std::vector<double> refPatchDouble = computePatchOnSubImage(refImg,H.inverse(), curP, curScale,
                                                                 refP, refScale);
 
@@ -108,6 +112,16 @@ bool PatchRefinement::optimizePosition(cv::Mat refImg, cv::Point2f refP, float r
         std::cout << "Base image changed by: " << (curOpt[0] - centerPos) * curScale << ", "
                   << (curOpt[1] - centerPos) * curScale << " scale: " << curScale << std::endl;
     }
+
+    std::vector<double> currentPatch = computePatch(curImg, curOpt, gradient, subPosGradient);
+    Eigen::Vector2d res = computePatchDifference(refPatchDouble, currentPatch, subPosGradient);
+
+    curOpt[0] = center.x;
+    curOpt[1] = center.y;
+    currentPatch = computePatch(curImg, curOpt, gradient, subPosGradient);
+    Eigen::Vector2d res2 = computePatchDifference(refPatchDouble, currentPatch, subPosGradient);
+    std::cout << "Curr err: " << res.transpose() << " Old err: " << res2.transpose() << std::endl;
+
 
     correction = cv::Point2f(dx, dy);
     return true;

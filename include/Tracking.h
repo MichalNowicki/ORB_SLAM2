@@ -221,6 +221,10 @@ protected:
 
     // Sigma used in optimization
     float sigma;
+
+    // Lower initialization framerate
+    int initializationCounter;
+
 };
 
 } //namespace ORB_SLAM

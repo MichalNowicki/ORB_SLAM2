@@ -314,6 +314,11 @@ void Tracking::Track()
 
     if(mState==NOT_INITIALIZED)
     {
+        initializationCounter++;
+        // TODO: Delayed initialization
+//        if ( initializationCounter % 5 != 0)
+//            return;
+
         if(mSensor==System::STEREO || mSensor==System::RGBD)
             StereoInitialization();
         else
@@ -601,7 +606,6 @@ void Tracking::StereoInitialization()
 
 void Tracking::MonocularInitialization()
 {
-
     if(!mpInitializer)
     {
         // Set Reference Frame
@@ -620,11 +624,14 @@ void Tracking::MonocularInitialization()
 
             fill(mvIniMatches.begin(),mvIniMatches.end(),-1);
 
+            initializationCounter = 0;
             return;
         }
     }
     else
     {
+
+
         // Try to initialize
         if((int)mCurrentFrame.mvKeys.size()<=100)
         {

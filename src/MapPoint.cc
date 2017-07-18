@@ -127,6 +127,7 @@ void MapPoint::EraseObservation(KeyFrame* pKF)
             mObservations.erase(pKF);
 
             if(mpRefKF==pKF) {// TODO: When we change ref keyframe, it is necessary to recompute patch matchings
+//                std::cout << "RefKF was removed!" << std::endl;
                 refKFChanged = true;
                 mpRefKF = mObservations.begin()->first;
             }
@@ -507,6 +508,12 @@ bool MapPoint::RefineSubPix(KeyFrame* currentKF, size_t idx, int patchSize)
         float img1ReprojError = std::sqrt(pow(projectionInA.at<float>(0,0) - refKp.x, 2) + pow(projectionInA.at<float>(1,0) - refKp.y, 2)) / refKpScale ;
         float img2ReprojError = std::sqrt(pow(projectionInB.at<float>(0,0) - currentKp.x, 2) + pow(projectionInB.at<float>(1,0) - currentKp.y, 2)) / currentKpScale;
 
+
+        // TODO: Let's check how it work in case of starting with projection (not match)
+//        currentKp.x = projectionInB.at<float>(0,0);
+//        currentKp.y = projectionInB.at<float>(1,0);
+
+
         // We compute the distance to patch plane and the homography
         double d = patchRefinement.getDistanceToPlane(pointInA, n);
 
@@ -554,8 +561,13 @@ bool MapPoint::RefineSubPix(KeyFrame* currentKF, size_t idx, int patchSize)
                 if (verbose)
                     std::cout << "\tSuccess !" << std::endl;
 
+                std::cout <<"Subpix for angle: " << minAngle * 180/3.1415265 << std::endl;
+
                 // We add those increments to the mvKeys positions
+                // TODO: Depending if patches are made from matched positions or projected
                 currentKF->mvKeys[idx].pt = currentKF->mvKeys[idx].pt + correction;
+//                currentKF->mvKeys[idx].pt = currentKp + correction;
+//                currentKF->mvKeys[idx].pt = currentKF->mvKeys[idx].pt + cv::Point2f(2.0,2.0); // Random noise
 
                 // TODO: We should remove distortion again in those points. For now it is ok as dist = undist
                 currentKF->mvKeysUn[idx].pt = UndistortPoint(currentKF->mvKeys[idx].pt, currentKF->mK, currentKF->mDistCoef);
