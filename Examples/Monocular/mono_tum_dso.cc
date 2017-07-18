@@ -74,6 +74,7 @@ int main(int argc, char **argv)
     SLAM.ChangeCalibration(K(0,0), K(1,1), K(0,2), K(1,2), 0, 0, 0, 0, 0);
     
 
+    // TODO: Modified so if we skip every 2nd frame it is still 5 times slower than real-time
     const float playbackSpeed = 0.4;
 
     struct timeval tv_start;
@@ -92,8 +93,9 @@ int main(int argc, char **argv)
 
         printf ("Processing image : %d \tTimestamp %f\r\n", ii, timestamps[ii]);
 
+        // tODO: Let's skip every 2nd frame
         if ( ii%2 == 1 )
-            break;
+            continue;
 
         // Pass the image to the SLAM system
 //        SLAM.TrackMonocular(imgOpenCV,timesToPlayAt[ii]);
