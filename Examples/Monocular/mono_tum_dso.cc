@@ -94,8 +94,8 @@ int main(int argc, char **argv)
         printf ("Processing image : %d \tTimestamp %f\r\n", ii, timestamps[ii]);
 
         // tODO: Let's skip every 2nd frame
-//        if ( ii%2 == 1 )
-//            continue;
+        if ( ii%2 == 1 )
+            continue;
 
         // Pass the image to the SLAM system
 //        SLAM.TrackMonocular(imgOpenCV,timesToPlayAt[ii]);
