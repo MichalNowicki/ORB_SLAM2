@@ -75,7 +75,7 @@ int main(int argc, char **argv)
     
 
     // TODO: Modified so if we skip every 2nd frame it is still 5 times slower than real-time
-    const float playbackSpeed = 0.4;
+    const float playbackSpeed = 0.2;
 
     struct timeval tv_start;
     gettimeofday(&tv_start, NULL);
@@ -93,9 +93,9 @@ int main(int argc, char **argv)
 
         printf ("Processing image : %d \tTimestamp %f\r\n", ii, timestamps[ii]);
 
-        // tODO: Let's skip every 2nd frame
-        if ( ii%2 == 1 )
-            continue;
+//        // tODO: Let's skip every 2nd frame
+//        if ( ii%2 == 1 )
+//            continue;
 
         // Pass the image to the SLAM system
 //        SLAM.TrackMonocular(imgOpenCV,timesToPlayAt[ii]);
@@ -103,8 +103,8 @@ int main(int argc, char **argv)
 
 
         // TODO: We will stop sequence after 1500 frames
-        if ( ii == 1500 )
-            break;
+//        if ( ii == 1500 )
+//            break;
 
         bool skipFrame = false;
         struct timeval tv_now;

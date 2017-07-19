@@ -509,9 +509,9 @@ bool MapPoint::RefineSubPix(KeyFrame* currentKF, size_t idx, int patchSize)
         float img2ReprojError = std::sqrt(pow(projectionInB.at<float>(0,0) - currentKp.x, 2) + pow(projectionInB.at<float>(1,0) - currentKp.y, 2)) / currentKpScale;
 
 
-        // TODO: Let's check how it work in case of starting with projection (not match)
-//        currentKp.x = projectionInB.at<float>(0,0);
-//        currentKp.y = projectionInB.at<float>(1,0);
+        // TODO: Let's check how it works in case of starting with projection (not match)
+        currentKp.x = projectionInB.at<float>(0,0);
+        currentKp.y = projectionInB.at<float>(1,0);
 
 
         // We compute the distance to patch plane and the homography
@@ -552,7 +552,8 @@ bool MapPoint::RefineSubPix(KeyFrame* currentKF, size_t idx, int patchSize)
 
             // Let's optimize the final position
             cv::Point2f correction;
-            bool success = patchRefinement.optimizePosition(refPatch, refKp, refKpScale, mPatch, currentKp,
+            cv::Point2f refKpCorrection = cv::Point2f(0,0);
+            bool success = patchRefinement.optimizePosition(refPatch, refKp, refKpCorrection, refKpScale, mPatch, currentKp,
                     currentKpScale, Heig, correction);
 
             // Success -> update the positon of the feature

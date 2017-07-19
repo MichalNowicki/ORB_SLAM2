@@ -22,14 +22,14 @@ public:
         minIterStep = _minIterStep;
 
         iterationNumber = 15;
-        stepStopThreshold = 0.01;
+        stepStopThreshold = 0.10;
     };
 
 
     /*
      * Optimizes the position of the feature
      */
-    bool optimizePosition(cv::Mat refImg, cv::Point2f refP, float refScale, cv::Mat curImg, cv::Point2f curP,
+    bool optimizePosition(cv::Mat refLargePatch, cv::Point2f refPoint, cv::Point2f refPointCorrection, float refScale, cv::Mat curLargePatch, cv::Point2f curP,
                                      float curScale, Eigen::Matrix3d H, cv::Point2f &correction);
 
     /*
@@ -121,7 +121,7 @@ public:
     /*
      * TODO
      */
-    std::vector<double> computePatchOnSubImage(cv::Mat img, Eigen::Matrix3d H, cv::Point2f img2kp, double scaleKp2, cv::Point2f img1kp, double scaleKp1);
+    std::vector<double> computePatchOnSubImage(cv::Mat img, Eigen::Matrix3d H, cv::Point2f img2kp, double scaleKp2, cv::Point2f img1kp, double scaleKp1, cv::Point2f img1kpCorrection);
 
     Eigen::Matrix3d cv2eigen(cv::Mat H) {
         Eigen::Matrix3d Heigen;

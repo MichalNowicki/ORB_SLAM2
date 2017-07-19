@@ -236,10 +236,10 @@ void LocalMapping::ProcessNewKeyFrame()
                     possibleForSubPix++;
 
                     // TODO: SUBPIX REFINEMENT
-//                    const int patchSize = 11;
-//                    bool refined = pMP->RefineSubPix(mpCurrentKeyFrame, i, patchSize);
-//                    if (refined)
-//                        countRefined++;
+                    const int patchSize = 11;
+                    bool refined = pMP->RefineSubPix(mpCurrentKeyFrame, i, patchSize);
+                    if (refined)
+                        countRefined++;
 
                     pMP->AddObservation(mpCurrentKeyFrame, i);
                     pMP->UpdateNormalAndDepth();
