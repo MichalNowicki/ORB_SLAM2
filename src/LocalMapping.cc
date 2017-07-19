@@ -84,6 +84,30 @@ void LocalMapping::Run()
                     std::vector<double> chi2 = Optimizer::LocalBundleAdjustment(mpCurrentKeyFrame, &mbAbortBA, mpMap, sigma);
 //                    chi2statistics.push_back(chi2);
                     chi2statistics = chi2;
+
+
+                    // TODO: Verifying the number of keyframes and local timestamp diff
+                    list<KeyFrame*> lLocalKeyFrames;
+                    lLocalKeyFrames.push_back(mpCurrentKeyFrame);
+                    const vector<KeyFrame*> vNeighKFs = mpCurrentKeyFrame->GetVectorCovisibleKeyFrames();
+                    for(int i=0, iend=vNeighKFs.size(); i<iend; i++)
+                    {
+                        KeyFrame* pKFi = vNeighKFs[i];
+                        if(!pKFi->isBad())
+                            lLocalKeyFrames.push_back(pKFi);
+                    }
+
+
+                    std::vector<double> timestamps;
+                    for(list<KeyFrame*>::iterator lit=lLocalKeyFrames.begin(), lend=lLocalKeyFrames.end(); lit!=lend; lit++) {
+                        KeyFrame *pKF = *lit;
+                        timestamps.push_back(pKF->mTimeStamp);
+                    }
+                    std::sort(timestamps.begin(),  timestamps.end());
+                    double dt = fabs(timestamps[0] - timestamps[timestamps.size()-1]);
+
+                    std::cout << "\tBA: keframe count: " << lLocalKeyFrames.size() << " maxTimestampDt: " << dt <<std::endl;
+                    keyframeCountAndTimeDiff.push_back(std::make_pair(lLocalKeyFrames.size(),dt));
                 }
 
                 // Check redundant local Keyframes
@@ -819,7 +843,7 @@ bool LocalMapping::CheckFinish()
 void LocalMapping::SetFinish()
 {
     // TODO: Saving chi2 values
-    std::ofstream chi2stream("GBA_chi2.txt"), reprojstream("GBA_reproj.txt");
+    std::ofstream chi2stream("GBA_chi2.txt"), reprojstream("GBA_reproj.txt"), keyframeCountAndTimeDiffStr("LBA_keyframeCountAndTimeDiff.txt");
 //    for (auto vec : chi2statistics)
 //    {
 //        for (auto val : vec)
@@ -832,9 +856,12 @@ void LocalMapping::SetFinish()
         chi2stream << val << ",";
     for (auto val : reprojectionStatistics)
         reprojstream << val << ",";
+    for (auto val : keyframeCountAndTimeDiff)
+        keyframeCountAndTimeDiffStr << val.first << " " << val.second << std::endl;
 
     chi2stream.close();
     reprojstream.close();
+    keyframeCountAndTimeDiffStr.close();
 
     unique_lock<mutex> lock(mMutexFinish);
     mbFinished = true;    

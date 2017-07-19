@@ -120,7 +120,7 @@ bool PatchRefinement::optimizePosition(cv::Mat refImg, cv::Point2f refP, float r
     curOpt[1] = center.y;
     currentPatch = computePatch(curImg, curOpt, gradient, subPosGradient);
     Eigen::Vector2d res2 = computePatchDifference(refPatchDouble, currentPatch, subPosGradient);
-    std::cout << "Curr err: " << res.transpose() << " Old err: " << res2.transpose() << std::endl;
+//    std::cout << "Curr err: " << res.transpose() << " Old err: " << res2.transpose() << std::endl;
 
 
     correction = cv::Point2f(dx, dy);

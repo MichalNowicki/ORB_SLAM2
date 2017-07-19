@@ -561,7 +561,7 @@ bool MapPoint::RefineSubPix(KeyFrame* currentKF, size_t idx, int patchSize)
                 if (verbose)
                     std::cout << "\tSuccess !" << std::endl;
 
-                std::cout <<"Subpix for angle: " << minAngle * 180/3.1415265 << std::endl;
+//                std::cout <<"Subpix for angle: " << minAngle * 180/3.1415265 << std::endl;
 
                 // We add those increments to the mvKeys positions
                 // TODO: Depending if patches are made from matched positions or projected

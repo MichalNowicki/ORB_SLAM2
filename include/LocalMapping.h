@@ -127,6 +127,8 @@ protected:
 //    std::vector<std::vector<double>> chi2statistics;
     std::vector<double> chi2statistics;
     std::vector<double> reprojectionStatistics;
+    std::vector<std::pair<int, double>> keyframeCountAndTimeDiff;
+
 
     float sigma;
 };

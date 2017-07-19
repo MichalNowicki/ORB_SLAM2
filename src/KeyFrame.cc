@@ -328,6 +328,8 @@ void KeyFrame::UpdateConnections()
     //In case no keyframe counter is over threshold add the one with maximum counter
     int nmax=0;
     KeyFrame* pKFmax=NULL;
+    // TODO: Testing if scale drift is not due to the small BA size
+//    int th = 7;
     int th = 15;
 
     vector<pair<int,KeyFrame*> > vPairs;

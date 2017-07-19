@@ -315,8 +315,8 @@ void Tracking::Track()
     if(mState==NOT_INITIALIZED)
     {
         initializationCounter++;
-        // TODO: Delayed initialization
-//        if ( initializationCounter % 5 != 0)
+        // TODO: Working on delayed initialization
+//        if ( initializationCounter % 2 != 0)
 //            return;
 
         if(mSensor==System::STEREO || mSensor==System::RGBD)
@@ -942,7 +942,7 @@ bool Tracking::TrackWithMotionModel()
         return false;
 
 
-    // TODO: Here is a possibility to go subpixel with patches
+    // TODO: Here is a possibility to go subpixel with patches for VO
 
     // Optimize frame pose with all matches
     Optimizer::PoseOptimization(&mCurrentFrame, sigma);

@@ -844,6 +844,7 @@ std::vector<double> Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStop
 
     }
 
+
     std::cout << "\tAvg reprojection error : " << accumulate( reprojectionErr.begin(), reprojectionErr.end(), 0.0)/reprojectionErr.size() << std::endl;
 
     return chi2Statistics;
