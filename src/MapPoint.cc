@@ -510,8 +510,8 @@ bool MapPoint::RefineSubPix(KeyFrame* currentKF, size_t idx, int patchSize)
 
 
         // TODO: Let's check how it works in case of starting with projection (not match)
-        currentKp.x = projectionInB.at<float>(0,0);
-        currentKp.y = projectionInB.at<float>(1,0);
+//        currentKp.x = projectionInB.at<float>(0,0);
+//        currentKp.y = projectionInB.at<float>(1,0);
 
 
         // We compute the distance to patch plane and the homography
