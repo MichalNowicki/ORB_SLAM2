@@ -171,6 +171,7 @@ public:
     const std::vector<float> mvuRight; // negative value for monocular points
     const std::vector<float> mvDepth; // negative value for monocular points
     const cv::Mat mDescriptors;
+    std::vector<cv::Point2f> mPatchLocations; // At beginning equal to mvKeys but can change due to subpix corrections
     const std::vector<cv::Mat> mPatches;
 
     //BoW

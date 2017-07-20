@@ -259,6 +259,38 @@ void LocalMapping::ProcessNewKeyFrame()
     // Update links in the Covisibility Graph
     mpCurrentKeyFrame->UpdateConnections();
 
+
+
+//    const vector<KeyFrame*> vNeighKFs = mpCurrentKeyFrame->GetVectorCovisibleKeyFrames();
+//    list<KeyFrame*> lLocalKeyFrames;
+//    for(int i=0, iend=vNeighKFs.size(); i<iend; i++)
+//    {
+//        KeyFrame* pKFi = vNeighKFs[i];
+//        pKFi->mnBALocalForKF = mpCurrentKeyFrame->mnId;
+//        if(!pKFi->isBad())
+//            lLocalKeyFrames.push_back(pKFi);
+//    }
+//
+//    // Local MapPoints seen in Local KeyFrames
+//    list<MapPoint*> lLocalMapPoints;
+//    for(list<KeyFrame*>::iterator lit=lLocalKeyFrames.begin() , lend=lLocalKeyFrames.end(); lit!=lend; lit++)
+//    {
+//        vector<MapPoint*> vpMPs = (*lit)->GetMapPointMatches();
+//        for(vector<MapPoint*>::iterator vit=vpMPs.begin(), vend=vpMPs.end(); vit!=vend; vit++)
+//        {
+//            MapPoint* pMP = *vit;
+//            if(pMP)
+//                if(!pMP->isBad())
+//                    if(pMP->mnBALocalForKF!=mpCurrentKeyFrame->mnId)
+//                    {
+//                        lLocalMapPoints.push_back(pMP);
+//                    }
+//        }
+//    }
+//
+//    std::cout <<" Number of local keyframes: " << lLocalKeyFrames.size() << " Local mappoints" << lLocalMapPoints.size() << std::endl;
+
+
     // Insert Keyframe in Map
     mpMap->AddKeyFrame(mpCurrentKeyFrame);
 }
@@ -607,8 +639,8 @@ void LocalMapping::SearchInNeighbors()
         }
     }
 
-    matcher.Fuse(mpCurrentKeyFrame,vpFuseCandidates);
-
+    int densifyCount = matcher.Fuse(mpCurrentKeyFrame,vpFuseCandidates);
+//    std:: cout << "Fuse added new measurements: " << densifyCount << std::endl;
 
     // Update points
     vpMapPointMatches = mpCurrentKeyFrame->GetMapPointMatches();

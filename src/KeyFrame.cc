@@ -44,6 +44,8 @@ KeyFrame::KeyFrame(Frame &F, Map *pMap, KeyFrameDatabase *pKFDB):
     mbToBeErased(false), mbBad(false), mHalfBaseline(F.mb/2), mpMap(pMap)
 {
 
+    cv::KeyPoint::convert(F.mvKeys, mPatchLocations);
+
     mnId=nNextId++;
 
     mGrid.resize(mnGridCols);

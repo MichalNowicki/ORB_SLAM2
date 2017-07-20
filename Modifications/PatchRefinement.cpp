@@ -23,19 +23,16 @@ Eigen::Vector2d PatchRefinement::computePatchDifference(std::vector<double> patc
     return res;
 }
 
-bool PatchRefinement::optimizePosition(cv::Mat refLargePatch, cv::Point2f refPoint, cv::Point2f refPointCorrection, float refScale, cv::Mat curLargePatch, cv::Point2f curP,
-                      float curScale, Eigen::Matrix3d H, cv::Point2f &correction) {
-    int verbose = 0;
+bool PatchRefinement::optimizePosition(cv::Mat refLargePatch, cv::Point2f refPatchLoc, cv::Point2f refPoint, float refScale,
+                                       cv::Mat curLargePatch, cv::Point2f curPatchLoc, cv::Point2f curPoint, float curScale,
+                                       Eigen::Matrix3d H, cv::Point2f &subpixCorrection) {
 
-    // Some helpful variable
-    int halfPatchSize = (patchSize - 1)/ 2;
 
     // The index of the centre of the larger patch
     double centerPosLargePatch = (refLargePatch.rows - 1) / 2;
 
     // Computation of the ref patch
-    std::vector<double> refPatch = computePatchOnSubImage(refLargePatch,H.inverse(), curP, curScale,
-                                                                refPoint, refScale, refPointCorrection);
+    std::vector<double> refPatch = computePatchOnSubImage(refLargePatch, refPatchLoc, refScale, curPoint, curScale, H);
 
     // The warp was outside the saved neighbourhood
     if (refPatch.size()  == 0) {
@@ -44,7 +41,7 @@ bool PatchRefinement::optimizePosition(cv::Mat refLargePatch, cv::Point2f refPoi
         return false;
     }
 
-    // Compute gradient on the current image
+    // Compute gradient & hessian on the current image
     std::vector<Eigen::Vector2d> gradient;
     Eigen::Matrix2d HessianInv;
     cv::Point2f center(centerPosLargePatch, centerPosLargePatch);
@@ -143,65 +140,10 @@ bool PatchRefinement::optimizePosition(cv::Mat refLargePatch, cv::Point2f refPoi
 //    std::cout << "CORRECTION: " << dx << ", " << dy << " Curr err: " << errorBefore << " Old err: " << errorAfter << std::endl;
 
 
-    correction = cv::Point2f(dx, dy);
+    subpixCorrection = cv::Point2f(dx, dy);
     return true;
 }
 
-void PatchRefinement::performOptimizationForTestS(cv::Mat refImg, cv::Point2f refP, float refScale, cv::Mat curImg, cv::Point2f curP,
-                                 float curScale, Eigen::Matrix3d H) {
-
-    // Ref patch
-    std::vector<double> refPatch = computePatch(refImg, refP, Eigen::Matrix3d::Identity());
-
-//        std::vector<double> refPatch = computePatchOnSubImage(refImg, H.inverse(), curP, curScale,
-//                                                              refP, refScale);
-
-    // Compute gradient in the current image
-    std::vector<Eigen::Vector2d> gradient;
-    Eigen::Matrix2d HessianInv;
-    computeImageGradient(curImg, curP, gradient, HessianInv);
-
-    std::cout << "PATCH SIZE: " << patchSize << " Gradient size: " << gradient.size() << std::endl;
-
-    // Iteration counter
-    Eigen::Vector2d currentP;
-    currentP[0] = curP.x;
-    currentP[1] = curP.y;
-
-    std::vector<Eigen::Vector2d> subPosGradient(patchSize*patchSize, Eigen::Vector2d::Zero());
-    for (int i = 0; i < iterationNumber; i++) {
-        std::cout <<"Iteration: " << i << " Position: " << currentP[0] << ", " << currentP[1] << std::endl;
-
-        // Compute new patch
-        std::vector<double> movedPatch = computePatch(curImg, currentP, gradient, subPosGradient);
-
-        // Estimate residuals
-        Eigen::Vector2d Jres = computePatchDifference(refPatch, movedPatch, subPosGradient);
-
-        // Obtained error
-        std::cout << "Error: " << std::endl << Jres.transpose() << std::endl;
-
-        // Hessian
-        std::cout << "HessianInv: " << std::endl << HessianInv << std::endl;
-
-        // Step based on Hessian
-        Eigen::Vector2d step = HessianInv * Jres;
-
-        // Obtained error
-        std::cout << "Step: " << std::endl << step.transpose() << std::endl;
-
-        // Stop condition
-        if (step.squaredNorm() < minIterStep)
-            break;
-
-        // We do the step
-        currentP = currentP + step;
-    }
-
-    std::cout << "Final position : " << currentP[0] << ", " << currentP[1] << std::endl;
-
-
-}
 
 double PatchRefinement::computePatchDifference(std::vector<double> patch, std::vector<double> optimizedPatch) {
     float averagePatch = std::accumulate( patch.begin(), patch.end(), 0.0)/patch.size();
@@ -231,7 +173,7 @@ void PatchRefinement::showPatch(std::vector<double> patch, int patchSize, std::s
     imshow(windowName, patchToShow);
 }
 
-cv::Mat PatchRefinement::ComputeHomography(cv::Mat Tba, cv::Mat n, double d, cv::Mat Ka, cv::Mat Kb)
+cv::Mat PatchRefinement::computeHomography(cv::Mat Tba, cv::Mat n, double d, cv::Mat Ka, cv::Mat Kb)
 {
     // Getting R,t
     cv::Mat R21 = extractRotation(Tba);
@@ -262,84 +204,80 @@ cv::Mat PatchRefinement::normalize2D(cv::Mat p) {
     return p;
 }
 
-std::vector<double> PatchRefinement::computePatch(cv::Mat img, cv::Point2f kp, Eigen::Matrix3d H) {
-    Eigen::Vector2d p;
-    p[0] = kp.x;
-    p[1] = kp.y;
-    return computePatch(img, p, H);
-}
+//std::vector<double> PatchRefinement::computePatch(cv::Mat img, cv::Point2f kp, Eigen::Matrix3d H) {
+//    Eigen::Vector2d p;
+//    p[0] = kp.x;
+//    p[1] = kp.y;
+//    return computePatch(img, p, H);
+//}
+//
+//std::vector<double> PatchRefinement::computePatch(cv::Mat img, Eigen::Vector2d kp, Eigen::Matrix3d H) {
+//
+//    std::vector<double> patch (patchSize*patchSize, 0.0);
+//
+//    int halfPatchSize = (patchSize - 1)/2;
+//    int index = 0;
+//    for (int j = kp[1] - halfPatchSize; j < kp[1] + halfPatchSize + 1; j++) {
+//        for (int i = kp[0] - halfPatchSize; i < kp[0] + halfPatchSize + 1; i++) {
+//
+//            // We find the position on the image1 based on (px,py) in image2 and H
+//            Eigen::Vector3d pIn2(i,j,1);
+//            Eigen::Vector3d pIn1 = H * pIn2;
+//            pIn1 = pIn1 / pIn1(2);
+//
+//            const double xInt = int(pIn1(0)), yInt = int(pIn1(1));
+//            const double xSub = pIn1(0) - xInt, ySub = pIn1(1) - yInt;
+//
+//            // From wiki: http://upload.wikimedia.org/math/9/b/4/9b4e1064436ecccd069ea238b656c063.png
+//            const double topLeft = (1.0 - xSub) * (1.0 - ySub);
+//            const double topRight = xSub * (1.0 - ySub);
+//            const double bottomLeft = (1.0 - xSub) * ySub;
+//            const double bottomRight = xSub * ySub;
+//
+//
+//            float value = topLeft * img.at<uchar>(yInt, xInt) + topRight * img.at<uchar>(yInt, xInt + 1) +
+//                          bottomLeft * img.at<uchar>(yInt + 1, xInt) + bottomRight * img.at<uchar>(yInt + 1, xInt + 1);
+//            patch[index] = value;
+//
+//            index++;
+//        }
+//    }
+//
+//    return patch;
+//}
 
-std::vector<double> PatchRefinement::computePatch(cv::Mat img, Eigen::Vector2d kp, Eigen::Matrix3d H) {
 
+std::vector<double> PatchRefinement::computePatchOnSubImage(cv::Mat refLargePatch, cv::Point2f refPatchLoc,  double refScale,
+                                                            cv::Point2f curPoint, double curScale, Eigen::Matrix3d H) {
+
+    // The patch to compute
     std::vector<double> patch (patchSize*patchSize, 0.0);
 
-    int halfPatchSize = (patchSize - 1)/2;
+    // Let's iterate over all points in patch for point in image B and use homography to find them in image A
     int index = 0;
-    for (int j = kp[1] - halfPatchSize; j < kp[1] + halfPatchSize + 1; j++) {
-        for (int i = kp[0] - halfPatchSize; i < kp[0] + halfPatchSize + 1; i++) {
-
-            // We find the position on the image1 based on (px,py) in image2 and H
-            Eigen::Vector3d pIn2(i,j,1);
-            Eigen::Vector3d pIn1 = H * pIn2;
-            pIn1 = pIn1 / pIn1(2);
-
-            const double xInt = int(pIn1(0)), yInt = int(pIn1(1));
-            const double xSub = pIn1(0) - xInt, ySub = pIn1(1) - yInt;
-
-            // From wiki: http://upload.wikimedia.org/math/9/b/4/9b4e1064436ecccd069ea238b656c063.png
-            const double topLeft = (1.0 - xSub) * (1.0 - ySub);
-            const double topRight = xSub * (1.0 - ySub);
-            const double bottomLeft = (1.0 - xSub) * ySub;
-            const double bottomRight = xSub * ySub;
-
-
-            float value = topLeft * img.at<uchar>(yInt, xInt) + topRight * img.at<uchar>(yInt, xInt + 1) +
-                          bottomLeft * img.at<uchar>(yInt + 1, xInt) + bottomRight * img.at<uchar>(yInt + 1, xInt + 1);
-            patch[index] = value;
-
-            index++;
-        }
-    }
-
-    return patch;
-}
-
-std::vector<double> PatchRefinement::computePatchOnSubImage(cv::Mat img, Eigen::Matrix3d H, cv::Point2f img2kp, double scaleKp2, cv::Point2f img1kp, double scaleKp1, cv::Point2f img1kpCorrection) {
-
-    std::vector<double> patch (patchSize*patchSize, 0.0);
-
-    int halfPatchSize = (patchSize - 1)/2;
-    int index = 0;
-
-
-
     for (int j = - halfPatchSize; j <  halfPatchSize + 1; j++) {
         for (int i = - halfPatchSize; i < halfPatchSize + 1; i++) {
 
             // Computation of the points of patch in image2 taking into account the scale
-            double x = img2kp.x + i * scaleKp2;
-            double y = img2kp.y + j * scaleKp2;
+            double x = curPoint.x + i * curScale;
+            double y = curPoint.y + j * curScale;
 
-            // We find the position on the image1 based on (x,y) in image2 and H
+            // Projecting (x,y) from image 2 into image 1 with  H
             Eigen::Vector3d pIn2(x,y,1);
             Eigen::Vector3d pIn1 = H * pIn2;
             pIn1 = pIn1 / pIn1(2);
 
-            // We only have a image part in image 1 !
-            // Therefore, we find the point with respect to keypoint, scale that distance by octave's scale and just moves it to the center of stored patch
-            // But the point might have been already moved by patch correction -> apply it also
-            int centerPos = (img.rows - 1) / 2;
-            pIn1(0) = (pIn1(0) - img1kp.x)/scaleKp1 + centerPos + img1kpCorrection.x/scaleKp1;
-            pIn1(1) = (pIn1(1) - img1kp.y)/scaleKp1 + centerPos + img1kpCorrection.y/scaleKp1;
+            // We only have a image part in image 1!
+            // Therefore, we find the point w.r.t the patch location (center), scale that distance by octave's scale and just moves it to the center of stored patch
+            int centerPos = (refLargePatch.rows - 1) / 2;
+            pIn1(0) = (pIn1(0) - refPatchLoc.x)/refScale + centerPos;
+            pIn1(1) = (pIn1(1) - refPatchLoc.y)/refScale + centerPos;
 
             // If warped outside of the stored large patch
-            if ( pIn1(0) < 0 || pIn1(0) > img.cols - 1 || pIn1(1) < 0 || pIn1(1) > img.rows - 1)
-            {
-               //    printf("\t Our subimage is too small to compute warped patch!\n");
+            if ( pIn1(0) < 0 || pIn1(0) > refLargePatch.cols - 1 || pIn1(1) < 0 || pIn1(1) > refLargePatch.rows - 1)
                 return std::vector<double>();
-            }
 
-            // We can do warping
+            // Finding the subpix value using bilinear interpolation
             const double xInt = int(pIn1(0)), yInt = int(pIn1(1));
             const double xSub = pIn1(0) - xInt, ySub = pIn1(1) - yInt;
 
@@ -350,9 +288,8 @@ std::vector<double> PatchRefinement::computePatchOnSubImage(cv::Mat img, Eigen::
             const double bottomRight = xSub * ySub;
 
             // Value of that patch
-            float value = topLeft * img.at<uchar>(yInt, xInt) + topRight * img.at<uchar>(yInt, xInt + 1) +
-                          bottomLeft * img.at<uchar>(yInt + 1, xInt) + bottomRight * img.at<uchar>(yInt + 1, xInt + 1);
-            patch[index] = value;
+            patch[index] = topLeft * refLargePatch.at<uchar>(yInt, xInt) + topRight * refLargePatch.at<uchar>(yInt, xInt + 1) +
+                          bottomLeft * refLargePatch.at<uchar>(yInt + 1, xInt) + bottomRight * refLargePatch.at<uchar>(yInt + 1, xInt + 1);
 
             index++;
         }
@@ -445,5 +382,62 @@ void PatchRefinement::printGradient(std::vector<Eigen::Vector2d> gradient) {
     }
 
 }
+
+
+//void PatchRefinement::performOptimizationForTestS(cv::Mat refImg, cv::Point2f refP, float refScale, cv::Mat curImg, cv::Point2f curP,
+//                                 float curScale, Eigen::Matrix3d H) {
+//
+//    // Ref patch
+//    std::vector<double> refPatch = computePatch(refImg, refP, Eigen::Matrix3d::Identity());
+//
+////        std::vector<double> refPatch = computePatchOnSubImage(refImg, H.inverse(), curP, curScale,
+////                                                              refP, refScale);
+//
+//    // Compute gradient in the current image
+//    std::vector<Eigen::Vector2d> gradient;
+//    Eigen::Matrix2d HessianInv;
+//    computeImageGradient(curImg, curP, gradient, HessianInv);
+//
+//    std::cout << "PATCH SIZE: " << patchSize << " Gradient size: " << gradient.size() << std::endl;
+//
+//    // Iteration counter
+//    Eigen::Vector2d currentP;
+//    currentP[0] = curP.x;
+//    currentP[1] = curP.y;
+//
+//    std::vector<Eigen::Vector2d> subPosGradient(patchSize*patchSize, Eigen::Vector2d::Zero());
+//    for (int i = 0; i < iterationNumber; i++) {
+//        std::cout <<"Iteration: " << i << " Position: " << currentP[0] << ", " << currentP[1] << std::endl;
+//
+//        // Compute new patch
+//        std::vector<double> movedPatch = computePatch(curImg, currentP, gradient, subPosGradient);
+//
+//        // Estimate residuals
+//        Eigen::Vector2d Jres = computePatchDifference(refPatch, movedPatch, subPosGradient);
+//
+//        // Obtained error
+//        std::cout << "Error: " << std::endl << Jres.transpose() << std::endl;
+//
+//        // Hessian
+//        std::cout << "HessianInv: " << std::endl << HessianInv << std::endl;
+//
+//        // Step based on Hessian
+//        Eigen::Vector2d step = HessianInv * Jres;
+//
+//        // Obtained error
+//        std::cout << "Step: " << std::endl << step.transpose() << std::endl;
+//
+//        // Stop condition
+////        if (step.squaredNorm() < minIterStep)
+////            break;
+//
+//        // We do the step
+//        currentP = currentP + step;
+//    }
+//
+//    std::cout << "Final position : " << currentP[0] << ", " << currentP[1] << std::endl;
+//
+//
+//}
 
 

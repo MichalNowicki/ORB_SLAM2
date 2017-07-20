@@ -9,7 +9,7 @@
 
 
 void testOptimization(cv::Mat img, int patchSize, cv::Point2f refP, cv::Point2f curP, double minimalStep) {
-    PatchRefinement patchRefinement(patchSize, minimalStep);
+    PatchRefinement patchRefinement(patchSize);
 
     std::cout <<"Original patch for " << refP.x << " " << refP.y<< std::endl;
     std::cout <<"Test patch for " << curP.x << " " << curP.y<< std::endl;
@@ -18,13 +18,14 @@ void testOptimization(cv::Mat img, int patchSize, cv::Point2f refP, cv::Point2f 
     Eigen::Matrix3d H = Eigen::Matrix3d::Identity();
 
 
-    patchRefinement.performOptimizationForTestS(img, refP, 1.0, img, curP, 1.0, H);
+    // Use normal version
+//    patchRefinement.performOptimizationForTestS(img, refP, 1.0, img, curP, 1.0, H);
 
 }
 
 void testHomography(cv::Mat image2, cv::Mat point3DInImg1, cv::Mat K1, cv::Mat K2, cv::Mat R, cv::Mat t, int patchSize) {
 
-    PatchRefinement patchRefinement(patchSize, 0.1);
+    PatchRefinement patchRefinement(patchSize);
 
     std::cout << "testHommography()" << std::endl;
     std::cout << "-> point3DInImg1 = " << std::endl << point3DInImg1 << std::endl;
@@ -71,7 +72,7 @@ void testHomography(cv::Mat image2, cv::Mat point3DInImg1, cv::Mat K1, cv::Mat K
     // We compute the homography
     // Pose of c.s. A in B
     cv::Mat Tba = T2w.inv() * T1w;
-    cv::Mat H = patchRefinement.ComputeHomography(Tba, n, d, K1, K2);
+    cv::Mat H = patchRefinement.computeHomography(Tba, n, d, K1, K2);
     std::cout << "-> H = " << std::endl << H << std::endl;
 
     //// Let's verify the homography
