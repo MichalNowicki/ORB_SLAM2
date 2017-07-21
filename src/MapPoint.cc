@@ -378,14 +378,11 @@ void MapPoint::UpdateNormalAndDepth()
 
 bool MapPoint::RefineSubPix(KeyFrame* currentKF, size_t idx, int patchSize)
 {
-    const double reprojectionThr = 2;
-    static const bool verbose = 0;
+    const double reprojectionThr = 3;
+    static const bool verbose = 1;
 
     enum PATCHVERSION { AGAINSTFIRST, AGAINSTCLOSESTANGLE };
     PATCHVERSION selectedPatchVersion = PATCHVERSION::AGAINSTFIRST;
-
-    enum PATCHSTART { FROMMATCH, FROMPROJECTION};
-    PATCHSTART selectedPatchStartPos = FROMMATCH;
 
      // We get the copy of the observations and world position of a point to work on
     map<KeyFrame*,size_t> observations;
@@ -460,7 +457,7 @@ bool MapPoint::RefineSubPix(KeyFrame* currentKF, size_t idx, int patchSize)
     // Current patch in image B
     mPatch = currentKF->mPatches[idx];
     cv::Point2f currentKp = currentKF->mvKeys[idx].pt;
-    cv::Point2f curKpPatchLoc = patchRefKF->mPatchLocations[refIdx];
+    cv::Point2f curKpPatchLoc = currentKF->mPatchLocations[idx];
     const int currentOctave = currentKF->mvKeys[idx].octave;
     const float currentKpScale =  currentKF->mvScaleFactors[currentOctave];
 
@@ -496,17 +493,10 @@ bool MapPoint::RefineSubPix(KeyFrame* currentKF, size_t idx, int patchSize)
             pow(projInB.at<float>(0, 0) - currentKp.x, 2) + pow(projInB.at<float>(1, 0) - currentKp.y, 2)) /
                             currentKpScale;
 
-    if (imgAReprojErrScaled < reprojectionThr && imgBReprojErrScaled < reprojectionThr) {
+    if (imgAReprojErrScaled > reprojectionThr || imgBReprojErrScaled > reprojectionThr) {
         if (verbose)
-            std::cout << "\tThe reprojection error is too large to even try subpix refinement" << std::endl;
+            std::cout << "\tThe reprojection error is too large to even try subpix refinement: " << imgAReprojErrScaled << " " << imgBReprojErrScaled << std::endl;
         return false;
-    }
-
-
-    // Changing the stating position of the optimization to projection
-    if (selectedPatchStartPos == PATCHSTART::FROMPROJECTION) {
-        currentKp.x = projInB.at<float>(0, 0);
-        currentKp.y = projInB.at<float>(1, 0);
     }
 
 
@@ -536,7 +526,7 @@ bool MapPoint::RefineSubPix(KeyFrame* currentKF, size_t idx, int patchSize)
     double distB = sqrt((currentKp.x - kp1In2[0]) * (currentKp.x - kp1In2[0]) +
                         (currentKp.y - kp1In2[1]) * (currentKp.y - kp1In2[1])) / currentKpScale;
 
-    if (distA < reprojectionThr && distB < reprojectionThr) {
+    if (distA > reprojectionThr || distB > reprojectionThr) {
         if (verbose)
             std::cout << "\tThe homography error is too large to even try subpix refinement" << std::endl;
         return false;
@@ -548,7 +538,7 @@ bool MapPoint::RefineSubPix(KeyFrame* currentKF, size_t idx, int patchSize)
 
     PatchRefinement patchRefinement(patchSize);
     success = patchRefinement.optimizePosition(refPatch, refKpPatchLoc, refKp, refKpScale,
-                                               mPatch, curKpPatchLoc, currentKp, currentKpScale,
+                                               mPatch, curKpPatchLoc, currentKpScale,
                                                Heig, correction);
 
     // Success -> update the positon of the feature

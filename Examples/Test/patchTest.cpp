@@ -9,23 +9,28 @@
 
 
 void testOptimization(cv::Mat img, int patchSize, cv::Point2f refP, cv::Point2f curP, double minimalStep) {
-    PatchRefinement patchRefinement(patchSize);
+    patchSize = 5;
 
-    std::cout <<"Original patch for " << refP.x << " " << refP.y<< std::endl;
-    std::cout <<"Test patch for " << curP.x << " " << curP.y<< std::endl;
+    std::cout <<"Ref pos " << refP.x << " " << refP.y << std::endl;
+    std::cout <<"Cur pos " << curP.x << " " << curP.y << std::endl;
+    std::cout <<"Patch size " << patchSize << std::endl;
 
 
     Eigen::Matrix3d H = Eigen::Matrix3d::Identity();
+    cv::Point2f result;
 
+    int largePatchSize = patchSize * 2;
+    cv::Mat refPatch = img(cv::Rect(refP.y - patchSize,refP.x - patchSize, largePatchSize, largePatchSize));
 
-    // Use normal version
-//    patchRefinement.performOptimizationForTestS(img, refP, 1.0, img, curP, 1.0, H);
+    cv::Mat curPatch = img(cv::Rect(curP.y - patchSize,curP.x - patchSize, largePatchSize, largePatchSize));
 
+    std::cout <<"Large patch sizes " << refPatch.size() << std::endl;
+
+    PatchRefinement patchRefinement(patchSize);
+    bool success = patchRefinement.optimizePosition(refPatch, refP, refP, 1.0, curPatch, curP, 1.0, H, result);
 }
 
 void testHomography(cv::Mat image2, cv::Mat point3DInImg1, cv::Mat K1, cv::Mat K2, cv::Mat R, cv::Mat t, int patchSize) {
-
-    PatchRefinement patchRefinement(patchSize);
 
     std::cout << "testHommography()" << std::endl;
     std::cout << "-> point3DInImg1 = " << std::endl << point3DInImg1 << std::endl;
@@ -37,7 +42,7 @@ void testHomography(cv::Mat image2, cv::Mat point3DInImg1, cv::Mat K1, cv::Mat K
 
     // We project point into image 1
     cv::Mat projPInImg1 = K1 * point3DInImg1;
-    projPInImg1 = patchRefinement.normalize2D(projPInImg1);
+    projPInImg1 = PatchRefinement::normalize2D(projPInImg1);
     std::cout << "-> projPInImg1 = " << std::endl << projPInImg1 << std::endl;
 
     // We find the 3D position of point in image 2
@@ -46,7 +51,7 @@ void testHomography(cv::Mat image2, cv::Mat point3DInImg1, cv::Mat K1, cv::Mat K
 
     // We project point into image 2
     cv::Mat projPInImg2 = K2 * point3DInImg2;
-    projPInImg2 = patchRefinement.normalize2D(projPInImg2);
+    projPInImg2 = PatchRefinement::normalize2D(projPInImg2);
     std::cout << "-> projPInImg2 = " << std::endl << projPInImg2 << std::endl;
 
     //// We prepare everything for compute homography
@@ -66,23 +71,23 @@ void testHomography(cv::Mat image2, cv::Mat point3DInImg1, cv::Mat K1, cv::Mat K
     std::cout << "-> n = " << std::endl << n << std::endl;
 
     // We have to find how much the plane is moved from the origin of the coordinate system
-    double d = patchRefinement.getDistanceToPlane(point3DInImg1, n);
+    double d = PatchRefinement::getDistanceToPlane(point3DInImg1, n);
     std::cout << "-> d = " << d << std::endl;
 
     // We compute the homography
     // Pose of c.s. A in B
     cv::Mat Tba = T2w.inv() * T1w;
-    cv::Mat H = patchRefinement.computeHomography(Tba, n, d, K1, K2);
+    cv::Mat H = PatchRefinement::computeHomography(Tba, n, d, K1, K2);
     std::cout << "-> H = " << std::endl << H << std::endl;
 
     //// Let's verify the homography
     std::cout << "----------------------"<< std::endl;
     std::cout << "Verifying homography" << std::endl;
 
-    double diff = cv::norm(projPInImg2 - patchRefinement.normalize2D(H*projPInImg1));
-    double diff2 = cv::norm(projPInImg1 - patchRefinement.normalize2D(H.inv()*projPInImg2));
-    std :: cout << "Img1: " << projPInImg1.t() << " " << patchRefinement.normalize2D(H.inv()*projPInImg2) << std::endl;
-    std :: cout << "Img2: " << projPInImg2.t() << " " << patchRefinement.normalize2D(H*projPInImg1) << std::endl;
+    double diff = cv::norm(projPInImg2 - PatchRefinement::normalize2D(H*projPInImg1));
+    double diff2 = cv::norm(projPInImg1 - PatchRefinement::normalize2D(H.inv()*projPInImg2));
+    std :: cout << "Img1: " << projPInImg1.t() << " " << PatchRefinement::normalize2D(H.inv()*projPInImg2) << std::endl;
+    std :: cout << "Img2: " << projPInImg2.t() << " " << PatchRefinement::normalize2D(H*projPInImg1) << std::endl;
 
     if ( diff < 0.0001 && diff2 < 0.0001)
         std::cout << "\t Homography is OK!" << std::endl;
@@ -93,36 +98,17 @@ void testHomography(cv::Mat image2, cv::Mat point3DInImg1, cv::Mat K1, cv::Mat K
     cv::Mat image1;
     cv::warpPerspective(image2, image1, H, image2.size(), cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar());
 
-
-    // Let's verify the homography
-//    std::cout << "----------------------"<< std::endl;
-//    std::cout << "Verifying warping patches" << std::endl;
+//    PatchRefinement patchRefinement(patchSize);
 //
-//    // Patch parameters
-//    int halfPatchSize = (patchSize - 1) / 2;
-//
-//    // Patch we observe in image 2
-//    Eigen::Vector2d Pin2;
-//    Pin2[0] = int(projPInImg2.at<float>(0));
-//    Pin2[1] = int(projPInImg2.at<float>(1));
-//    std::vector<double> patchImg2 = patchRefinement.computePatch(image2, Pin2, Eigen::Matrix3d::Identity());
-//
-//    // Patch we observe in image 1
-//    Eigen::Vector2d Pin1;
-//    Pin1[0] = int(projPInImg1.at<float>(0));
-//    Pin1[1] = int(projPInImg1.at<float>(1));
-//
+//    cv::Point2f refKpInA, refKpInB, result;
+//    refKpInA.x = projPInImg1.at<float>(0);
+//    refKpInA.y = projPInImg1.at<float>(1);
+//    refKpInB.x = projPInImg2.at<float>(0);
+//    refKpInB.y = projPInImg2.at<float>(1);
 //    Eigen::Matrix3d Heigen;
 //    cv::cv2eigen(H, Heigen);
-//    std::vector<double> patchImg1 = patchRefinement.computePatch(image1, Pin1, Heigen.inverse());
-//
-//    std::cout << "Patch 1!" << std::endl;
-//    patchRefinement.printPatch(patchImg1, patchSize);
-//
-//    std::cout << "Patch 2!" << std::endl;
-//    patchRefinement.printPatch(patchImg2, patchSize);
-//
-//    std::cout << "Patch diff: " << patchRefinement.computePatchDifference(patchImg1, patchImg2) << std::endl;
+
+
 }
 
 int main(int argc, char **argv)
@@ -135,8 +121,8 @@ int main(int argc, char **argv)
     int patchSize = 11;
 
     // Verify the optimization
-    cv::Point2f refP = cv::Point2f(50,50);
-    cv::Point2f curP = cv::Point2f(51.5,49.5);
+    cv::Point2f refP = cv::Point2f(100,100);
+    cv::Point2f curP = cv::Point2f(101,101);
     testOptimization(image, patchSize, refP, curP, 1e-6);
 
     // Let's check the homography with data from real-life system

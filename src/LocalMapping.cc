@@ -255,7 +255,8 @@ void LocalMapping::ProcessNewKeyFrame()
     }
 
     std::cout << "\t Subpixel refinement for " << countRefined << " / " << possibleForSubPix << " | All obs: " << vpMapPointMatches.size() << std::endl;
-
+//    if ( countRefined > 0)
+//        exit(0);
     // Update links in the Covisibility Graph
     mpCurrentKeyFrame->UpdateConnections();
 

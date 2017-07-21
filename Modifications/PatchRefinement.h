@@ -22,7 +22,7 @@ public:
         halfPatchSize = (patchSize - 1)/2;
 
         iterationNumber = 15;
-        stepStopThreshold = 0.10;
+        stepStopThreshold = 0.01;
     };
 
 
@@ -43,7 +43,7 @@ public:
      *
      */
     bool optimizePosition(cv::Mat refLargePatch, cv::Point2f refPatchLoc, cv::Point2f refPoint, float refScale,
-                          cv::Mat curLargePatch, cv::Point2f curPatchLoc, cv::Point2f curPoint, float curScale,
+                          cv::Mat curLargePatch, cv::Point2f curPatchLoc, float curScale,
                           Eigen::Matrix3d H, cv::Point2f &subpixCorrection);
 
 
@@ -111,20 +111,20 @@ private:
      *
      * The method can be used to compute patch of original image with H = Identity()
      */
-    std::vector<double> computePatchOnSubImage(cv::Mat refLargePatch, cv::Point2f refPatchLoc,  double refScale,
-                                               cv::Point2f curPoint, double curScale, Eigen::Matrix3d H);
+    std::vector<double> computePatchOnSubImage(cv::Mat curLargePatch, cv::Point2f curPatchLoc,  double curScale,
+                                               cv::Point2f refPoint, double refScale, Eigen::Matrix3d H);
 
 
     /*
      * Computes the difference between patches and weights the error with the provided gradient vector
      */
-    Eigen::Vector2d computePatchDifference(std::vector<double> patch, std::vector<double> optimizedPatch,
+    Eigen::Vector2d computePatchDifference(std::vector<double> refPatch, std::vector<double> curPatch,
                                            std::vector<Eigen::Vector2d> imageGradient);
 
     /*
     * Computes the SSD difference between patches
     */
-    double computePatchDifference(std::vector<double> patch, std::vector<double> optimizedPatch);
+    double computePatchDifference(std::vector<double> refPatch, std::vector<double> curPatch);
 
 
     /*
