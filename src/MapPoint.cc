@@ -376,10 +376,10 @@ void MapPoint::UpdateNormalAndDepth()
     }
 }
 
-bool MapPoint::RefineSubPix(KeyFrame* currentKF, size_t idx, int patchSize)
+bool MapPoint::RefineSubPix(KeyFrame* currentKF, size_t idx, int patchSize, int &numberOfIterations, double & errBefore, double &errAfter)
 {
     const double reprojectionThr = 3;
-    static const bool verbose = 1;
+    static const bool verbose = 0;
 
     enum PATCHVERSION { AGAINSTFIRST, AGAINSTCLOSESTANGLE };
     PATCHVERSION selectedPatchVersion = PATCHVERSION::AGAINSTFIRST;
@@ -552,6 +552,11 @@ bool MapPoint::RefineSubPix(KeyFrame* currentKF, size_t idx, int patchSize)
         // Removing the distortion
         currentKF->mvKeysUn[idx].pt = UndistortPoint(currentKF->mvKeys[idx].pt, currentKF->mK,
                                                      currentKF->mDistCoef);
+
+        // Saving some statistics
+        numberOfIterations = patchRefinement.numberOfPerformedIterations;
+        errBefore = patchRefinement.errBefore;
+        errAfter = patchRefinement.errAfter;
     }
 
     return true;

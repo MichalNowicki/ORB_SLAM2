@@ -25,7 +25,6 @@ public:
         stepStopThreshold = 0.01;
     };
 
-
     /*
      * Optimizes the position of the feature:
      *  refLargePatch  -> subImage from image 01
@@ -128,12 +127,9 @@ private:
 
 
     /*
-     * Computes the patch around point (x,y) in img while also computing gradient in those subpix positions based on precomputed gradient
+     * Computes the patch around point (x,y) in img. It can be with larger size if needed
      */
-    std::vector<double>
-    computePatch(cv::Mat img, Eigen::Vector2d kp, std::vector<Eigen::Vector2d> gradient,
-                 std::vector<Eigen::Vector2d> &gd);
-
+    std::vector<double> computePatch(cv::Mat img, Eigen::Vector2d kp, int patchSize);
 
 
     /*
@@ -141,7 +137,7 @@ private:
      *
      * Attention! It assumes square image as all patches will be square!
      */
-    void computeImageGradient(cv::Mat &img, cv::Point2f kp, std::vector<Eigen::Vector2d> &gradient, Eigen::Matrix2d &HessianInv);
+    std::vector<double> computeRefPatchAndGradient(cv::Mat &img, Eigen::Vector2d kp, std::vector<Eigen::Vector2d> &gradient, Eigen::Matrix2d &HessianInv);
 
 
     int verbose;
@@ -150,6 +146,10 @@ private:
     int iterationNumber;
     double stepStopThreshold;
 
+
+public:
+    int numberOfPerformedIterations;
+    double errBefore, errAfter;
 };
 
 

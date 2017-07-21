@@ -76,7 +76,7 @@ public:
 
     void UpdateNormalAndDepth();
 
-    bool RefineSubPix(KeyFrame* pKF,size_t idx, int patchSize);
+    bool RefineSubPix(KeyFrame* pKF,size_t idx, int patchSize, int &numberOfIterations, double & errBefore, double &errAfter);
 
     float GetMinDistanceInvariance();
     float GetMaxDistanceInvariance();

@@ -224,6 +224,9 @@ void LocalMapping::ProcessNewKeyFrame()
     const vector<MapPoint*> vpMapPointMatches = mpCurrentKeyFrame->GetMapPointMatches();
 
     int countRefined = 0, possibleForSubPix = 0;
+    std::vector<int> numbersOfIterations;
+    std::vector<std::pair<double, double>> subpixErrorGains;
+
     for(size_t i=0; i<vpMapPointMatches.size(); i++)
     {
         MapPoint* pMP = vpMapPointMatches[i];
@@ -237,9 +240,14 @@ void LocalMapping::ProcessNewKeyFrame()
 
                     // TODO: SUBPIX REFINEMENT
                     const int patchSize = 11;
-                    bool refined = pMP->RefineSubPix(mpCurrentKeyFrame, i, patchSize);
-                    if (refined)
+                    int numberOfIterations;
+                    double errBefore, errAfter;
+                    bool refined = pMP->RefineSubPix(mpCurrentKeyFrame, i, patchSize, numberOfIterations, errBefore, errAfter);
+                    if (refined) {
+                        numbersOfIterations.push_back(numberOfIterations);
+                        subpixErrorGains.push_back(std::make_pair(errBefore, errAfter));
                         countRefined++;
+                    }
 
                     pMP->AddObservation(mpCurrentKeyFrame, i);
                     pMP->UpdateNormalAndDepth();
@@ -254,12 +262,25 @@ void LocalMapping::ProcessNewKeyFrame()
         }
     }
 
-    std::cout << "\t Subpixel refinement for " << countRefined << " / " << possibleForSubPix << " | All obs: " << vpMapPointMatches.size() << std::endl;
+    double avgIterations = std::accumulate( numbersOfIterations.begin(), numbersOfIterations.end(), 0.0) * 1.0 /numbersOfIterations.size();
+
+    double avgErrBef = 0.0;
+    double avgErrAfter = 0.0;
+    for (int i=0;i<subpixErrorGains.size();i++)
+    {
+        avgErrBef += subpixErrorGains[i].first;
+        avgErrAfter += subpixErrorGains[i].second;
+    }
+    avgErrBef = avgErrBef / subpixErrorGains.size();
+    avgErrAfter = avgErrAfter / subpixErrorGains.size();
+
+    //    float averageCurPatch =
+
+    std::cout << "\t Subpixel refinement for " << countRefined << " / " << possibleForSubPix << " avg iter: " << avgIterations << " B: " << avgErrBef << " E: "<< avgErrAfter << std::endl;
 //    if ( countRefined > 0)
 //        exit(0);
     // Update links in the Covisibility Graph
     mpCurrentKeyFrame->UpdateConnections();
-
 
 
 //    const vector<KeyFrame*> vNeighKFs = mpCurrentKeyFrame->GetVectorCovisibleKeyFrames();
