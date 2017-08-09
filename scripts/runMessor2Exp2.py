@@ -41,7 +41,7 @@ sequences = [
 runsPerSequence = 1;
 
 
-mainDatasetPath = '/mnt/data/MessorExp2/';
+mainDatasetPath = '/mnt/data/MessorExp2';
 
 print 'mainDatasetPath: ' + mainDatasetPath
 
@@ -56,10 +56,10 @@ for seq in sequences:
         call('rm results/' + str(seq) + '/*', shell=True);
 
     # We call this command
-    print('./Examples/RGB-D/rgbd_tum Vocabulary/ORBvoc.txt Examples/RGB-D/Messor2Exp2.yaml ' + str(mainDatasetPath) + ' ' + str(mainDatasetPath) +'/orbslamAssociate.txt');
+    print('./Examples/RGB-D/rgbd_tum Vocabulary/ORBvoc.txt Examples/RGB-D/Messor2Exp2.yaml ' + str(mainDatasetPath) + '/' + str(seq) +' ' + str(mainDatasetPath) +'/orbslamAssociate.txt');
 
     # Run code
-    call('./Examples/RGB-D/rgbd_tum Vocabulary/ORBvoc.txt Examples/RGB-D/Messor2Exp2.yaml ' + str(mainDatasetPath) + ' ' + str(mainDatasetPath) +'/orbslamAssociate.txt', shell=True);
+    call('./Examples/RGB-D/rgbd_tum Vocabulary/ORBvoc.txt Examples/RGB-D/Messor2Exp2.yaml ' + str(mainDatasetPath) + '/' + str(seq) +' ' + str(mainDatasetPath) +'/orbslamAssociate.txt', shell=True);
 
     # Copy results
     #CameraTrajectory.txt
