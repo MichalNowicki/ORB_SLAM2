@@ -62,5 +62,5 @@ for seq in sequences:
     call('./Examples/RGB-D/rgbd_tum Vocabulary/ORBvoc.txt Examples/RGB-D/Messor2Exp2.yaml ' + str(mainDatasetPath) + '/' + str(seq) +' ' + str(mainDatasetPath) +'/orbslamAssociate.txt', shell=True);
 
     # Copy results
-    #CameraTrajectory.txt
-    #call('mv KeyFrameTrajectory.txt results/' + detector+ "_harrisK_" + str(harrisK) + '/sequence_' + str(seq) + '_' + str(runId) + '.txt', shell=True);
+    call('mv CameraTrajectory.txt results/' + str(seq) + '/', shell=True);
+    call('mv KeyFrameTrajectory.txt results/' + str(seq) + '/', shell=True);
