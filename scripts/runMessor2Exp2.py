@@ -15,26 +15,26 @@ else:
 
 
 sequences = [
-    'outdoor1' \
-    'outdoor2' \
-    'outdoor3' \
-    'testWalk2' \
-    'tripodFreeVel0p35' \
-    'tripodFreeVel0p7' \
-    'tripodRampVel0p2' \
-    'tripodRampVel0p25' \
-    'tripodRampVel0p25_1' \
-    'tripodSquareRotVel0p1' \
-    'tripodSquareRotVel0p35' \
-    'tripodSquareRotVel0p7' \
-    'tripodSquareRotVel1p0' \
-    'tripodSquareVel0p1' \
-    'tripodSquareVel0p35' \
-    'tripodSquareVel0p7' \
-    'tripodSquareVel1p0' \
-    'tripodXYZvel0p1' \
-    'tripodXYZvel0p35' \
-    'tripodXYZvel0p7' \
+    'outdoor1', \
+    'outdoor2', \
+    'outdoor3', \
+    'testWalk2', \
+    'tripodFreeVel0p35', \
+    'tripodFreeVel0p7', \
+    'tripodRampVel0p2', \
+    'tripodRampVel0p25', \
+    'tripodRampVel0p25_1', \
+    'tripodSquareRotVel0p1', \
+    'tripodSquareRotVel0p35', \
+    'tripodSquareRotVel0p7', \
+    'tripodSquareRotVel1p0', \
+    'tripodSquareVel0p1', \
+    'tripodSquareVel0p35', \
+    'tripodSquareVel0p7', \
+    'tripodSquareVel1p0', \
+    'tripodXYZvel0p1', \
+    'tripodXYZvel0p35', \
+    'tripodXYZvel0p7', \
     'tripodXYZvel1p0' \
 ];
 
@@ -62,4 +62,5 @@ for seq in sequences:
     call('./Examples/RGB-D/rgbd_tum Vocabulary/ORBvoc.txt Examples/RGB-D/Messor2Exp2.yaml ' + str(mainDatasetPath) + ' ' + str(mainDatasetPath) +'/orbslamAssociate.txt', shell=True);
 
     # Copy results
+    #CameraTrajectory.txt
     #call('mv KeyFrameTrajectory.txt results/' + detector+ "_harrisK_" + str(harrisK) + '/sequence_' + str(seq) + '_' + str(runId) + '.txt', shell=True);
