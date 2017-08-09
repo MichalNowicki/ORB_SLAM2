@@ -56,10 +56,10 @@ for seq in sequences:
         call('rm results/' + str(seq) + '/*', shell=True);
 
     # We call this command
-    print('./Examples/RGB-D/rgbd_tum Vocabulary/ORBvoc.txt Examples/RGB-D/Messor2Exp2.yaml ' + str(mainDatasetPath) + '/' + str(seq) +' ' + str(mainDatasetPath) +'/orbslamAssociate.txt');
+    print('./Examples/RGB-D/rgbd_tum Vocabulary/ORBvoc.txt Examples/RGB-D/Messor2Exp2.yaml ' + str(mainDatasetPath) + '/' + str(seq) +' ' + str(mainDatasetPath) +'/' + str(seq) +'/orbslamAssociate.txt');
 
     # Run code
-    call('./Examples/RGB-D/rgbd_tum Vocabulary/ORBvoc.txt Examples/RGB-D/Messor2Exp2.yaml ' + str(mainDatasetPath) + '/' + str(seq) +' ' + str(mainDatasetPath) +'/orbslamAssociate.txt', shell=True);
+    call('./Examples/RGB-D/rgbd_tum Vocabulary/ORBvoc.txt Examples/RGB-D/Messor2Exp2.yaml ' + str(mainDatasetPath) + '/' + str(seq) +' ' + str(mainDatasetPath) +'/' + str(seq) +'/orbslamAssociate.txt', shell=True);
 
     # Copy results
     call('mv CameraTrajectory.txt results/' + str(seq) + '/', shell=True);
