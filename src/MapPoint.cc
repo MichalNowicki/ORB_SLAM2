@@ -382,7 +382,7 @@ bool MapPoint::RefineSubPix(KeyFrame* currentKF, size_t idx, int patchSize, int 
     static const bool verbose = 0;
 
     enum PATCHVERSION { AGAINSTFIRST, AGAINSTCLOSESTANGLE };
-    PATCHVERSION selectedPatchVersion = PATCHVERSION::AGAINSTFIRST;
+    PATCHVERSION selectedPatchVersion = PATCHVERSION::AGAINSTCLOSESTANGLE;
 
      // We get the copy of the observations and world position of a point to work on
     map<KeyFrame*,size_t> observations;

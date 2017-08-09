@@ -242,12 +242,12 @@ void LocalMapping::ProcessNewKeyFrame()
                     const int patchSize = 11;
                     int numberOfIterations;
                     double errBefore, errAfter;
-                    bool refined = pMP->RefineSubPix(mpCurrentKeyFrame, i, patchSize, numberOfIterations, errBefore, errAfter);
-                    if (refined) {
-                        numbersOfIterations.push_back(numberOfIterations);
-                        subpixErrorGains.push_back(std::make_pair(errBefore, errAfter));
-                        countRefined++;
-                    }
+//                    bool refined = pMP->RefineSubPix(mpCurrentKeyFrame, i, patchSize, numberOfIterations, errBefore, errAfter);
+//                    if (refined) {
+//                        numbersOfIterations.push_back(numberOfIterations);
+//                        subpixErrorGains.push_back(std::make_pair(errBefore, errAfter));
+//                        countRefined++;
+//                    }
 
                     pMP->AddObservation(mpCurrentKeyFrame, i);
                     pMP->UpdateNormalAndDepth();
