@@ -138,3 +138,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/Examples/Test)
 add_executable(patch_test
         Examples/Test/patchTest.cpp)
 target_link_libraries(patch_test boost_system boost_thread ${LIBZIP_LIBRARY} ${PROJECT_NAME})
+
+add_executable(g2o_test
+        Examples/Test/g2oNewEdgeTest.cpp)
+target_link_libraries(g2o_test boost_system boost_thread ${LIBZIP_LIBRARY} ${PROJECT_NAME})

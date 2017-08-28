@@ -81,10 +81,72 @@ void LocalMapping::Run()
                 // Local BA
                 // TODO: Modified to return chi2 statistics
                 if(mpMap->KeyFramesInMap()>2) {
-                    std::vector<double> chi2 = Optimizer::LocalBundleAdjustment(mpCurrentKeyFrame, &mbAbortBA, mpMap, sigma);
-//                    chi2statistics.push_back(chi2);
+                    std::string name = "preBA.txt";
+                    Optimizer::saveBAProblem(mpCurrentKeyFrame, &mbAbortBA, mpMap, sigma, name);
+
+                    // BA
+//                    std::cout << "!!!!\tBEFORE BA! " << std::endl;
+//                    std::vector<double> chi2 = Optimizer::LocalBundleAdjustment(mpCurrentKeyFrame, &mbAbortBA, mpMap, sigma);
+                    std::vector<double> chi2 = Optimizer::LocalBundleAdjustmentSingleInverseDepth(mpCurrentKeyFrame, &mbAbortBA, mpMap, sigma);
                     chi2statistics = chi2;
 
+//                    name = "postBA.txt";
+//                    Optimizer::saveBAProblem(mpCurrentKeyFrame, &mbAbortBA, mpMap, sigma, name);
+
+                    // PATCHES
+//                    const vector<MapPoint*> vpMapPointMatches = mpCurrentKeyFrame->GetMapPointMatches();
+//                    int countRefined = 0, possibleForSubPix = 0;
+//                    std::vector<int> numbersOfIterations;
+//                    std::vector<std::pair<double, double>> subpixErrorGains;
+//                    const int patchSize = 5;
+//
+//                    for(size_t i=0; i<vpMapPointMatches.size(); i++)
+//                    {
+//                        MapPoint* pMP = vpMapPointMatches[i];
+//                        if(pMP)
+//                        {
+//                            if(!pMP->isBad())
+//                            {
+//                                possibleForSubPix++;
+//
+//                                // TODO: SUBPIX REFINEMENT
+//                                int numberOfIterations;
+//                                double errBefore, errAfter;
+//                                bool refined = pMP->RefineSubPix(mpCurrentKeyFrame, i, patchSize, numberOfIterations,
+//                                                                 errBefore, errAfter);
+//                                if (refined) {
+//                                    numbersOfIterations.push_back(numberOfIterations);
+//                                    subpixErrorGains.push_back(std::make_pair(errBefore, errAfter));
+//                                    countRefined++;
+//                                }
+//
+//                            }
+//                        }
+//                    }
+//
+//                    double avgIterations = std::accumulate( numbersOfIterations.begin(), numbersOfIterations.end(), 0.0) * 1.0 /numbersOfIterations.size();
+//
+//                    double avgErrBef = 0.0;
+//                    double avgErrAfter = 0.0;
+//                    for (int i=0;i<subpixErrorGains.size();i++)
+//                    {
+//                        avgErrBef += subpixErrorGains[i].first;
+//                        avgErrAfter += subpixErrorGains[i].second;
+//                    }
+//                    avgErrBef = avgErrBef / subpixErrorGains.size();
+//                    avgErrAfter = avgErrAfter / subpixErrorGains.size();
+//
+//                    //    float averageCurPatch =
+//
+//                    std::cout << "\t Subpixel refinement for " << countRefined << " / " << possibleForSubPix << " avg iter: " << avgIterations << " B: " << avgErrBef/(patchSize*patchSize) << " E: "<< avgErrAfter/(patchSize*patchSize) << std::endl;
+//
+//
+//                    // BA
+//                    std::cout << "!!!!\tAFTER BA! " << std::endl;
+//                    chi2 = Optimizer::LocalBundleAdjustment(mpCurrentKeyFrame, &mbAbortBA, mpMap, sigma);
+
+
+//                    exit(0);
 
                     // TODO: Verifying the number of keyframes and local timestamp diff
                     list<KeyFrame*> lLocalKeyFrames;
@@ -139,55 +201,55 @@ void LocalMapping::Run()
         usleep(3000);
     }
 
-    printf("Global BA\n");
-
-    bool mbStopGBA = false;
-    chi2statistics = Optimizer::GlobalBundleAdjustemnt(mpMap,10,&mbStopGBA,mpCurrentKeyFrame->mnId,false, sigma);
-
-    /*
-    * We verify the reprojection error
-    *
-    */
-//    vector<KeyFrame*> vpKFs = mpMap->GetAllKeyFrames();
-    vector<MapPoint*> vpMP = mpMap->GetAllMapPoints();
-
-    std::vector<double> reprojectionErr;
-    for(auto lit=vpMP.begin(), lend=vpMP.end(); lit!=lend; lit++) {
-        MapPoint *pMP = *lit;
-        cv::Mat mWorldPos = pMP->GetWorldPos();
-
-        const map<KeyFrame *, size_t> observations = pMP->GetObservations();
-
-        //Set edges
-        for (map<KeyFrame *, size_t>::const_iterator mit = observations.begin(), mend = observations.end();
-             mit != mend; mit++) {
-            KeyFrame *pKFi = mit->first;
-
-            if (!pKFi->isBad()) {
-                const cv::KeyPoint &kpUn = pKFi->mvKeysUn[mit->second];
-
-                cv::Mat pointInA = pKFi->GetRotation() * mWorldPos + pKFi->GetTranslation();
-                cv::Mat projectionInA =  pKFi->mK * pointInA;
-                double z = projectionInA.at<float>(2,0);
-                projectionInA.col(0) = projectionInA.col(0) / z;
-
-
-                const float refKpScale =  pKFi->mvScaleFactors[kpUn.octave];
-
-                float img1ReprojError = std::sqrt(pow(projectionInA.at<float>(0,0) - kpUn.pt.x, 2) + pow(projectionInA.at<float>(1,0) - kpUn.pt.y, 2))  / refKpScale  ;
-
-                if ( std::isnan(img1ReprojError) )
-                    std::cout <<"NAN" << std::endl;
-                else
-                    reprojectionErr.push_back(img1ReprojError);
-            }
-        }
-
-
-    }
-
-    std::cout << "\tAvg reprojection error : " << accumulate( reprojectionErr.begin(), reprojectionErr.end(), 0.0)/reprojectionErr.size() << std::endl;
-    reprojectionStatistics = reprojectionErr;
+//    printf("Global BA\n");
+//
+//    bool mbStopGBA = false;
+//    chi2statistics = Optimizer::GlobalBundleAdjustemnt(mpMap,10,&mbStopGBA,mpCurrentKeyFrame->mnId,false, sigma);
+//
+//    /*
+//    * We verify the reprojection error
+//    *
+//    */
+////    vector<KeyFrame*> vpKFs = mpMap->GetAllKeyFrames();
+//    vector<MapPoint*> vpMP = mpMap->GetAllMapPoints();
+//
+//    std::vector<double> reprojectionErr;
+//    for(auto lit=vpMP.begin(), lend=vpMP.end(); lit!=lend; lit++) {
+//        MapPoint *pMP = *lit;
+//        cv::Mat mWorldPos = pMP->GetWorldPos();
+//
+//        const map<KeyFrame *, size_t> observations = pMP->GetObservations();
+//
+//        //Set edges
+//        for (map<KeyFrame *, size_t>::const_iterator mit = observations.begin(), mend = observations.end();
+//             mit != mend; mit++) {
+//            KeyFrame *pKFi = mit->first;
+//
+//            if (!pKFi->isBad()) {
+//                const cv::KeyPoint &kpUn = pKFi->mvKeysUn[mit->second];
+//
+//                cv::Mat pointInA = pKFi->GetRotation() * mWorldPos + pKFi->GetTranslation();
+//                cv::Mat projectionInA =  pKFi->mK * pointInA;
+//                double z = projectionInA.at<float>(2,0);
+//                projectionInA.col(0) = projectionInA.col(0) / z;
+//
+//
+//                const float refKpScale =  pKFi->mvScaleFactors[kpUn.octave];
+//
+//                float img1ReprojError = std::sqrt(pow(projectionInA.at<float>(0,0) - kpUn.pt.x, 2) + pow(projectionInA.at<float>(1,0) - kpUn.pt.y, 2))  / refKpScale  ;
+//
+//                if ( std::isnan(img1ReprojError) )
+//                    std::cout <<"NAN" << std::endl;
+//                else
+//                    reprojectionErr.push_back(img1ReprojError);
+//            }
+//        }
+//
+//
+//    }
+//
+//    std::cout << "\tAvg reprojection error : " << accumulate( reprojectionErr.begin(), reprojectionErr.end(), 0.0)/reprojectionErr.size() << std::endl;
+//    reprojectionStatistics = reprojectionErr;
 
 
     printf("Finished Global BA\n");
@@ -239,9 +301,9 @@ void LocalMapping::ProcessNewKeyFrame()
                     possibleForSubPix++;
 
                     // TODO: SUBPIX REFINEMENT
-                    const int patchSize = 11;
-                    int numberOfIterations;
-                    double errBefore, errAfter;
+//                    const int patchSize = 11;
+//                    int numberOfIterations;
+//                    double errBefore, errAfter;
 //                    bool refined = pMP->RefineSubPix(mpCurrentKeyFrame, i, patchSize, numberOfIterations, errBefore, errAfter);
 //                    if (refined) {
 //                        numbersOfIterations.push_back(numberOfIterations);

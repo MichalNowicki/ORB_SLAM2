@@ -37,6 +37,7 @@
 #include "../core/base_vertex.h"
 #include "../core/base_binary_edge.h"
 #include "../core/base_unary_edge.h"
+#include "../core/base_multi_edge.h"
 #include "se3_ops.h"
 #include "se3quat.h"
 #include "types_sba.h"
@@ -201,6 +202,86 @@ public:
   double fx, fy, cx, cy, bf;
 };
 
+
+
+class VertexSBAPointInvD : public BaseVertex<1, double>
+{
+public:
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+    VertexSBAPointInvD();
+    bool read(std::istream& is);
+    bool write(std::ostream& os) const;
+
+    virtual void setToOriginImpl() {
+        _estimate = 0;
+    }
+
+    virtual void oplusImpl(const double* update)
+    {
+        _estimate += update[0];
+    }
+
+    double u0, v0;
+};
+
+
+class EdgeProjectInvD : public  BaseMultiEdge<2, Vector2d>
+{
+    public:
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+    EdgeProjectInvD()  {
+    }
+
+    bool read  (std::istream& is);
+    bool write (std::ostream& os) const;
+    void computeError();
+
+
+    Vector2d cam_project(const Vector3d & trans_xyz) const;
+
+    bool isDepthPositive();
+
+    double fx, fy, cx, cy;
+};
+
+
+
+    // Takes pose, pose and feature - computes image reprojection error assuming perfect measurement in first image
+    //
+    // <2, Vector2d, VertexSBAPointXYZ, VertexSBAPointXYZ, VertexSE3Expmap>
+//class  EdgeSE3ProjectInvD: public BaseMultiEdge<-1,VectorXD>{
+//public:
+//    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+//
+//    EdgeSE3ProjectXYZ();
+//
+//    bool read(std::istream& is);
+//
+//    bool write(std::ostream& os) const;
+//
+//    void computeError()  {
+//        const VertexSE3Expmap* v1 = static_cast<const VertexSE3Expmap*>(_vertices[1]);
+//        const VertexSBAPointXYZ* v2 = static_cast<const VertexSBAPointXYZ*>(_vertices[0]);
+//
+//        Vector2d obs(_measurement);
+//        _error = obs-cam_project(v1->estimate().map(v2->estimate()));
+//    }
+//
+//    bool isDepthPositive() {
+//        const VertexSE3Expmap* v1 = static_cast<const VertexSE3Expmap*>(_vertices[1]);
+//        const VertexSBAPointXYZ* v2 = static_cast<const VertexSBAPointXYZ*>(_vertices[0]);
+//        return (v1->estimate().map(v2->estimate()))(2)>0.0;
+//    }
+//
+//
+//    virtual void linearizeOplus();
+//
+//    Vector2d cam_project(const Vector3d & trans_xyz) const;
+//
+//    double fx, fy, cx, cy;
+//};
 
 
 } // end namespace

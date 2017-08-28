@@ -364,4 +364,105 @@ void EdgeStereoSE3ProjectXYZOnlyPose::linearizeOplus() {
 }
 
 
+bool EdgeProjectInvD::write(std::ostream &os) const {
+    for (int i = 0; i < 2; i++) {
+        os << measurement()[i] << " ";
+    }
+
+    for (int i = 0; i < 2; i++)
+        for (int j = i; j < 2; j++) {
+            os << " " << information()(i, j);
+        }
+    return os.good();
+}
+
+bool EdgeProjectInvD::read(std::istream& is) {
+    for (int i = 0; i < 2; i++) {
+        is >> _measurement[i];
+    }
+    for (int i = 0; i < 2; i++)
+        for (int j = i; j < 2; j++) {
+            is >> information()(i, j);
+            if (i != j)
+                information()(j, i) = information()(i, j);
+        }
+    return true;
+}
+
+void EdgeProjectInvD::computeError() {
+//    std::cout << "EdgeProjectInvD::computeError()" << std::endl;
+
+    const VertexSBAPointInvD *pointInvD = static_cast<const VertexSBAPointInvD *>(_vertices[0]);
+    const VertexSE3Expmap *firstPose = static_cast<const VertexSE3Expmap *>(_vertices[1]);
+    const VertexSE3Expmap *secondPose = static_cast<const VertexSE3Expmap *>(_vertices[2]);
+
+//    std::cout << "\tPoint: " << pointInvD->id() << " FirstPose: " << firstPose->id() << " SecondPose: " << secondPose->id() << std::endl;
+
+//    std::cout <<"\t(u0, v0) = (" << pointInvD->u0 << ", " << pointInvD->v0 << ")" << std::endl;
+    Eigen::Vector3d pointInFirst;
+    pointInFirst[2] = 1. / pointInvD->estimate();
+    pointInFirst[0] = (pointInvD->u0 - cx) * pointInFirst[2] / fx;
+    pointInFirst[1] = (pointInvD->v0 - cy) * pointInFirst[2] / fy;
+
+//    std::cout << "\tPointInFirst : " << pointInFirst << std::endl;
+
+    Eigen::Vector3d pointInGlobal = firstPose->estimate().inverse().map(pointInFirst);
+
+//    std::cout << "\tPointInGlobal : " << pointInGlobal << std::endl;
+
+//    std::cout << "\tPointInSecond: " << secondPose->estimate().inverse().map(pointInGlobal) << std::endl;
+
+    Vector2d obs(_measurement);
+    Vector2d projectedPoint = cam_project(secondPose->estimate().map(pointInGlobal));
+    _error = obs-projectedPoint;
+
+//    std::cout <<"\tMeasurement = (" << obs[0] << ", " << obs[1] << ")" << std::endl;
+//    std::cout <<"\tProjected = (" << projectedPoint[0] << ", " << projectedPoint[1] << ")" << std::endl;
+}
+
+Vector2d EdgeProjectInvD::cam_project(const Vector3d & trans_xyz) const{
+    Vector2d proj = project2d(trans_xyz);
+    Vector2d res;
+    res[0] = proj[0] * fx + cx;
+    res[1] = proj[1] * fy + cy;
+    return res;
+}
+
+
+
+VertexSBAPointInvD::VertexSBAPointInvD() : BaseVertex<1, double>() {
+
+};
+
+bool VertexSBAPointInvD::read(std::istream& is) {
+    return false;
+};
+
+bool VertexSBAPointInvD::write(std::ostream& os) const {
+    return false;
+};
+
+bool EdgeProjectInvD::isDepthPositive() {
+    const VertexSBAPointInvD *pointInvD = static_cast<const VertexSBAPointInvD *>(_vertices[0]);
+    const VertexSE3Expmap *firstPose = static_cast<const VertexSE3Expmap *>(_vertices[1]);
+    const VertexSE3Expmap *secondPose = static_cast<const VertexSE3Expmap *>(_vertices[2]);
+
+    Eigen::Vector3d pointInFirst;
+    pointInFirst[2] = 1. / pointInvD->estimate();
+    pointInFirst[0] = (pointInvD->u0 - cx) * pointInFirst[2] / fx;
+    pointInFirst[1] = (pointInvD->v0 - cy) * pointInFirst[2] / fy;
+
+
+    Eigen::Vector3d pointInGlobal = firstPose->estimate().inverse().map(pointInFirst);
+    Eigen::Vector3d pointInSecond = secondPose->estimate().map(pointInGlobal);
+
+    return pointInFirst[2] > 0.0 && pointInSecond[2] > 0.0;
+}
+
+
+
+//VertexSBAPointInvD::VertexSBAPointInvD() : BaseVertex<1, Vector1D>() {
+//}
+
+
 } // end namespace

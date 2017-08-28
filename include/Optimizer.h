@@ -44,6 +44,8 @@ public:
     std::vector<double> static GlobalBundleAdjustemnt(Map* pMap, int nIterations=5, bool *pbStopFlag=NULL,
                                        const unsigned long nLoopKF=0, const bool bRobust = true, float sigma = 1.0);
     std::vector<double> static LocalBundleAdjustment(KeyFrame* pKF, bool *pbStopFlag, Map *pMap, float sigma = 1.0);
+    std::vector<double> static LocalBundleAdjustmentSingleInverseDepth(KeyFrame* pKF, bool *pbStopFlag, Map *pMap, float sigma = 1.0);
+
     int static PoseOptimization(Frame* pFrame, float sigma = 1.0);
 
     // if bFixScale is true, 6DoF optimization (stereo,rgbd), 7DoF otherwise (mono)
@@ -56,6 +58,8 @@ public:
     // if bFixScale is true, optimize SE3 (stereo,rgbd), Sim3 otherwise (mono)
     static int OptimizeSim3(KeyFrame* pKF1, KeyFrame* pKF2, std::vector<MapPoint *> &vpMatches1,
                             g2o::Sim3 &g2oS12, const float th2, const bool bFixScale);
+
+    void static saveBAProblem(KeyFrame *pKF, bool* pbStopFlag, Map* pMap, float sigma, std::string name);
 };
 
 } //namespace ORB_SLAM
