@@ -129,12 +129,13 @@ void MapPoint::EraseObservation(KeyFrame* pKF)
             if(mpRefKF==pKF) {// TODO: When we change ref keyframe, it is necessary to recompute patch matchings
 //                std::cout << "RefKF was removed!" << std::endl;
                 refKFChanged = true;
-                mnFirstKFid = -1;
+//                mnFirstKFid = -1;
 
                 // TODO: If we remove the first observation, the dense error does not make sense
-                bBad = true;
+              //  bBad = true;
 
                 mpRefKF = mObservations.begin()->first;
+                mnFirstKFid = mpRefKF->mnId;
             }
 
             // If only 2 observations or less, discard point

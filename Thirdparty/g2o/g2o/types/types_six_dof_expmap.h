@@ -248,40 +248,24 @@ class EdgeProjectInvD : public  BaseMultiEdge<2, Vector2d>
 
 
 
-    // Takes pose, pose and feature - computes image reprojection error assuming perfect measurement in first image
-    //
-    // <2, Vector2d, VertexSBAPointXYZ, VertexSBAPointXYZ, VertexSE3Expmap>
-//class  EdgeSE3ProjectInvD: public BaseMultiEdge<-1,VectorXD>{
-//public:
-//    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-//
-//    EdgeSE3ProjectXYZ();
-//
-//    bool read(std::istream& is);
-//
-//    bool write(std::ostream& os) const;
-//
-//    void computeError()  {
-//        const VertexSE3Expmap* v1 = static_cast<const VertexSE3Expmap*>(_vertices[1]);
-//        const VertexSBAPointXYZ* v2 = static_cast<const VertexSBAPointXYZ*>(_vertices[0]);
-//
-//        Vector2d obs(_measurement);
-//        _error = obs-cam_project(v1->estimate().map(v2->estimate()));
-//    }
-//
-//    bool isDepthPositive() {
-//        const VertexSE3Expmap* v1 = static_cast<const VertexSE3Expmap*>(_vertices[1]);
-//        const VertexSBAPointXYZ* v2 = static_cast<const VertexSBAPointXYZ*>(_vertices[0]);
-//        return (v1->estimate().map(v2->estimate()))(2)>0.0;
-//    }
-//
-//
-//    virtual void linearizeOplus();
-//
-//    Vector2d cam_project(const Vector3d & trans_xyz) const;
-//
-//    double fx, fy, cx, cy;
-//};
+class EdgeProjectPSI2UV : public  g2o::BaseMultiEdge<2, Vector2D>
+{
+    public:
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+    EdgeProjectPSI2UV()  {
+        resizeParameters(1);
+        installParameter(_cam, 0);
+    }
+
+    virtual bool read  (std::istream& is);
+    virtual bool write (std::ostream& os) const;
+    void computeError  ();
+    virtual void linearizeOplus ();
+    bool isDepthPositive();
+
+    CameraParameters * _cam;
+};
 
 
 } // end namespace

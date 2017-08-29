@@ -1533,6 +1533,16 @@ std::vector<double> Optimizer::LocalBundleAdjustmentSingleInverseDepth(KeyFrame 
     if (pbStopFlag)
         optimizer.setForceStopFlag(pbStopFlag);
 
+
+    Eigen::Vector2d principal_point(pKF->cx, pKF->cy);
+    g2o::CameraParameters * cam_params
+            = new g2o::CameraParameters (pKF->fx, principal_point, 0.);
+    cam_params->setId(0);
+
+    if (!optimizer.addParameter(cam_params)){
+        assert(false);
+    }
+
     unsigned long maxKFid = 0;
 
 // Set Local KeyFrame vertices
@@ -1562,7 +1572,7 @@ std::vector<double> Optimizer::LocalBundleAdjustmentSingleInverseDepth(KeyFrame 
 // Set MapPoint vertices
     const int nExpectedSize = (lLocalKeyFrames.size() + lFixedCameras.size()) * lLocalMapPoints.size();
 
-    vector<g2o::EdgeProjectInvD *> vpEdgesMono;
+    vector<g2o::EdgeProjectPSI2UV *> vpEdgesMono;
     vpEdgesMono.reserve(nExpectedSize);
 
     vector<KeyFrame *> vpEdgeKFMono;
@@ -1589,26 +1599,23 @@ std::vector<double> Optimizer::LocalBundleAdjustmentSingleInverseDepth(KeyFrame 
         const map<KeyFrame *, size_t> observations = pMP->GetObservations();
 
 
-        g2o::VertexSBAPointInvD *vPoint = new g2o::VertexSBAPointInvD();
+        g2o::VertexSBAPointXYZ *vPoint = new g2o::VertexSBAPointXYZ();
 
         // Moving from world coordinate to local coordinate in ref kf and then saving depth as inverse Z
         cv::Mat worldPos = pMP->GetWorldPos();
         cv::Mat pointInRef = refKF->GetRotation() * worldPos + refKF->GetTranslation();
-        vPoint->setEstimate(1. / pointInRef.at<float>(2));
 
-
-        //  original observation
-        int indexOfFirstObs = observations.find(refKF)->second;
-        vPoint->u0 = refKF->mvKeysUn[indexOfFirstObs].pt.x;
-        vPoint->v0 = refKF->mvKeysUn[indexOfFirstObs].pt.y;
+        Eigen::Vector3d pointInverted;
+        pointInverted[0] = pointInRef.at<float>(0) / pointInRef.at<float>(2);
+        pointInverted[1] = pointInRef.at<float>(1) / pointInRef.at<float>(2);
+        pointInverted[2] = 1. / pointInRef.at<float>(2);
+        vPoint->setEstimate(pointInverted );
 
 
         int id = pMP->mnId + maxKFid + 1;
         vPoint->setId(id);
         vPoint->setMarginalized(true);
         optimizer.addVertex(vPoint);
-
-
 
 //Set edges
         for (map<KeyFrame *, size_t>::const_iterator mit = observations.begin(), mend = observations.end();
@@ -1624,15 +1631,27 @@ std::vector<double> Optimizer::LocalBundleAdjustmentSingleInverseDepth(KeyFrame 
 
 // Monocular observation
                 if (pKFi->mvuRight[mit->second] < 0) {
+
                     Eigen::Matrix<double, 2, 1> obs;
                     obs << kpUn.pt.x, kpUn.pt.y;
 
-                    g2o::EdgeProjectInvD *e = new g2o::EdgeProjectInvD();
+                    g2o::EdgeProjectPSI2UV *e = new g2o::EdgeProjectPSI2UV();
                     e->resize(3);
 
+                    // RefKp might not have been added yet
+                    g2o::OptimizableGraph::Vertex * v = dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(refKF->mnId));
+                    if (!v)
+                    {
+                        g2o::VertexSE3Expmap *vSE3 = new g2o::VertexSE3Expmap();
+                        vSE3->setEstimate(Converter::toSE3Quat(refKF->GetPose()));
+                        vSE3->setId(refKF->mnId);
+                        vSE3->setFixed(true);
+                        optimizer.addVertex(vSE3);
+                    }
+
                     e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(id)));
-                    e->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(refKF->mnId)));
-                    e->setVertex(2, dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(pKFi->mnId)));
+                    e->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(pKFi->mnId)));
+                    e->setVertex(2, dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(refKF->mnId)));
 
                     e->setMeasurement(obs);
                     const float &invSigma2 = pKFi->mvInvLevelSigma2[kpUn.octave];
@@ -1643,15 +1662,12 @@ std::vector<double> Optimizer::LocalBundleAdjustmentSingleInverseDepth(KeyFrame 
                     e->setRobustKernel(rk);
                     rk->setDelta(thHuberMono);
 
-                    e->fx = pKFi->fx;
-                    e->fy = pKFi->fy;
-                    e->cx = pKFi->cx;
-                    e->cy = pKFi->cy;
-
+                    e->setParameterId(0, 0);
                     optimizer.addEdge(e);
                     vpEdgesMono.push_back(e);
                     vpEdgeKFMono.push_back(pKFi);
                     vpMapPointEdgeMono.push_back(pMP);
+
                 }
 //              else // Stereo observation
 //                {
@@ -1692,6 +1708,7 @@ std::vector<double> Optimizer::LocalBundleAdjustmentSingleInverseDepth(KeyFrame 
         if (*pbStopFlag)
             return std::vector<double>(); // Modified
 
+
     optimizer.initializeOptimization();
     optimizer.optimize(5);
 
@@ -1705,7 +1722,7 @@ std::vector<double> Optimizer::LocalBundleAdjustmentSingleInverseDepth(KeyFrame 
 
         // Check inlier observations
         for (size_t i = 0, iend = vpEdgesMono.size(); i < iend; i++) {
-            g2o::EdgeProjectInvD *e = vpEdgesMono[i];
+            g2o::EdgeProjectPSI2UV *e = vpEdgesMono[i];
             MapPoint *pMP = vpMapPointEdgeMono[i];
 
             if (pMP->isBad())
@@ -1745,7 +1762,7 @@ std::vector<double> Optimizer::LocalBundleAdjustmentSingleInverseDepth(KeyFrame 
 // Check inlier observations
     std::vector<double> chi2Statistics;
     for (size_t i = 0, iend = vpEdgesMono.size(); i < iend; i++) {
-        g2o::EdgeProjectInvD *e = vpEdgesMono[i];
+        g2o::EdgeProjectPSI2UV *e = vpEdgesMono[i];
         MapPoint *pMP = vpMapPointEdgeMono[i];
 
         if (pMP->isBad())
@@ -1805,14 +1822,16 @@ std::vector<double> Optimizer::LocalBundleAdjustmentSingleInverseDepth(KeyFrame 
     for (list<MapPoint *>::iterator lit = lLocalMapPoints.begin(), lend = lLocalMapPoints.end(); lit != lend; lit++) {
         MapPoint *pMP = *lit;
 
-        g2o::VertexSBAPointInvD *vPoint = static_cast<g2o::VertexSBAPointInvD *>(optimizer.vertex(
+        g2o::VertexSBAPointXYZ *vPoint = static_cast<g2o::VertexSBAPointXYZ *>(optimizer.vertex(
                 pMP->mnId + maxKFid + 1));
         KeyFrame *refKF = pMP->GetReferenceKeyFrame();
 
-        cv::Mat pointInFirst = cv::Mat(3,1, CV_32F), worldPos = cv::Mat(3,1, CV_32F);
-        pointInFirst.at<float>(2) = 1. / vPoint->estimate();
-        pointInFirst.at<float>(0) = (vPoint->u0 - refKF->cx) * pointInFirst.at<float>(2) / refKF->fx;
-        pointInFirst.at<float>(1) = (vPoint->v0 - refKF->cy) * pointInFirst.at<float>(2) / refKF->fy;
+        Eigen::Vector3d pointEstimate = vPoint->estimate();
+
+        cv::Mat pointInFirst = cv::Mat(3,1, CV_32F);
+        pointInFirst.at<float>(0) = pointEstimate[0] / pointEstimate[2];
+        pointInFirst.at<float>(1) = pointEstimate[1] / pointEstimate[2];
+        pointInFirst.at<float>(2) = 1. / pointEstimate[2];
 
 
         cv::Mat worldPointPos = refKF->GetRotation().t() * pointInFirst - refKF->GetRotation().t() * refKF->GetTranslation();
@@ -1852,7 +1871,7 @@ std::vector<double> Optimizer::LocalBundleAdjustmentSingleInverseDepth(KeyFrame 
                 float img1ReprojError = std::sqrt(pow(projectionInA.at<float>(0, 0) - kpUn.pt.x, 2) +
                                                   pow(projectionInA.at<float>(1, 0) - kpUn.pt.y, 2)) / refKpScale;
 
-                //std::cout << projectionInA.at<float>(0, 0) << " " << projectionInA.at<float>(1, 0) << " " << kpUn.pt.x << " " << kpUn.pt.y << std::endl;
+//                std::cout << projectionInA.at<float>(0, 0) << " " << projectionInA.at<float>(1, 0) << " " << kpUn.pt.x << " " << kpUn.pt.y << std::endl;
 
                 if (std::isnan(img1ReprojError))
                     std::cout << "NAN" << std::endl;
@@ -1862,6 +1881,8 @@ std::vector<double> Optimizer::LocalBundleAdjustmentSingleInverseDepth(KeyFrame 
 
 
     }
+
+    std::cout << "\tAvg reprojection error : " << accumulate( reprojectionErr.begin(), reprojectionErr.end(), 0.0)/reprojectionErr.size() << std::endl;
 
     return chi2Statistics;
 }

@@ -21,9 +21,11 @@
 #include "Thirdparty/g2o/g2o/solvers/linear_solver_dense.h"
 #include "Thirdparty/g2o/g2o/types/types_seven_dof_expmap.h"
 
+
 #include "Converter.h"
 
 #include <opencv2/calib3d.hpp>
+
 
 using namespace std;
 
@@ -91,6 +93,20 @@ public:
 
 };
 
+
+Eigen::Vector3d unproject2d(const Eigen::Vector2d& v){
+    Eigen::Vector3d res;
+    res(0) = v(0);
+    res(1) = v(1);
+    res(2) = 1;
+    return res;
+}
+
+inline Eigen::Vector3d invert_depth(const Eigen::Vector3d & x){
+    return unproject2d(x.head<2>())/x[2];
+}
+
+
 int main(int argc, char * argv[]) {
     ORBSLAMBA orbslamba(argv[1]);
 
@@ -106,6 +122,14 @@ int main(int argc, char * argv[]) {
     optimizer.setAlgorithm(solver);
 
 
+    Eigen::Vector2d principal_point(orbslamba.cx, orbslamba.cy);
+    g2o::CameraParameters * cam_params
+            = new g2o::CameraParameters (orbslamba.fx, principal_point, 0.);
+    cam_params->setId(0);
+
+    if (!optimizer.addParameter(cam_params)){
+        assert(false);
+    }
 
     // Creating poses
     bool first = true;
@@ -140,11 +164,12 @@ int main(int argc, char * argv[]) {
 
 
     // Creating points and setting its initial inverse depth
-    std::map<int, g2o::VertexSBAPointInvD *> vertexMap;
+    std::map<int, g2o::VertexSBAPointXYZ *> vertexMap;
     for (auto p : orbslamba.points) {
 
-        g2o::VertexSBAPointInvD *vPoint = new g2o::VertexSBAPointInvD();
-        vPoint->setEstimate(1. / p.pos[2]);
+        g2o::VertexSBAPointXYZ *vPoint = new g2o::VertexSBAPointXYZ();
+
+        vPoint->setEstimate( invert_depth(p.pos) );
 
         vPoint->setId(p.id);
         vPoint->setMarginalized(true);
@@ -158,7 +183,7 @@ int main(int argc, char * argv[]) {
 
     const float thHuberMono = sqrt(5.991);
 
-    vector<g2o::EdgeProjectInvD *> vpEdgesMono;
+    vector<g2o::EdgeProjectPSI2UV *> vpEdgesMono;
     vpEdgesMono.reserve(orbslamba.obsNum);
 
     // Adding edges that join 3 nodes - point (inv. depth), pose with first obs (pose) and current pose (pos)
@@ -168,7 +193,7 @@ int main(int argc, char * argv[]) {
         Eigen::Matrix<double, 2, 1> obs;
         obs << m.u, m.v;
 
-        g2o::EdgeProjectInvD *e = new g2o::EdgeProjectInvD();
+        g2o::EdgeProjectPSI2UV *e = new g2o::EdgeProjectPSI2UV();
         e->resize(3);
 
         int firstId = orbslamba.firstMeasurement[m.idP];
@@ -184,20 +209,13 @@ int main(int argc, char * argv[]) {
 
         e->setInformation(Eigen::Matrix2d::Identity() * m.invSigma2);
 
-//        g2o::RobustKernelHuber* rk = new g2o::RobustKernelHuber;
-//        e->setRobustKernel(rk);
-//        rk->setDelta(thHuberMono);
-
-        e->fx = orbslamba.fx;
-        e->fy = orbslamba.fy;
-        e->cx = orbslamba.cx;
-        e->cy = orbslamba.cy;
+        g2o::RobustKernelHuber* rk = new g2o::RobustKernelHuber;
+        e->setRobustKernel(rk);
+        rk->setDelta(thHuberMono);
 
 
-        g2o::VertexSBAPointInvD *vPoint = vertexMap.find(m.idP)->second;
-        vPoint->u0 = firstObs.u;
-        vPoint->v0 = firstObs.v;
 
+        e->setParameterId(0, 0);
         optimizer.addEdge(e);
         vpEdgesMono.push_back(e);
 
@@ -227,27 +245,26 @@ int main(int argc, char * argv[]) {
     std::cout << "Post average chi2: " << avgchi2 / orbslamba.obsNum << std::endl;
 
 
-    double avgReprojError = 0;
-    for (auto e : vpEdgesMono) {
-
-        const g2o::VertexSBAPointInvD *pointInvD = static_cast<const g2o::VertexSBAPointInvD *>(e->vertex(0));
-        const g2o::VertexSE3Expmap *firstPose = static_cast<const g2o::VertexSE3Expmap *>(e->vertex(1));
-        const g2o::VertexSE3Expmap *secondPose = static_cast<const g2o::VertexSE3Expmap *>(e->vertex(2));
-
-        Eigen::Vector3d pointInFirst;
-        pointInFirst[2] = 1. / pointInvD->estimate();
-        pointInFirst[0] = (pointInvD->u0 - e->cx) * pointInFirst[2] / e->fx;
-        pointInFirst[1] = (pointInvD->v0 - e->cy) * pointInFirst[2] / e->fy;
-
-        Eigen::Vector3d pointInGlobal = firstPose->estimate().inverse().map(pointInFirst);
-        Eigen::Vector2d measurement = e->measurement();
-        Eigen::Vector2d projectedPoint = e->cam_project(secondPose->estimate().map(pointInGlobal));
-
-
-        std::cout << measurement[0] << " " << measurement[1] << " " << projectedPoint[0] << " " << projectedPoint[1] << std::endl;
-
-        avgReprojError += sqrt(pow(measurement[0] - projectedPoint[0],2) + pow(measurement[1] - projectedPoint[1],2));
-    }
-
-    std::cout <<"Avg reprojection error: " << avgReprojError / vpEdgesMono.size() << std::endl;
+//    double avgReprojError = 0;
+//    for (auto e : vpEdgesMono) {
+//
+//        const g2o::VertexSBAPointXYZ *point = static_cast<const g2o::VertexSBAPointXYZ *>(e->vertex(0));
+//        const g2o::VertexSE3Expmap *firstPose = static_cast<const g2o::VertexSE3Expmap *>(e->vertex(1));
+//        const g2o::VertexSE3Expmap *secondPose = static_cast<const g2o::VertexSE3Expmap *>(e->vertex(2));
+//
+//        Eigen::Vector3d pointInFirst;
+//
+//
+//
+//        Eigen::Vector3d pointInGlobal = firstPose->estimate().inverse().map(invert_depth(point->estimate()));
+//        Eigen::Vector2d measurement = e->measurement();
+//        Eigen::Vector2d projectedPoint = e->cam_project(secondPose->estimate().map(pointInGlobal));
+//
+//
+//        std::cout << measurement[0] << " " << measurement[1] << " " << projectedPoint[0] << " " << projectedPoint[1] << std::endl;
+//
+//        avgReprojError += sqrt(pow(measurement[0] - projectedPoint[0],2) + pow(measurement[1] - projectedPoint[1],2));
+//    }
+//
+//    std::cout <<"Avg reprojection error: " << avgReprojError / vpEdgesMono.size() << std::endl;
 }

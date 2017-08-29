@@ -28,6 +28,7 @@
 #define G2O_SBA_TYPES
 
 #include "../core/base_vertex.h"
+#include "../core/eigen_types.h"
 
 #include <Eigen/Geometry>
 #include <iostream>
@@ -54,6 +55,46 @@ namespace g2o {
       Eigen::Map<const Vector3d> v(update);
       _estimate += v;
     }
+};
+
+
+class CameraParameters : public g2o::Parameter {
+    public:
+
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
+
+    CameraParameters();
+
+    CameraParameters(double focal_length,
+                     const Vector2D &principle_point,
+                     double baseline)
+            : focal_length(focal_length),
+              principle_point(principle_point),
+              baseline(baseline) {}
+
+    Vector2D cam_map(const Vector3D &trans_xyz) const;
+
+    Vector3D stereocam_uvu_map(const Vector3D &trans_xyz) const;
+
+    virtual bool read(std::istream &is) {
+        is >> focal_length;
+        is >> principle_point[0];
+        is >> principle_point[1];
+        is >> baseline;
+        return true;
+    }
+
+    virtual bool write(std::ostream &os) const {
+        os << focal_length << " ";
+        os << principle_point.x() << " ";
+        os << principle_point.y() << " ";
+        os << baseline << " ";
+        return true;
+    }
+
+    double focal_length;
+    Vector2D principle_point;
+    double baseline;
 };
 
 } // end namespace
