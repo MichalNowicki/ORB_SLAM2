@@ -124,7 +124,7 @@ int main(int argc, char * argv[]) {
 
     Eigen::Vector2d principal_point(orbslamba.cx, orbslamba.cy);
     g2o::CameraParameters * cam_params
-            = new g2o::CameraParameters (orbslamba.fx, principal_point, 0.);
+            = new g2o::CameraParameters (orbslamba.fx, orbslamba.fy, principal_point, 0.);
     cam_params->setId(0);
 
     if (!optimizer.addParameter(cam_params)){

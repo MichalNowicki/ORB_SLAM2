@@ -74,8 +74,8 @@ int main(int argc, char **argv)
     SLAM.ChangeCalibration(K(0,0), K(1,1), K(0,2), K(1,2), 0, 0, 0, 0, 0);
     
 
-    // TODO: Modified so if we skip every 2nd frame it is still 5 times slower than real-time
-    const float playbackSpeed = 0.2;
+    // TODO: Modified so if we skip every 2nd frame it is still 2.5 times slower than real-time
+    const float playbackSpeed = 0.4;
 
     struct timeval tv_start;
     gettimeofday(&tv_start, NULL);

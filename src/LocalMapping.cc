@@ -30,9 +30,10 @@
 namespace ORB_SLAM2
 {
 
-LocalMapping::LocalMapping(Map *pMap, const float bMonocular, float _sigma):
+LocalMapping::LocalMapping(Map *pMap, const float bMonocular, float _sigma, int optimizationType):
     mbMonocular(bMonocular), mbResetRequested(false), mbFinishRequested(false), mbFinished(true), mpMap(pMap),
-    mbAbortBA(false), mbStopped(false), mbStopRequested(false), mbNotStop(false), mbAcceptKeyFrames(true), sigma(_sigma)
+    mbAbortBA(false), mbStopped(false), mbStopRequested(false), mbNotStop(false), mbAcceptKeyFrames(true), sigma(_sigma),
+    optimizationType(optimizationType)
 {
 }
 
@@ -48,6 +49,14 @@ void LocalMapping::SetTracker(Tracking *pTracker)
 
 void LocalMapping::Run()
 {
+    /*
+     * optimizationType:
+     * - 0 -> not inverted depth, 3 params per feature, reprojection error (usual ORB SLAM2)
+     * - 1 -> inverted depth, 3 params per feature, reprojection error
+     * - 2 -> inverted depth, 1 param per feature, reprojection error
+     * - 3 -> inverted depth, 3 params per feature, patch error
+     * - 4 -> inverted depth, 1 param per feature, patch error
+     */
 
     mbFinished = false;
 
@@ -79,16 +88,38 @@ void LocalMapping::Run()
             if(!CheckNewKeyFrames() && !stopRequested())
             {
                 // Local BA
-                // TODO: Modified to return chi2 statistics
+                // Modified to return chi2 statistics
                 if(mpMap->KeyFramesInMap()>2) {
-                    std::string name = "preBA.txt";
-                    Optimizer::saveBAProblem(mpCurrentKeyFrame, &mbAbortBA, mpMap, sigma, name);
+
+                    std::vector<double> chi2;
+
+                    // Original BA - not inverted depth, 3 params per feature, reprojection error (usual ORB SLAM2)
+                    if (optimizationType == 0)
+                        chi2 = Optimizer::LocalBundleAdjustment(mpCurrentKeyFrame, &mbAbortBA, mpMap,  sigma);
+
+                    // inverted depth, 3 params per feature, reprojection error
+                    else if (optimizationType == 1)
+                        chi2 = Optimizer::LocalBundleAdjustmentInvDepth(mpCurrentKeyFrame,  &mbAbortBA, mpMap, sigma);
+
+                    // inverted depth, 1 param per feature, reprojection error
+                    else if (optimizationType == 2)
+                        ; // TODO
+                    // inverted depth, 3 params per feature, patch error
+                    else if (optimizationType == 3)
+                        ; // TODO
+                    // inverted depth, 1 param per feature, patch error
+                    else if (optimizationType == 4)
+                        ; // TODO
+
+
+                    chi2statistics = chi2;
+
+//                    std::string name = "preBA.txt";
+//                    Optimizer::saveBAProblem(mpCurrentKeyFrame, &mbAbortBA, mpMap, sigma, name);
 
                     // BA
 //                    std::cout << "!!!!\tBEFORE BA! " << std::endl;
-//                    std::vector<double> chi2 = Optimizer::LocalBundleAdjustment(mpCurrentKeyFrame, &mbAbortBA, mpMap, sigma);
-                    std::vector<double> chi2 = Optimizer::LocalBundleAdjustmentSingleInverseDepth(mpCurrentKeyFrame, &mbAbortBA, mpMap, sigma);
-                    chi2statistics = chi2;
+
 
 //                    name = "postBA.txt";
 //                    Optimizer::saveBAProblem(mpCurrentKeyFrame, &mbAbortBA, mpMap, sigma, name);
@@ -148,32 +179,31 @@ void LocalMapping::Run()
 
 //                    exit(0);
 
-                    // TODO: Verifying the number of keyframes and local timestamp diff
-                    list<KeyFrame*> lLocalKeyFrames;
-                    lLocalKeyFrames.push_back(mpCurrentKeyFrame);
-                    const vector<KeyFrame*> vNeighKFs = mpCurrentKeyFrame->GetVectorCovisibleKeyFrames();
-                    for(int i=0, iend=vNeighKFs.size(); i<iend; i++)
-                    {
-                        KeyFrame* pKFi = vNeighKFs[i];
-                        if(!pKFi->isBad())
-                            lLocalKeyFrames.push_back(pKFi);
-                    }
-
-
-                    std::vector<double> timestamps;
-                    for(list<KeyFrame*>::iterator lit=lLocalKeyFrames.begin(), lend=lLocalKeyFrames.end(); lit!=lend; lit++) {
-                        KeyFrame *pKF = *lit;
-                        timestamps.push_back(pKF->mTimeStamp);
-                    }
-                    std::sort(timestamps.begin(),  timestamps.end());
-                    double dt = fabs(timestamps[0] - timestamps[timestamps.size()-1]);
-
-                    std::cout << "\tBA: keframe count: " << lLocalKeyFrames.size() << " maxTimestampDt: " << dt <<std::endl;
-                    keyframeCountAndTimeDiff.push_back(std::make_pair(lLocalKeyFrames.size(),dt));
+//                    // TODO: Verifying the number of keyframes and local timestamp diff
+//                    list<KeyFrame*> lLocalKeyFrames;
+//                    lLocalKeyFrames.push_back(mpCurrentKeyFrame);
+//                    const vector<KeyFrame*> vNeighKFs = mpCurrentKeyFrame->GetVectorCovisibleKeyFrames();
+//                    for(int i=0, iend=vNeighKFs.size(); i<iend; i++)
+//                    {
+//                        KeyFrame* pKFi = vNeighKFs[i];
+//                        if(!pKFi->isBad())
+//                            lLocalKeyFrames.push_back(pKFi);
+//                    }
+//
+//
+//                    std::vector<double> timestamps;
+//                    for(list<KeyFrame*>::iterator lit=lLocalKeyFrames.begin(), lend=lLocalKeyFrames.end(); lit!=lend; lit++) {
+//                        KeyFrame *pKF = *lit;
+//                        timestamps.push_back(pKF->mTimeStamp);
+//                    }
+//                    std::sort(timestamps.begin(),  timestamps.end());
+//                    double dt = fabs(timestamps[0] - timestamps[timestamps.size()-1]);
+//
+//                    std::cout << "\tBA: keframe count: " << lLocalKeyFrames.size() << " maxTimestampDt: " << dt <<std::endl;
+//                    keyframeCountAndTimeDiff.push_back(std::make_pair(lLocalKeyFrames.size(),dt));
                 }
 
                 // Check redundant local Keyframes
-                // TODO: Removing keyframe culling for now
                 KeyFrameCulling();
             }
 
@@ -551,7 +581,7 @@ void LocalMapping::CreateNewMapPoints()
             }
             else if(bStereo1 && cosParallaxStereo1<cosParallaxStereo2)
             {
-                x3D = mpCurrentKeyFrame->UnprojectStereo(idx1);                
+                x3D = mpCurrentKeyFrame->UnprojectStereo(idx1);
             }
             else if(bStereo2 && cosParallaxStereo2<cosParallaxStereo1)
             {
@@ -645,7 +675,7 @@ void LocalMapping::CreateNewMapPoints()
             // Triangulation is succesfull
             MapPoint* pMP = new MapPoint(x3D,mpCurrentKeyFrame,mpMap);
 
-            pMP->AddObservation(mpCurrentKeyFrame,idx1);            
+            pMP->AddObservation(mpCurrentKeyFrame,idx1);
             pMP->AddObservation(pKF2,idx2);
 
             mpCurrentKeyFrame->AddMapPoint(pMP,idx1);
@@ -901,7 +931,7 @@ void LocalMapping::KeyFrameCulling()
                     }
                 }
             }
-        }  
+        }
 
         if(nRedundantObservations>0.9*nMPs)
             pKF->SetBadFlag();
@@ -980,7 +1010,7 @@ void LocalMapping::SetFinish()
     keyframeCountAndTimeDiffStr.close();
 
     unique_lock<mutex> lock(mMutexFinish);
-    mbFinished = true;    
+    mbFinished = true;
     unique_lock<mutex> lock2(mMutexStop);
     mbStopped = true;
 }

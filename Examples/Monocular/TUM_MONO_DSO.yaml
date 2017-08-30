@@ -56,6 +56,14 @@ ORBextractor.largePatchSize: 21
 # Optimization sigma
 Optimization.sigma: 1.000000
 
+#   Optimization type:
+# 0 -> not inverted depth, 3 params per feature, reprojection error (usual ORB SLAM2)
+# 1 -> inverted depth, 3 params per feature, reprojection error
+# 2 -> inverted depth, 1 param per feature, reprojection error
+# 3 -> inverted depth, 3 params per feature, patch error
+# 4 -> inverted depth, 1 param per feature, patch error
+Optimization.type: 0
+
 #--------------------------------------------------------------------------------------------
 # Viewer Parameters
 #--------------------------------------------------------------------------------------------

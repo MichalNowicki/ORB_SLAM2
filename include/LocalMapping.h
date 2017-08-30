@@ -40,7 +40,7 @@ class Map;
 class LocalMapping
 {
 public:
-    LocalMapping(Map* pMap, const float bMonocular, float sigma);
+    LocalMapping(Map* pMap, const float bMonocular, float sigma, int optimizationType);
 
     void SetLoopCloser(LoopClosing* pLoopCloser);
 
@@ -131,6 +131,7 @@ protected:
 
 
     float sigma;
+    int optimizationType;
 };
 
 } //namespace ORB_SLAM

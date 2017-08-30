@@ -506,11 +506,11 @@ bool EdgeProjectInvD::isDepthPositive() {
                                   * invert_depth(psi->estimate()));
     }
 
-    inline Matrix<double, 2, 3, Eigen::ColMajor> d_proj_d_y(const double &f, const Vector3D &xyz) {
+    inline Matrix<double, 2, 3, Eigen::ColMajor> d_proj_d_y(const double &fx, const double &fy, const Vector3D &xyz) {
       double z_sq = xyz[2] * xyz[2];
       Matrix<double, 2, 3, Eigen::ColMajor> J;
-      J << f / xyz[2], 0, -(f * xyz[0]) / z_sq,
-              0, f / xyz[2], -(f * xyz[1]) / z_sq;
+      J << fx / xyz[2], 0, -(fx * xyz[0]) / z_sq,
+              0, fy / xyz[2], -(fy * xyz[1]) / z_sq;
       return J;
     }
 
@@ -549,7 +549,7 @@ bool EdgeProjectInvD::isDepthPositive() {
       Vector3D x_a = invert_depth(psi_a);
       Vector3D y = T_ca * x_a;
       Matrix<double, 2, 3, Eigen::ColMajor> Jcam
-              = d_proj_d_y(cam->focal_length, y);
+              = d_proj_d_y(cam->focal_length_x, cam->focal_length_y, y);
       _jacobianOplus[0] = -Jcam * d_Tinvpsi_d_psi(T_ca, psi_a);
       _jacobianOplus[1] = -Jcam * d_expy_d_y(y);
       _jacobianOplus[2] = Jcam * T_ca.rotation().toRotationMatrix() * d_expy_d_y(x_a);

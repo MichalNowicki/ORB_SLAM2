@@ -912,7 +912,6 @@ std::vector<double> Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStop
     // Get Map Mutex
     unique_lock<mutex> lock(pMap->mMutexMapUpdate);
 
-    // TODO: for tests we will not remove measurements
     if(!vToErase.empty())
     {
         for(size_t i=0;i<vToErase.size();i++)
@@ -1459,7 +1458,7 @@ int Optimizer::OptimizeSim3(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint *> &
 
 
 
-std::vector<double> Optimizer::LocalBundleAdjustmentSingleInverseDepth(KeyFrame *pKF, bool* pbStopFlag, Map* pMap, float sigma)
+std::vector<double> Optimizer::LocalBundleAdjustmentInvDepth(KeyFrame *pKF, bool *pbStopFlag, Map *pMap, float sigma)
 {
     // Local KeyFrames: First Breath Search from Current Keyframe
     list<KeyFrame *> lLocalKeyFrames;
@@ -1536,7 +1535,7 @@ std::vector<double> Optimizer::LocalBundleAdjustmentSingleInverseDepth(KeyFrame 
 
     Eigen::Vector2d principal_point(pKF->cx, pKF->cy);
     g2o::CameraParameters * cam_params
-            = new g2o::CameraParameters (pKF->fx, principal_point, 0.);
+            = new g2o::CameraParameters (pKF->fx, pKF->fy, principal_point, 0.);
     cam_params->setId(0);
 
     if (!optimizer.addParameter(cam_params)){
@@ -1623,8 +1622,8 @@ std::vector<double> Optimizer::LocalBundleAdjustmentSingleInverseDepth(KeyFrame 
             KeyFrame *pKFi = mit->first;
 
             // First observation is treated differently
-            if (refKF == pKFi)
-                continue;
+//            if (refKF == pKFi)
+//                continue;
 
             if (!pKFi->isBad()) {
                 const cv::KeyPoint &kpUn = pKFi->mvKeysUn[mit->second];

@@ -44,7 +44,8 @@ public:
     std::vector<double> static GlobalBundleAdjustemnt(Map* pMap, int nIterations=5, bool *pbStopFlag=NULL,
                                        const unsigned long nLoopKF=0, const bool bRobust = true, float sigma = 1.0);
     std::vector<double> static LocalBundleAdjustment(KeyFrame* pKF, bool *pbStopFlag, Map *pMap, float sigma = 1.0);
-    std::vector<double> static LocalBundleAdjustmentSingleInverseDepth(KeyFrame* pKF, bool *pbStopFlag, Map *pMap, float sigma = 1.0);
+    std::vector<double> static LocalBundleAdjustmentInvDepth(KeyFrame *pKF, bool *pbStopFlag, Map *pMap,
+                                                             float sigma = 1.0);
 
     int static PoseOptimization(Frame* pFrame, float sigma = 1.0);
 

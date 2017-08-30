@@ -90,7 +90,8 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
     //Initialize the Local Mapping thread and launch
     cv::FileStorage fSettings(strSettingsFile, cv::FileStorage::READ);
     float sigma = fSettings["Optimization.sigma"];
-    mpLocalMapper = new LocalMapping(mpMap, mSensor==MONOCULAR, sigma);
+    int optimizationType = fSettings["Optimization.type"];
+    mpLocalMapper = new LocalMapping(mpMap, mSensor==MONOCULAR, sigma, optimizationType);
     mptLocalMapping = new thread(&ORB_SLAM2::LocalMapping::Run,mpLocalMapper);
 
     //Initialize the Loop Closing thread and launch

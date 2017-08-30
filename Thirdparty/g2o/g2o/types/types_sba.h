@@ -65,10 +65,12 @@ class CameraParameters : public g2o::Parameter {
 
     CameraParameters();
 
-    CameraParameters(double focal_length,
+    CameraParameters(double focal_length_x,
+                     double focal_length_y,
                      const Vector2D &principle_point,
                      double baseline)
-            : focal_length(focal_length),
+            : focal_length_x(focal_length_x),
+              focal_length_y(focal_length_y),
               principle_point(principle_point),
               baseline(baseline) {}
 
@@ -77,7 +79,8 @@ class CameraParameters : public g2o::Parameter {
     Vector3D stereocam_uvu_map(const Vector3D &trans_xyz) const;
 
     virtual bool read(std::istream &is) {
-        is >> focal_length;
+        is >> focal_length_x;
+        is >> focal_length_y;
         is >> principle_point[0];
         is >> principle_point[1];
         is >> baseline;
@@ -85,14 +88,15 @@ class CameraParameters : public g2o::Parameter {
     }
 
     virtual bool write(std::ostream &os) const {
-        os << focal_length << " ";
+        os << focal_length_x << " ";
+        os << focal_length_y << " ";
         os << principle_point.x() << " ";
         os << principle_point.y() << " ";
         os << baseline << " ";
         return true;
     }
 
-    double focal_length;
+    double focal_length_x, focal_length_y;
     Vector2D principle_point;
     double baseline;
 };
