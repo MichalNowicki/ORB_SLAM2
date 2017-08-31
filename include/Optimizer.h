@@ -28,6 +28,9 @@
 #include "Frame.h"
 
 #include "Thirdparty/g2o/g2o/types/types_seven_dof_expmap.h"
+#include "Thirdparty/g2o/g2o/types/EdgeProjectPSI2UV.h"
+#include "Thirdparty/g2o/g2o/types/EdgeProjectPSI2UVSingleParam.h"
+#include "Thirdparty/g2o/g2o/types/EdgeProjectPSI2UVPatch.h"
 
 namespace ORB_SLAM2
 {
@@ -43,9 +46,16 @@ public:
                                  const bool bRobust = true, float sigma = 1.0);
     std::vector<double> static GlobalBundleAdjustemnt(Map* pMap, int nIterations=5, bool *pbStopFlag=NULL,
                                        const unsigned long nLoopKF=0, const bool bRobust = true, float sigma = 1.0);
+
+
+    // Different version of the BA
     std::vector<double> static LocalBundleAdjustment(KeyFrame* pKF, bool *pbStopFlag, Map *pMap, float sigma = 1.0);
     std::vector<double> static LocalBundleAdjustmentInvDepth(KeyFrame *pKF, bool *pbStopFlag, Map *pMap,
                                                              float sigma = 1.0);
+    std::vector<double> static LocalBundleAdjustmentInvDepthSingleParam(KeyFrame *pKF, bool *pbStopFlag, Map *pMap,
+                                                             float sigma = 1.0);
+    std::vector<double> static LocalBundleAdjustmentInvDepthPatch(KeyFrame *pKF, bool *pbStopFlag, Map *pMap,
+                                                             float sigma = 1.0) {;/*TODO*/};
 
     int static PoseOptimization(Frame* pFrame, float sigma = 1.0);
 

@@ -226,46 +226,6 @@ public:
 };
 
 
-class EdgeProjectInvD : public  BaseMultiEdge<2, Vector2d>
-{
-    public:
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-
-    EdgeProjectInvD()  {
-    }
-
-    bool read  (std::istream& is);
-    bool write (std::ostream& os) const;
-    void computeError();
-
-
-    Vector2d cam_project(const Vector3d & trans_xyz) const;
-
-    bool isDepthPositive();
-
-    double fx, fy, cx, cy;
-};
-
-
-
-class EdgeProjectPSI2UV : public  g2o::BaseMultiEdge<2, Vector2D>
-{
-    public:
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-
-    EdgeProjectPSI2UV()  {
-        resizeParameters(1);
-        installParameter(_cam, 0);
-    }
-
-    virtual bool read  (std::istream& is);
-    virtual bool write (std::ostream& os) const;
-    void computeError  ();
-    virtual void linearizeOplus ();
-    bool isDepthPositive();
-
-    CameraParameters * _cam;
-};
 
 
 } // end namespace

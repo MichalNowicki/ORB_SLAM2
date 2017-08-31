@@ -88,6 +88,12 @@ ${G2O_EIGEN3_INCLUDE})
 # Include the subdirectories
 ADD_LIBRARY(g2o ${G2O_LIB_TYPE}
 #types
+g2o/types/EdgeProjectPSI2UVPatch.h
+g2o/types/EdgeProjectPSI2UVPatch.cpp
+g2o/types/EdgeProjectPSI2UVSingleParam.h
+g2o/types/EdgeProjectPSI2UVSingleParam.cpp
+g2o/types/EdgeProjectPSI2UV.h
+g2o/types/EdgeProjectPSI2UV.cpp
 g2o/types/types_sba.h
 g2o/types/types_six_dof_expmap.h
 g2o/types/types_sba.cpp

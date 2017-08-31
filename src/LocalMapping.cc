@@ -59,6 +59,7 @@ void LocalMapping::Run()
      */
 
     mbFinished = false;
+    int baCounter = 0;
 
     while(1)
     {
@@ -92,6 +93,9 @@ void LocalMapping::Run()
                 if(mpMap->KeyFramesInMap()>2) {
 
                     std::vector<double> chi2;
+                    baCounter++;
+
+                    auto start = chrono::steady_clock::now();
 
                     // Original BA - not inverted depth, 3 params per feature, reprojection error (usual ORB SLAM2)
                     if (optimizationType == 0)
@@ -103,7 +107,8 @@ void LocalMapping::Run()
 
                     // inverted depth, 1 param per feature, reprojection error
                     else if (optimizationType == 2)
-                        ; // TODO
+                        chi2 = Optimizer::LocalBundleAdjustmentInvDepthSingleParam(mpCurrentKeyFrame,  &mbAbortBA, mpMap, sigma);
+
                     // inverted depth, 3 params per feature, patch error
                     else if (optimizationType == 3)
                         ; // TODO
@@ -111,6 +116,11 @@ void LocalMapping::Run()
                     else if (optimizationType == 4)
                         ; // TODO
 
+                    auto end = chrono::steady_clock::now();
+                    auto diff = end - start;
+                    cout << chrono::duration <double, milli> (diff).count() << " ms" << endl;
+
+                    exit(0);
 
                     chi2statistics = chi2;
 
@@ -280,9 +290,9 @@ void LocalMapping::Run()
 //
 //    std::cout << "\tAvg reprojection error : " << accumulate( reprojectionErr.begin(), reprojectionErr.end(), 0.0)/reprojectionErr.size() << std::endl;
 //    reprojectionStatistics = reprojectionErr;
+//    printf("Finished Global BA\n");
 
-
-    printf("Finished Global BA\n");
+    std::cout << std::endl << "Total BA count : " << baCounter << std::endl;
 
     SetFinish();
 }
