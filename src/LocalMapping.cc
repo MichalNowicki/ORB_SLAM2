@@ -95,7 +95,7 @@ void LocalMapping::Run()
                     std::vector<double> chi2;
                     baCounter++;
 
-                    auto start = chrono::steady_clock::now();
+//                    auto start = chrono::steady_clock::now();
 
                     // Original BA - not inverted depth, 3 params per feature, reprojection error (usual ORB SLAM2)
                     if (optimizationType == 0)
@@ -116,11 +116,10 @@ void LocalMapping::Run()
                     else if (optimizationType == 4)
                         ; // TODO
 
-                    auto end = chrono::steady_clock::now();
-                    auto diff = end - start;
-                    cout << chrono::duration <double, milli> (diff).count() << " ms" << endl;
-
-                    exit(0);
+//                    auto end = chrono::steady_clock::now();
+//                    auto diff = end - start;
+//                    cout << chrono::duration <double, milli> (diff).count() << " ms" << endl;
+//                    exit(0);
 
                     chi2statistics = chi2;
 
