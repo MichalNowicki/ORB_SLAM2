@@ -1521,11 +1521,23 @@ std::vector<double> Optimizer::LocalBundleAdjustmentInvDepth(KeyFrame *pKF, bool
 
 // Setup optimizer
     g2o::SparseOptimizer optimizer;
+
     g2o::BlockSolver_6_3::LinearSolverType *linearSolver;
-
     linearSolver = new g2o::LinearSolverEigen<g2o::BlockSolver_6_3::PoseMatrixType>();
-
     g2o::BlockSolver_6_3 *solver_ptr = new g2o::BlockSolver_6_3(linearSolver);
+
+//    typedef g2o::BlockSolver< g2o::BlockSolverTraits<6, 1> > BlockSolver_6_1;
+//    BlockSolver_6_1::LinearSolverType *linearSolver;
+//    linearSolver = new g2o::LinearSolverEigen<BlockSolver_6_1::PoseMatrixType>();
+//    BlockSolver_6_1 *solver_ptr = new BlockSolver_6_1(linearSolver);
+
+//    g2o::BlockSolverX::LinearSolverType *linearSolver;
+//    linearSolver = new g2o::LinearSolverEigen<g2o::BlockSolverX::PoseMatrixType>();
+//    g2o::BlockSolverX *solver_ptr = new g2o::BlockSolverX(linearSolver);
+
+//    g2o::BlockSolverX::LinearSolverType *linearSolver;
+//    linearSolver = new g2o::LinearSolverDense<g2o::BlockSolverX::PoseMatrixType>();
+//    g2o::BlockSolverX *solver_ptr = new g2o::BlockSolverX(linearSolver);
 
     g2o::OptimizationAlgorithmLevenberg *solver = new g2o::OptimizationAlgorithmLevenberg(solver_ptr);
     optimizer.setAlgorithm(solver);

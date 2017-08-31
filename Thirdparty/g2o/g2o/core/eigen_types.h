@@ -28,8 +28,7 @@
 #define G2O_EIGEN_TYPES_H
 
 #include <Eigen/Core>
-#include <Eigen/Geometry>
-
+#include <Eigen/Geometry>()
 namespace g2o {
 
   typedef Eigen::Matrix<int,2,1,Eigen::ColMajor>                                  Vector2I;

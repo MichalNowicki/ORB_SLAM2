@@ -20,7 +20,7 @@
 namespace g2o {
     using namespace std;
 
-    class EdgeProjectPSI2UVPatch : public g2o::BaseMultiEdge<9, Vector2D> {
+    class EdgeProjectPSI2UVPatch : public g2o::BaseMultiEdge<2, Vector2D> {
 //    public:
 //        EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 //

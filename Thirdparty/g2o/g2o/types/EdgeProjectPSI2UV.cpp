@@ -7,6 +7,7 @@
 #include "../core/factory.h"
 #include "../stuff/macros.h"
 
+
 namespace g2o {
     using namespace std;
 
@@ -84,6 +85,7 @@ namespace g2o {
     }
 
     void EdgeProjectPSI2UV::linearizeOplus() {
+
         VertexSBAPointXYZ *vpoint = static_cast<VertexSBAPointXYZ *>(_vertices[0]);
         Vector3D psi_a = vpoint->estimate();
         VertexSE3Expmap *vpose = static_cast<VertexSE3Expmap *>(_vertices[1]);
