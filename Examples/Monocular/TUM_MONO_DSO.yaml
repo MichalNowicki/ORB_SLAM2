@@ -62,7 +62,7 @@ Optimization.sigma: 1.000000
 # 2 -> inverted depth, 1 param per feature, reprojection error
 # 3 -> inverted depth, 3 params per feature, patch error
 # 4 -> inverted depth, 1 param per feature, patch error
-Optimization.type: 2
+Optimization.type: 4
 
 #--------------------------------------------------------------------------------------------
 # Viewer Parameters

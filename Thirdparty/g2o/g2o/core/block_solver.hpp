@@ -431,8 +431,9 @@ bool BlockSolver<Traits>::solve(){
     }
   }
   //cerr << "Solve [marginalize] = " <<  get_monotonic_time()-t << endl;
+//  std::cout << "Solve [marginalize] = " <<  get_monotonic_time()-t << endl;
 
-  // _bschur = _b for calling solver, and not touching _b
+            // _bschur = _b for calling solver, and not touching _b
   memcpy(_bschur, _b, _sizePoses * sizeof(double));
   for (int i=0; i<_sizePoses; ++i){
     _bschur[i]-=_coefficients[i];
@@ -452,6 +453,7 @@ bool BlockSolver<Traits>::solve(){
     globalStats->hessianDimension = globalStats->hessianPoseDimension + globalStats->hessianLandmarkDimension;
   }
   //cerr << "Solve [decompose and solve] = " <<  get_monotonic_time()-t << endl;
+//  std::cout << "Solve [decompose and solve] = " <<  get_monotonic_time()-t << endl;
 
   if (! solvedPoses)
     return false;
@@ -481,6 +483,8 @@ bool BlockSolver<Traits>::solve(){
   _DInvSchur->multiply(xl,cl);
   //_DInvSchur->rightMultiply(xl,cl);
   //cerr << "Solve [landmark delta] = " <<  get_monotonic_time()-t << endl;
+
+//  std::cout << "Solve [landmark delta] = " <<  get_monotonic_time()-t << endl;
 
   return true;
 }

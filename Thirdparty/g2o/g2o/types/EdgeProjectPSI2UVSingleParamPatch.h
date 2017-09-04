@@ -21,7 +21,7 @@ namespace g2o {
 
     typedef Eigen::Matrix<double,9,1,Eigen::ColMajor> Vector9D;
 
-    class EdgeProjectPSI2UVSingleParamPatch : public g2o::BaseMultiEdge<2, Vector9D> {
+    class EdgeProjectPSI2UVSingleParamPatch : public g2o::BaseMultiEdge<9, Vector9D> {
     public:
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
@@ -43,6 +43,39 @@ namespace g2o {
             neighbours.push_back(make_pair(-1,-1));
             neighbours.push_back(make_pair(-2,0));
             neighbours.push_back(make_pair(-1,1));
+        }
+
+        void setAdditionalData(std::vector<double> _largePatchAnchor, std::vector<double> _largePatchObs,
+                               double _pointAnchorScale, double _pointObsScale) {
+            largePatchAnchor = _largePatchAnchor;
+            largePatchObs = _largePatchObs;
+            pointAnchorScale = _pointAnchorScale;
+            pointObsScale = _pointObsScale;
+
+            int largePatchElements = largePatchAnchor.size();
+
+            largePatchStride = sqrt(largePatchElements);
+            largePatchCenter = (largePatchStride - 1) / 2;
+
+
+            for (int i=0;i<largePatchElements; i++)
+                largePatchObsGradient.push_back(Vector2D(0,0));
+
+            // Selecting every non-border element
+            for (int i = 1, index = 1; i<largePatchStride-1;i++ )
+            {
+                for (int j = 1;j<largePatchStride-1;j++) {
+
+                    // Gradients
+                    Vector2D imageGradient;
+                    imageGradient[0] = 0.5 * (largePatchObs[i * largePatchStride  + j+1] - largePatchObs[i*largePatchStride +j-1]);
+                    imageGradient[1] = 0.5 * (largePatchObs[(i+1)*largePatchStride +j] - largePatchObs[(i-1)*largePatchStride+j]);
+                    largePatchObsGradient[index] = imageGradient;
+                    index++;
+                }
+                index = index + 2; // The first and last value in each row is equal to 0
+            }
+
         }
 
         virtual bool read  (std::istream& is);
@@ -76,7 +109,10 @@ namespace g2o {
 
         std::vector< std::pair<double, double> > neighbours;
 
-        std::vector<double> largePatchAnchor, largePatchObs; // TODO: Need to fill those, those are 21x21
+        std::vector<double> largePatchAnchor, largePatchObs;
+        std::vector< Vector2D > largePatchObsGradient;
+        double pointAnchorScale, pointObsScale;
+        int largePatchCenter, largePatchStride;
     };
 }
 #endif //ORB_SLAM2_EDGEPROJECTPSI2UVSINGLEPARAMPATCH_H

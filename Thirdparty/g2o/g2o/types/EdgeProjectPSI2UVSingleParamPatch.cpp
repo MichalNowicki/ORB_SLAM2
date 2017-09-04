@@ -52,26 +52,73 @@ namespace g2o {
         double cx = cam->principle_point[0], cy = cam->principle_point[1];
         double fx = cam->focal_length_x, fy = cam->focal_length_y;
 
-        Eigen::Vector3d pointInFirst;
-        pointInFirst[2] = 1. / pointInvD->estimate();
-        pointInFirst[0] = (pointInvD->u0 - cx) * pointInFirst[2] / fx;
-        pointInFirst[1] = (pointInvD->v0 - cy) * pointInFirst[2] / fy;
+        Matrix<double, 9, 1, Eigen::ColMajor> computedError;
+        for (int i=0;i<neighbours.size();i++)
+        {
+            // Getting the patch value in anchor
+            int refU = largePatchCenter + neighbours[i].first, refV = largePatchCenter + neighbours[i].second;
+            double refValue = largePatchAnchor[refU * largePatchStride + refV];
 
-        Eigen::Vector3d pointInGlobal = T_anchor_from_world->estimate().inverse().map(pointInFirst);
+            // Getting the projected point in obs
+            Eigen::Vector3d pointInFirst;
+            pointInFirst[2] = 1. / pointInvD->estimate();
+            pointInFirst[0] = (pointInvD->u0 - cx + neighbours[i].first * pointAnchorScale) * pointInFirst[2] / fx;
+            pointInFirst[1] = (pointInvD->v0 - cy + neighbours[i].second * pointAnchorScale) * pointInFirst[2] / fy;
+            Eigen::Vector3d pointInGlobal = T_anchor_from_world->estimate().inverse().map(pointInFirst);
+            Vector2d projectedPoint = cam->cam_map(T_p_from_world->estimate().map(pointInGlobal));
 
-//        Vector2d obs(_measurement);
-//        Vector2d projectedPoint = cam->cam_map(T_p_from_world->estimate().map(pointInGlobal));
+            // Find where the projected point is on stored patch
+            double patchOffsetU = (projectedPoint[0] - _measurement[0]) / pointObsScale;
+            double patchOffsetV = (projectedPoint[1] - _measurement[1]) / pointObsScale;
 
-//        _error = obs - projectedPoint; // TODO: Compute patch diff 9x1
+            double obsU = largePatchCenter + patchOffsetU;
+            double obsV = largePatchCenter + patchOffsetV;
+
+            // The obs value will not be integer
+            const double xInt = int(obsU), yInt = int(obsV);
+            const double xSub = obsU - xInt, ySub = obsV - yInt;
+
+            const double topLeft = (1.0 - xSub) * (1.0 - ySub);
+            const double topRight = xSub * (1.0 - ySub);
+            const double bottomLeft = (1.0 - xSub) * ySub;
+            const double bottomRight = xSub * ySub;
+
+
+            double obsValue =    topLeft * largePatchObs[yInt * largePatchStride + xInt] +
+                                topRight * largePatchObs[yInt * largePatchStride + xInt + 1] +
+                                bottomLeft * largePatchObs[(yInt+1) * largePatchStride + xInt] +
+                                bottomRight * largePatchObs[(yInt+1) * largePatchStride + xInt + 1];
+
+
+            computedError(i,0) = refValue - obsValue;
+            std::cout << "Projected and measured: (" << _measurement[0] << ", " << _measurement[1] << ") vs (" << projectedPoint[0] << ". " << projectedPoint[1] << ")" <<std::endl;
+            std::cout << "computedError(i,0) = " <<  refValue << " " << obsValue << std::endl;
+
+        }
+
+        _error = computedError;
     }
 
-    inline Eigen::Matrix<double, 1, 2> d_inten_d_proj(const double u, const double v) {
-        // TODO - select gradient for point (u,v)
-        Eigen::Matrix<double, 1, 2> G;
-//            G(0,0) = 1;
-//            G(0,1) = 1;
+    inline Eigen::Matrix<double, 1, 2> EdgeProjectPSI2UVSingleParamPatch::d_inten_d_proj(const double obsU, const double obsV) {
 
-//            return G;
+        // The obs value will not be integer
+        const double xInt = int(obsU), yInt = int(obsV);
+        const double xSub = obsU - xInt, ySub = obsV - yInt;
+
+        const double topLeft = (1.0 - xSub) * (1.0 - ySub);
+        const double topRight = xSub * (1.0 - ySub);
+        const double bottomLeft = (1.0 - xSub) * ySub;
+        const double bottomRight = xSub * ySub;
+
+
+        Eigen::Matrix<double, 1, 2> G;
+        for (int i=0;i<2;i++) {
+            G(0,i) = topLeft * largePatchObsGradient[yInt * largePatchStride + xInt][i] +
+                     topRight * largePatchObsGradient[yInt * largePatchStride + xInt + 1][i] +
+                     bottomLeft * largePatchObsGradient[(yInt+1) * largePatchStride + xInt][i] +
+                     bottomRight * largePatchObsGradient[(yInt+1) * largePatchStride + xInt + 1][i];
+        }
+        return G;
     };
 
     inline Matrix<double, 2, 3, Eigen::ColMajor>
@@ -103,44 +150,73 @@ namespace g2o {
 
     void EdgeProjectPSI2UVSingleParamPatch::linearizeOplus() {
 
+        // Estiamted values
         VertexSBAPointInvD *pointInvD = static_cast<VertexSBAPointInvD *>(_vertices[0]);
-
         VertexSE3Expmap *vpose = static_cast<VertexSE3Expmap *>(_vertices[1]);
-        SE3Quat T_cw = vpose->estimate();
         VertexSE3Expmap *vanchor = static_cast<VertexSE3Expmap *>(_vertices[2]);
+
+        // Camera parameters
         const CameraParameters *cam
                 = static_cast<const CameraParameters *>(parameter(0));
-
         double cx = cam->principle_point[0], cy = cam->principle_point[1];
         double fx = cam->focal_length_x, fy = cam->focal_length_y;
 
+
+        // Empty jacobians
         _jacobianOplus[0] = Matrix<double, 9, 1, Eigen::ColMajor>();
         _jacobianOplus[1] = Matrix<double, 9, 6, Eigen::ColMajor>();
         _jacobianOplus[2] = Matrix<double, 9, 6, Eigen::ColMajor>();
 
 
-        Eigen::Vector3d x_a;
-        x_a[2] = 1. / pointInvD->estimate();
-        x_a[0] = (pointInvD->u0 - cx) * x_a[2] / fx;
-        x_a[1] = (pointInvD->v0 - cy) * x_a[2] / fy;
+        // Getting current pose estimate
+        SE3Quat T_cw = vpose->estimate();
 
-        Vector3D psi_a = invert_depth(x_a);
+        // Getting the anchor pose estimate
+        SE3Quat T_aw = vanchor->estimate();
 
-        SE3Quat A_aw = vanchor->estimate();
-        SE3Quat T_ca = T_cw * A_aw.inverse();
+        // From anchor to current
+        SE3Quat T_ca = T_cw * T_aw.inverse();
 
-        Vector3D y = T_ca * x_a;
-        Matrix<double, 2, 3, Eigen::ColMajor> Jcam
-                = d_proj_d_y(cam->focal_length_x, cam->focal_length_y, y);
-
+        // For all points in neighbourhood
         for (int i=0;i<9;i++) {
-            const double u = pointInvD->u0 + neighbours[i].first;
-            const double v = pointInvD->v0 + neighbours[i].second;
-            Matrix<double, 1, 2> Ji = d_inten_d_proj(u, v);
 
+            // Getting the projected point in obs
+            Eigen::Vector3d pointInFirst;
+            pointInFirst[2] = 1. / pointInvD->estimate();
+            pointInFirst[0] = (pointInvD->u0 - cx + neighbours[i].first * pointAnchorScale) * pointInFirst[2] / fx;
+            pointInFirst[1] = (pointInvD->v0 - cy + neighbours[i].second * pointAnchorScale) * pointInFirst[2] / fy;
+
+            // Global point position
+            Eigen::Vector3d pointInGlobal = T_aw.inverse().map(pointInFirst);
+
+            // 3D point in obs
+            Vector3D pointInObs = T_cw.map(pointInGlobal);
+
+            // 2D projected point in anchor
+            Vector2d projectedPoint = cam->cam_map(pointInObs);
+
+            // Point in anchor in inverse depth parametrization
+            Vector3D psi_a = invert_depth(pointInFirst);
+
+            // Jacobian of camera
+            Matrix<double, 2, 3, Eigen::ColMajor> Jcam
+                    = d_proj_d_y(cam->focal_length_x, cam->focal_length_y, pointInObs);
+
+            // Find where the projected point is on stored patch
+            double patchOffsetU = (projectedPoint[0] - _measurement[0]) / pointObsScale;
+            double patchOffsetV = (projectedPoint[1] - _measurement[1]) / pointObsScale;
+
+            // Observation on current frame in largePatch CS
+            double obsU = largePatchCenter + patchOffsetU;
+            double obsV = largePatchCenter + patchOffsetV;
+
+            // Image gradient
+            Matrix<double, 1, 2> Ji = d_inten_d_proj(obsU, obsV);
+
+            // Jacobians of point, observation pose and anchor pose
             _jacobianOplus[0].row(i) = - Ji * Jcam * d_Tinvpsi_d_psi(T_ca, psi_a);
-            _jacobianOplus[1].row(i) = - Ji * Jcam * d_expy_d_y(y);
-            _jacobianOplus[2].row(i) = Ji * Jcam * T_ca.rotation().toRotationMatrix() * d_expy_d_y(x_a);
+            _jacobianOplus[1].row(i) = - Ji * Jcam * d_expy_d_y(pointInObs);
+            _jacobianOplus[2].row(i) = Ji * Jcam * T_ca.rotation().toRotationMatrix() * d_expy_d_y(pointInFirst);
         }
     }
 

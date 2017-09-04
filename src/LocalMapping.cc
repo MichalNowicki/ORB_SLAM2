@@ -113,13 +113,17 @@ void LocalMapping::Run()
                     else if (optimizationType == 3)
                         ; // TODO
                     // inverted depth, 1 param per feature, patch error
-                    else if (optimizationType == 4)
-                        ; // TODO
+                    else if (optimizationType == 4) {
+                        chi2 = Optimizer::LocalBundleAdjustment(mpCurrentKeyFrame, &mbAbortBA, mpMap, sigma);
+                        chi2 = Optimizer::LocalBundleAdjustmentInvDepthSingleParamPatch(mpCurrentKeyFrame, &mbAbortBA, mpMap, sigma);
+                    }
 
                     auto end = chrono::steady_clock::now();
                     auto diff = end - start;
-                    cout << chrono::duration <double, milli> (diff).count() << " ms" << endl;
-//                    exit(0);
+                    cout << "\tLocalMapping time: " << chrono::duration <double, milli> (diff).count() << " ms" << endl;
+
+
+//                    std::cout << std::endl << "Total BA count : " << baCounter << std::endl;
 
                     chi2statistics = chi2;
 
@@ -363,21 +367,21 @@ void LocalMapping::ProcessNewKeyFrame()
         }
     }
 
-    double avgIterations = std::accumulate( numbersOfIterations.begin(), numbersOfIterations.end(), 0.0) * 1.0 /numbersOfIterations.size();
-
-    double avgErrBef = 0.0;
-    double avgErrAfter = 0.0;
-    for (int i=0;i<subpixErrorGains.size();i++)
-    {
-        avgErrBef += subpixErrorGains[i].first;
-        avgErrAfter += subpixErrorGains[i].second;
-    }
-    avgErrBef = avgErrBef / subpixErrorGains.size();
-    avgErrAfter = avgErrAfter / subpixErrorGains.size();
-
-    //    float averageCurPatch =
-
-    std::cout << "\t Subpixel refinement for " << countRefined << " / " << possibleForSubPix << " avg iter: " << avgIterations << " B: " << avgErrBef << " E: "<< avgErrAfter << std::endl;
+//    double avgIterations = std::accumulate( numbersOfIterations.begin(), numbersOfIterations.end(), 0.0) * 1.0 /numbersOfIterations.size();
+//
+//    double avgErrBef = 0.0;
+//    double avgErrAfter = 0.0;
+//    for (int i=0;i<subpixErrorGains.size();i++)
+//    {
+//        avgErrBef += subpixErrorGains[i].first;
+//        avgErrAfter += subpixErrorGains[i].second;
+//    }
+//    avgErrBef = avgErrBef / subpixErrorGains.size();
+//    avgErrAfter = avgErrAfter / subpixErrorGains.size();
+//
+//    //    float averageCurPatch =
+//
+//    std::cout << "\t Subpixel refinement for " << countRefined << " / " << possibleForSubPix << " avg iter: " << avgIterations << " B: " << avgErrBef << " E: "<< avgErrAfter << std::endl;
 //    if ( countRefined > 0)
 //        exit(0);
     // Update links in the Covisibility Graph
