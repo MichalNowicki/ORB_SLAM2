@@ -115,7 +115,8 @@ void LocalMapping::Run()
                     // inverted depth, 1 param per feature, patch error
                     else if (optimizationType == 4) {
                         chi2 = Optimizer::LocalBundleAdjustment(mpCurrentKeyFrame, &mbAbortBA, mpMap, sigma);
-                        chi2 = Optimizer::LocalBundleAdjustmentInvDepthSingleParamPatch(mpCurrentKeyFrame, &mbAbortBA, mpMap, sigma);
+                        if (baCounter > 20)
+                            chi2 = Optimizer::LocalBundleAdjustmentInvDepthSingleParamPatch(mpCurrentKeyFrame, &mbAbortBA, mpMap, sigma);
                     }
 
                     auto end = chrono::steady_clock::now();
@@ -123,6 +124,7 @@ void LocalMapping::Run()
                     cout << "\tLocalMapping time: " << chrono::duration <double, milli> (diff).count() << " ms" << endl;
 
 
+//                    exit(0);
 //                    std::cout << std::endl << "Total BA count : " << baCounter << std::endl;
 
                     chi2statistics = chi2;

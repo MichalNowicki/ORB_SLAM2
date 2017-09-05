@@ -197,10 +197,18 @@ namespace g2o{
   }
 
   bool SparseOptimizer::initializeOptimization(int level){
+//    double t = get_monotonic_time();
+
     HyperGraph::VertexSet vset;
     for (VertexIDMap::iterator it=vertices().begin(); it!=vertices().end(); ++it)
       vset.insert(it->second);
-    return initializeOptimization(vset,level);
+
+    bool ret = initializeOptimization(vset,level);
+
+//    std::cout << "== g2o == SparseOptimizer::initializeOptimization took: " << (get_monotonic_time() - t) * 1000 << " ms " <<  std::endl;
+
+
+    return ret;
   }
 
   bool SparseOptimizer::initializeOptimization(HyperGraph::VertexSet& vset, int level){
@@ -353,6 +361,9 @@ namespace g2o{
 
   int SparseOptimizer::optimize(int iterations, bool online)
   {
+//    if ( iterations == 5 ) std::cout << "SparseOptimizer::optimize called: " << iterations << " " << online << std::endl;
+
+      double t = get_monotonic_time();
     if (_ivMap.size() == 0) {
       cerr << __PRETTY_FUNCTION__ << ": 0 vertices to optimize, maybe forgot to call initializeOptimization()" << endl;
       return -1;
@@ -374,7 +385,9 @@ namespace g2o{
     
     OptimizationAlgorithm::SolverResult result = OptimizationAlgorithm::OK;
     for (int i=0; i<iterations && ! terminate() && ok; i++){
+        double preT = get_monotonic_time();
       preIteration(i);
+        preT = get_monotonic_time()-preT;
 
       if (_computeBatchStatistics) {
         G2OBatchStatistics& cstat = _batchStatistics[i];
@@ -385,7 +398,13 @@ namespace g2o{
       }
       
       double ts = get_monotonic_time();
-      result = _algorithm->solve(i, online);
+
+        int iter = i; // TODO: FOR TEST
+//        if ( iterations == 5 )
+//            iter = i + 1000;
+
+      result = _algorithm->solve(iter, online);
+        double solveT = get_monotonic_time() - ts;
       ok = ( result == OptimizationAlgorithm::OK );
 
       bool errorComputed = false;
@@ -409,12 +428,20 @@ namespace g2o{
         _algorithm->printVerbose(cerr);
         cerr << endl;
       }
-      ++cjIterations; 
+      ++cjIterations;
+
+        double postT = get_monotonic_time();
       postIteration(i);
+        postT = get_monotonic_time() - postT;
+
+//      if ( iterations == 5 ) std::cout << "Time pre: " << preT * 1000 << " solve: " <<  solveT* 1000  << " post: " << postT* 1000  << std::endl;
     }
     if (result == OptimizationAlgorithm::Fail) {
       return 0;
     }
+
+//      if ( iterations == 5 ) std::cout << "== g2o == SparseOptimizer::optimize took: " << (get_monotonic_time() - t) * 1000 << " ms " <<  std::endl;
+
     return cjIterations;
   }
 

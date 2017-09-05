@@ -816,11 +816,16 @@ std::vector<double> Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStop
             return std::vector<double>(); // TODO: Modified
 
     auto start = chrono::steady_clock::now();
-    optimizer.initializeOptimization();
-    optimizer.optimize(5);
+    optimizer.initializeOptimization(0);
     auto end = chrono::steady_clock::now();
     auto diff = end - start;
-    auto diff2 = end - start;
+
+    auto start2 = chrono::steady_clock::now();
+    optimizer.optimize(5);
+    auto end2 = chrono::steady_clock::now();
+    auto diff2 = end2 - start2;
+
+    auto diff3 = diff2, diff4 = diff2, diff5 = diff2;
 
     bool bDoMore= true;
 
@@ -865,11 +870,24 @@ std::vector<double> Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStop
     }
 
     // Optimize again without the outliers
-    auto start = chrono::steady_clock::now();
-    optimizer.initializeOptimization(0);
-    optimizer.optimize(10);
-    auto end = chrono::steady_clock::now();
-    diff2 = end - start;
+        auto start3 = chrono::steady_clock::now();
+        optimizer.initializeOptimization(0);
+        auto end3 = chrono::steady_clock::now();
+        diff3 = end3 - start3;
+
+        std::cout << " ------- " << std::endl;
+
+        auto start4 = chrono::steady_clock::now();
+        optimizer.optimize(5);
+        auto end4 = chrono::steady_clock::now();
+        diff4 = end4 - start4;
+
+        std::cout << " ------- " << std::endl;
+
+        auto start5 = chrono::steady_clock::now();
+        optimizer.optimize(5);
+        auto end5 = chrono::steady_clock::now();
+        diff5 = end5 - start5;
 
     }
 
@@ -992,7 +1010,9 @@ std::vector<double> Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStop
 
     std::cout << "\tAvg reprojection error : " << accumulate( reprojectionErr.begin(), reprojectionErr.end(), 0.0)/reprojectionErr.size() << std::endl;
 
-    cout << "Pure optimization time: " << chrono::duration <double, milli> (diff).count() + chrono::duration <double, milli> (diff2).count() << " ms" << endl;
+    cout << "\t LBA: Initialization time: " << chrono::duration <double, milli> (diff).count() << " "<< chrono::duration <double, milli> (diff3).count() << " ms" << endl;
+    cout << "\t LBA: Pure optimization time: " << chrono::duration <double, milli> (diff2).count() << " " << chrono::duration <double, milli> (diff4).count()
+         << " " << chrono::duration <double, milli> (diff5).count() << " ms" << endl;
 
 
     return chi2Statistics;
@@ -2144,8 +2164,19 @@ std::vector<double> Optimizer::LocalBundleAdjustmentInvDepthSingleParam(KeyFrame
             return std::vector<double>(); // Modified
 
 
-    optimizer.initializeOptimization();
+    auto start = chrono::steady_clock::now();
+    optimizer.initializeOptimization(0);
+    auto end = chrono::steady_clock::now();
+    auto diff = end - start;
+
+//    std::cout << "!!!!!!!!! ---------- !!!!!!!!!! " << std::endl;
+    auto start2 = chrono::steady_clock::now();
     optimizer.optimize(5);
+    auto end2 = chrono::steady_clock::now();
+    auto diff2 = end2 - start2;
+//    std::cout << "!!!!!!!!! ---------- !!!!!!!!!! " << std::endl;
+
+    auto diff3 = diff2, diff4 = diff2, diff5 = diff2;
 
     bool bDoMore = true;
 
@@ -2186,8 +2217,28 @@ std::vector<double> Optimizer::LocalBundleAdjustmentInvDepthSingleParam(KeyFrame
 
 // Optimize again without the outliers
 
+//        std::cout << " ------- " << std::endl;
+
+        auto start3 = chrono::steady_clock::now();
         optimizer.initializeOptimization(0);
-        optimizer.optimize(10);
+        auto end3 = chrono::steady_clock::now();
+        diff3 = end3 - start3;
+
+//        std::cout << " ------- " << std::endl;
+
+        auto start4 = chrono::steady_clock::now();
+        optimizer.optimize(5);
+        auto end4 = chrono::steady_clock::now();
+        diff4 = end4 - start4;
+
+//        std::cout << " ------- " << std::endl;
+
+        auto start5 = chrono::steady_clock::now();
+        optimizer.optimize(5);
+        auto end5 = chrono::steady_clock::now();
+        diff5 = end5 - start5;
+
+//        std::cout << " ------- " << std::endl;
 
     }
 
@@ -2317,6 +2368,11 @@ std::vector<double> Optimizer::LocalBundleAdjustmentInvDepthSingleParam(KeyFrame
 
     std::cout << "\tAvg reprojection error : "
               << accumulate(reprojectionErr.begin(), reprojectionErr.end(), 0.0) / reprojectionErr.size() << std::endl;
+
+    cout << "\t LBA InvD Single: Initialization time: " << chrono::duration <double, milli> (diff).count() << " "<<  chrono::duration <double, milli> (diff3).count() << " ms" << endl;
+    cout << "\t LBA InvD Single: Pure optimization time: " << chrono::duration <double, milli> (diff2).count() << " " << chrono::duration <double, milli> (diff4).count()
+            << " " << chrono::duration <double, milli> (diff5).count() << " ms" << endl;
+
 
     return chi2Statistics;
 }
@@ -2533,7 +2589,7 @@ std::vector<double> Optimizer::LocalBundleAdjustmentInvDepthSingleParamPatch(Key
                     const float &invSigma2 = pKFi->mvInvLevelSigma2[kpUn.octave];
                     const float assumedDetInvSigma2 = 1.0 / (sigma * sigma);
 //                    e->setInformation(Eigen::Matrix2d::Identity() * invSigma2 * assumedDetInvSigma2);
-                    e->setInformation(Eigen::Matrix<double, 9, 9>::Identity() * 0.0001);
+                    e->setInformation(Eigen::Matrix<double, 9, 9>::Identity() * 0.01);
 
                     g2o::RobustKernelHuber *rk = new g2o::RobustKernelHuber;
                     e->setRobustKernel(rk);
@@ -2586,11 +2642,39 @@ std::vector<double> Optimizer::LocalBundleAdjustmentInvDepthSingleParamPatch(Key
             return std::vector<double>(); // Modified
 
     auto start = chrono::steady_clock::now();
-    optimizer.initializeOptimization();
-    optimizer.optimize(5);
+    optimizer.initializeOptimization(0);
     auto end = chrono::steady_clock::now();
     auto diff = end - start;
-    auto diff2 = end - start;
+
+
+    double initchi2 = 0;
+    int count = 0;
+    for (size_t i = 0, iend = vpEdgesMono.size(); i < iend; i++) {
+        g2o::EdgeProjectPSI2UVSingleParamPatch *e = vpEdgesMono[i];
+        MapPoint *pMP = vpMapPointEdgeMono[i];
+
+        e->computeError();
+        if (pMP->isBad())
+            continue;
+
+        if (e->chi2() <= 5.991 && e->isDepthPositive()) {
+//            std::cout << " ??? " << e->chi2() << std::endl;
+            initchi2 += e->chi2();
+            count ++;
+        }
+    }
+    std::cout << "\tLocalBA: avg initial chi2 = " << initchi2 / count<< " over " << count << " measurements " << std::endl;
+
+
+
+//    std::cout << "!!!!!!!!! ---------- !!!!!!!!!! " << std::endl;
+    auto start2 = chrono::steady_clock::now();
+    optimizer.optimize(5);
+    auto end2 = chrono::steady_clock::now();
+    auto diff2 = end2 - start2;
+//    std::cout << "!!!!!!!!! ---------- !!!!!!!!!! " << std::endl;
+
+    auto diff3 = diff2, diff4 = diff2, diff5 = diff2;
 
     bool bDoMore = true;
 
@@ -2630,12 +2714,28 @@ std::vector<double> Optimizer::LocalBundleAdjustmentInvDepthSingleParamPatch(Key
 //        }
 
 // Optimize again without the outliers
+//        std::cout << " ------- " << std::endl;
 
-        auto start2 = chrono::steady_clock::now();
+        auto start3 = chrono::steady_clock::now();
         optimizer.initializeOptimization(0);
-        optimizer.optimize(10);
-        auto end2 = chrono::steady_clock::now();
-        diff2 = end2 - start2;
+        auto end3 = chrono::steady_clock::now();
+        diff3 = end3 - start3;
+
+//        std::cout << " ------- " << std::endl;
+
+        auto start4 = chrono::steady_clock::now();
+        optimizer.optimize(5);
+        auto end4 = chrono::steady_clock::now();
+        diff4 = end4 - start4;
+
+//        std::cout << " ------- " << std::endl;
+
+        auto start5 = chrono::steady_clock::now();
+        optimizer.optimize(5);
+        auto end5 = chrono::steady_clock::now();
+        diff5 = end5 - start5;
+
+//        std::cout << " ------- " << std::endl;
 
     }
 
@@ -2767,7 +2867,9 @@ std::vector<double> Optimizer::LocalBundleAdjustmentInvDepthSingleParamPatch(Key
     std::cout << "\tAvg reprojection error : "
               << accumulate(reprojectionErr.begin(), reprojectionErr.end(), 0.0) / reprojectionErr.size() << std::endl;
 
-    cout << "Pure optimization time: " << chrono::duration <double, milli> (diff).count() + chrono::duration <double, milli> (diff2).count() << " ms" << endl;
+    cout << "\t LBA InvD Patches: Initialization time: " << chrono::duration <double, milli> (diff).count() << " "<<  chrono::duration <double, milli> (diff3).count() << " ms" << endl;
+    cout << "\t LBA InvD Patches: Pure optimization time: " << chrono::duration <double, milli> (diff2).count() << " " << chrono::duration <double, milli> (diff4).count()
+                                                            << " " << chrono::duration <double, milli> (diff5).count() << " ms" << endl;
     return chi2Statistics;
 }
 

@@ -142,6 +142,7 @@ BlockSolver<Traits>::~BlockSolver()
 template <typename Traits>
 bool BlockSolver<Traits>::buildStructure(bool zeroBlocks)
 {
+    double ttt = get_monotonic_time();
   assert(_optimizer);
 
   size_t sparseDim = 0;
@@ -291,6 +292,8 @@ bool BlockSolver<Traits>::buildStructure(bool zeroBlocks)
   delete schurMatrixLookup;
   _Hschur->fillSparseBlockMatrixCCSTransposed(*_HschurTransposedCCS);
 
+//  cout << "== g2o == BuildStructure took: " << (get_monotonic_time() - ttt)*1000 << " ms" << std::endl;
+
   return true;
 }
 
@@ -431,7 +434,7 @@ bool BlockSolver<Traits>::solve(){
     }
   }
   //cerr << "Solve [marginalize] = " <<  get_monotonic_time()-t << endl;
-//  std::cout << "Solve [marginalize] = " <<  get_monotonic_time()-t << endl;
+//  std::cout << "== g2o == Solve [marginalize] = " <<  (get_monotonic_time()-t)*1000 << " ms"  << endl;
 
             // _bschur = _b for calling solver, and not touching _b
   memcpy(_bschur, _b, _sizePoses * sizeof(double));
@@ -453,7 +456,7 @@ bool BlockSolver<Traits>::solve(){
     globalStats->hessianDimension = globalStats->hessianPoseDimension + globalStats->hessianLandmarkDimension;
   }
   //cerr << "Solve [decompose and solve] = " <<  get_monotonic_time()-t << endl;
-//  std::cout << "Solve [decompose and solve] = " <<  get_monotonic_time()-t << endl;
+//  std::cout << "== g2o == Solve [decompose and solve] = " <<  (get_monotonic_time()-t)*1000 << " ms"  << endl;
 
   if (! solvedPoses)
     return false;
@@ -484,8 +487,9 @@ bool BlockSolver<Traits>::solve(){
   //_DInvSchur->rightMultiply(xl,cl);
   //cerr << "Solve [landmark delta] = " <<  get_monotonic_time()-t << endl;
 
-//  std::cout << "Solve [landmark delta] = " <<  get_monotonic_time()-t << endl;
+//  std::cout << "== g2o == Solve [landmark delta] = " <<  (get_monotonic_time()-t)*1000 << " ms"  << endl;
 
+//  std::cout << "== g2o == Solve total time = " <<  (get_monotonic_time()-t)*1000 << " ms"  << endl;
   return true;
 }
 
@@ -530,10 +534,18 @@ bool BlockSolver<Traits>::buildSystem()
   JacobianWorkspace jacobianWorkspace = _optimizer->jacobianWorkspace();
 # pragma omp parallel for default (shared) firstprivate(jacobianWorkspace) if (_optimizer->activeEdges().size() > 100)
 # endif
+
+//  double sumTime = 0, sumQ = 0;
   for (int k = 0; k < static_cast<int>(_optimizer->activeEdges().size()); ++k) {
     OptimizableGraph::Edge* e = _optimizer->activeEdges()[k];
+//    sumTime -= get_monotonic_time();
     e->linearizeOplus(jacobianWorkspace); // jacobian of the nodes' oplus (manifold)
+//    sumTime += get_monotonic_time();
+
+//      sumQ -= get_monotonic_time();
     e->constructQuadraticForm();
+//      sumQ += get_monotonic_time();
+
 #  ifndef NDEBUG
     for (size_t i = 0; i < e->vertices().size(); ++i) {
       const OptimizableGraph::Vertex* v = static_cast<const OptimizableGraph::Vertex*>(e->vertex(i));
@@ -547,6 +559,9 @@ bool BlockSolver<Traits>::buildSystem()
     }
 #  endif
   }
+
+//  std::cout << "Jacobian time: " << sumTime * 1000 << " ms" << std::endl;
+//    std::cout << "QuadraticForm time: " << sumQ * 1000 << " ms" << std::endl;
 
   // flush the current system in a sparse block matrix
 # ifdef G2O_OPENMP

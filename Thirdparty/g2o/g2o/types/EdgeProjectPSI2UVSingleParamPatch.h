@@ -62,7 +62,7 @@ namespace g2o {
                 largePatchObsGradient.push_back(Vector2D(0,0));
 
             // Selecting every non-border element
-            for (int i = 1, index = 1; i<largePatchStride-1;i++ )
+            for (int i = 1, index = largePatchStride + 1; i<largePatchStride-1;i++ )
             {
                 for (int j = 1;j<largePatchStride-1;j++) {
 
@@ -76,12 +76,33 @@ namespace g2o {
                 index = index + 2; // The first and last value in each row is equal to 0
             }
 
+//            std::cout << "PATCH" << std::endl;
+//            for (int i=0;i<largePatchElements;i++) {
+//                std :: cout << largePatchObs[i] << " ";
+//                if (i%largePatchStride == largePatchStride - 1)
+//                    std::cout << std::endl;
+//            }
+//
+//            std::cout << "GRADIENT x" << std::endl;
+//            for (int i=0;i<largePatchElements;i++) {
+//                std :: cout << largePatchObsGradient[i][0] << " ";
+//                if (i%largePatchStride == largePatchStride - 1)
+//                    std::cout << std::endl;
+//            }
+//
+//            std::cout << "GRADIENT Y" << std::endl;
+//            for (int i=0;i<largePatchElements;i++) {
+//                std :: cout << largePatchObsGradient[i][1] << " ";
+//                if (i%largePatchStride == largePatchStride - 1)
+//                    std::cout << std::endl;
+//            }
+
         }
 
         virtual bool read  (std::istream& is);
         virtual bool write (std::ostream& os) const;
         void computeError();
-        virtual void linearizeOplus ();
+//        virtual void linearizeOplus ();
 
 
         inline Eigen::Matrix<double, 1, 2> d_inten_d_proj(const double u, const double v) ;

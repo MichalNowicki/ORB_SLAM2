@@ -60,9 +60,17 @@ namespace g2o {
 
   OptimizationAlgorithm::SolverResult OptimizationAlgorithmLevenberg::solve(int iteration, bool online)
   {
+//    bool loud = false;
+//    if(iteration >= 1000) {
+//      loud = true;
+//      iteration = iteration - 1000;
+//    }
+
     assert(_optimizer && "_optimizer not set");
     assert(_solver->optimizer() == _optimizer && "underlying linear solver operates on different graph");
 
+
+    double xx=get_monotonic_time();
     if (iteration == 0 && !online) { // built up the CCS structure, here due to easy time measure
       bool ok = _solver->buildStructure();
       if (! ok) {
@@ -70,6 +78,9 @@ namespace g2o {
         return OptimizationAlgorithm::Fail;
       }
     }
+
+//    if (loud)
+//      std::cout << "\t\t Build structure: " << (get_monotonic_time() - xx)*1000 << " ms" << std::endl;
 
     double t=get_monotonic_time();
     _optimizer->computeActiveErrors();
@@ -84,7 +95,11 @@ namespace g2o {
 
     double iniChi = currentChi;
 
+      double ww = get_monotonic_time();
     _solver->buildSystem();
+//      if (loud)
+//          std::cout << "\t\t _solver->buildSystem(): " <<  (get_monotonic_time() - ww)*1000 << " ms" << std::endl;
+
     if (globalStats) {
       globalStats->timeQuadraticForm = get_monotonic_time()-t;
     }
@@ -107,8 +122,14 @@ namespace g2o {
       }
       // update the diagonal of the system matrix
       _solver->setLambda(_currentLambda, true);
+
+
+        double aa = get_monotonic_time();
       bool ok2 = _solver->solve();
-      if (globalStats) {
+//        if (loud)
+//            std::cout << "\t\t _solver->solve(): " <<  (get_monotonic_time() - aa)*1000 << " ms" << std::endl;
+
+        if (globalStats) {
         globalStats->timeLinearSolution+=get_monotonic_time()-t;
         t=get_monotonic_time();
       }
@@ -118,7 +139,10 @@ namespace g2o {
       }
 
       // restore the diagonal
+        aa = get_monotonic_time();
       _solver->restoreDiagonal();
+//        if (loud)
+//            std::cout << "\t\t _solver->restoreDiagonal(): " <<  (get_monotonic_time() - aa)*1000 << " ms" << std::endl;
 
       _optimizer->computeActiveErrors();
       tempChi = _optimizer->activeRobustChi2();
