@@ -1,9 +1,9 @@
 //
-// Created by michalnowicki on 31.08.17.
+// Created by michalnowicki on 06.09.17.
 //
 
-#ifndef ORB_SLAM2_EDGEPROJECTPSI2UVSINGLEPARAMPATCH_H
-#define ORB_SLAM2_EDGEPROJECTPSI2UVSINGLEPARAMPATCH_H
+#ifndef ORB_SLAM2_EDGEPROJECTPSI2UVSINGLEPARAMPATCHBRIGHT_H
+#define ORB_SLAM2_EDGEPROJECTPSI2UVSINGLEPARAMPATCHBRIGHT_H
 
 #include "../core/base_vertex.h"
 #include "../core/base_binary_edge.h"
@@ -15,17 +15,18 @@
 #include "types_sba.h"
 #include <Eigen/Geometry>
 #include <Eigen/Core>
+#include "../types/VertexSE3ExpmapBright.h"
 
 namespace g2o {
     using namespace std;
 
     typedef Eigen::Matrix<double,9,1,Eigen::ColMajor> Vector9D;
 
-    class EdgeProjectPSI2UVSingleParamPatch : public g2o::BaseMultiEdge<9, Vector9D> {
+    class EdgeProjectPSI2UVSingleParamPatchBright : public g2o::BaseMultiEdge<9, Vector9D> {
     public:
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-        EdgeProjectPSI2UVSingleParamPatch()  {
+        EdgeProjectPSI2UVSingleParamPatchBright()  {
             resizeParameters(1);
             installParameter(_cam, 0);
 
@@ -104,7 +105,7 @@ namespace g2o {
         virtual bool read  (std::istream& is);
         virtual bool write (std::ostream& os) const;
         void computeError();
-        virtual void linearizeOplus ();
+//        virtual void linearizeOplus ();
 
 
         inline Eigen::Matrix<double, 1, 2> d_inten_d_proj(const double u, const double v) ;
@@ -138,4 +139,5 @@ namespace g2o {
         int largePatchCenter, largePatchStride;
     };
 }
-#endif //ORB_SLAM2_EDGEPROJECTPSI2UVSINGLEPARAMPATCH_H
+
+#endif //ORB_SLAM2_EDGEPROJECTPSI2UVSINGLEPARAMPATCHBRIGHT_H

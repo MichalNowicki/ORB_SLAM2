@@ -32,6 +32,7 @@
 #include "Thirdparty/g2o/g2o/types/EdgeProjectPSI2UVSingleParam.h"
 #include "Thirdparty/g2o/g2o/types/EdgeProjectPSI2UVPatch.h"
 #include "Thirdparty/g2o/g2o/types/EdgeProjectPSI2UVSingleParamPatch.h"
+#include "Thirdparty/g2o/g2o/types/EdgeProjectPSI2UVSingleParamPatchBright.h"
 
 namespace ORB_SLAM2
 {
@@ -57,6 +58,8 @@ public:
                                                              float sigma = 1.0);
     std::vector<double> static LocalBundleAdjustmentInvDepthSingleParamPatch(KeyFrame *pKF, bool *pbStopFlag, Map *pMap,
                                                              float sigma = 1.0);
+    std::vector<double> static LocalBundleAdjustmentInvDepthSingleParamPatchBright(KeyFrame *pKF, bool *pbStopFlag, Map *pMap,
+                                                                             float sigma = 1.0);
 
     int static PoseOptimization(Frame* pFrame, float sigma = 1.0);
 

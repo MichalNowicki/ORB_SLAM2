@@ -114,10 +114,23 @@ void LocalMapping::Run()
                         ; // TODO
                     // inverted depth, 1 param per feature, patch error
                     else if (optimizationType == 4) {
-                        chi2 = Optimizer::LocalBundleAdjustment(mpCurrentKeyFrame, &mbAbortBA, mpMap, sigma);
-                        if (baCounter > 20)
-                            chi2 = Optimizer::LocalBundleAdjustmentInvDepthSingleParamPatch(mpCurrentKeyFrame, &mbAbortBA, mpMap, sigma);
+                        chi2 = Optimizer::LocalBundleAdjustmentInvDepthSingleParam(mpCurrentKeyFrame, &mbAbortBA, mpMap, sigma);
+                        if (baCounter == 20) {
+                            chi2 = Optimizer::LocalBundleAdjustmentInvDepthSingleParamPatch(mpCurrentKeyFrame,
+                                                                                            &mbAbortBA, mpMap, sigma);
+                            exit(0);
+                        }
                     }
+
+                    else if (optimizationType == 5) {
+                        chi2 = Optimizer::LocalBundleAdjustmentInvDepthSingleParam(mpCurrentKeyFrame, &mbAbortBA, mpMap, sigma);
+                        if (baCounter > 5) {
+                            chi2 = Optimizer::LocalBundleAdjustmentInvDepthSingleParamPatchBright(mpCurrentKeyFrame,
+                                                                                            &mbAbortBA, mpMap, sigma);
+//                            exit(0);
+                        }
+                    }
+
 
                     auto end = chrono::steady_clock::now();
                     auto diff = end - start;
