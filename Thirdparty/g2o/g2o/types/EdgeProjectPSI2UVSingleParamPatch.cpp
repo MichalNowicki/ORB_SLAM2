@@ -57,7 +57,7 @@ namespace g2o {
         {
             // Getting the patch value in anchor
             int refU = largePatchCenter + neighbours[i].first, refV = largePatchCenter + neighbours[i].second;
-            double refValue = largePatchAnchor[refU * largePatchStride + refV];
+            double refValue = largePatchAnchor[refV * largePatchStride + refU];
 
             // Getting the projected point in obs
             Eigen::Vector3d pointInFirst;
