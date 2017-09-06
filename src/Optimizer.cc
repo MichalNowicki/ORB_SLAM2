@@ -2986,8 +2986,8 @@ std::vector<double> Optimizer::LocalBundleAdjustmentInvDepthSingleParamPatchBrig
         g2o::VertexSE3ExpmapBright *vSE3 = new g2o::VertexSE3ExpmapBright();
         g2o::SE3QuatBright estimate;
         estimate.se3quat = Converter::toSE3Quat(pKFi->GetPose());
-        estimate.a = 1; // TODO: Later set it based on previous estimation
-        estimate.b = 0;
+        estimate.a = pKFi->affineA; // TODO: Later set it based on previous estimation
+        estimate.b = pKFi->affineB;
 
         vSE3->setEstimate(estimate);
         vSE3->setId(pKFi->mnId);
@@ -2995,6 +2995,8 @@ std::vector<double> Optimizer::LocalBundleAdjustmentInvDepthSingleParamPatchBrig
         optimizer.addVertex(vSE3);
         if (pKFi->mnId > maxKFid)
             maxKFid = pKFi->mnId;
+
+        std::cout << "Starting poses: " << vSE3->id() << " a=" << estimate.a << " b=" <<estimate.b<< std::endl << estimate.se3quat << std::endl;
     }
 
 // Set Fixed KeyFrame vertices
@@ -3003,8 +3005,8 @@ std::vector<double> Optimizer::LocalBundleAdjustmentInvDepthSingleParamPatchBrig
         g2o::VertexSE3ExpmapBright *vSE3 = new g2o::VertexSE3ExpmapBright();
         g2o::SE3QuatBright estimate;
         estimate.se3quat = Converter::toSE3Quat(pKFi->GetPose());
-        estimate.a = 1; // TODO: Later set it based on previous estimation
-        estimate.b = 0;
+        estimate.a = pKFi->affineA; // TODO: Later set it based on previous estimation
+        estimate.b = pKFi->affineB;
 
         vSE3->setEstimate(estimate);
         vSE3->setId(pKFi->mnId);
@@ -3105,8 +3107,8 @@ std::vector<double> Optimizer::LocalBundleAdjustmentInvDepthSingleParamPatchBrig
 
                         g2o::SE3QuatBright estimate;
                         estimate.se3quat = Converter::toSE3Quat(refKF->GetPose());
-                        estimate.a = 1; // TODO: Later set it based on previous estimation
-                        estimate.b = 0;
+                        estimate.a = refKF->affineA; // TODO: Later set it based on previous estimation
+                        estimate.b = refKF->affineB;
                         vSE3->setEstimate(estimate);
 
                         vSE3->setId(refKF->mnId);
@@ -3340,8 +3342,10 @@ std::vector<double> Optimizer::LocalBundleAdjustmentInvDepthSingleParamPatchBrig
         g2o::SE3QuatBright est = vSE3->estimate();
         g2o::SE3Quat SE3quat = est.se3quat; // TODO: Save a & b
 
-        std::cout << "Retrieved poses: " << vSE3->id() << " " << est.a << " " <<est.b<<std::endl;
+        std::cout << "Retrieved poses: " << vSE3->id() << " a=" << est.a << " b=" <<est.b<< std::endl << est.se3quat << std::endl;
         pKF->SetPose(Converter::toCvMat(SE3quat));
+        pKF->affineA = est.a;
+        pKF->affineB = est.b;
     }
 
 //Points
