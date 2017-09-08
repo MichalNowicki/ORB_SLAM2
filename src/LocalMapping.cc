@@ -22,6 +22,7 @@
 #include "LoopClosing.h"
 #include "ORBmatcher.h"
 #include "Optimizer.h"
+#include "../Modifications/OptimizerBA.h"
 
 #include<mutex>
 
@@ -103,31 +104,29 @@ void LocalMapping::Run()
 
                     // inverted depth, 3 params per feature, reprojection error
                     else if (optimizationType == 1)
-                        chi2 = Optimizer::LocalBundleAdjustmentInvDepth(mpCurrentKeyFrame,  &mbAbortBA, mpMap, sigma);
+                        chi2 = OptimizerBA::LocalBundleAdjustment(mpCurrentKeyFrame,  &mbAbortBA, mpMap, OptimizerBA::TYPE::INVERSE_DEPTH, sigma);
 
                     // inverted depth, 1 param per feature, reprojection error
                     else if (optimizationType == 2)
-                        chi2 = Optimizer::LocalBundleAdjustmentInvDepthSingleParam(mpCurrentKeyFrame,  &mbAbortBA, mpMap, sigma);
+                        chi2 = OptimizerBA::LocalBundleAdjustment(mpCurrentKeyFrame,  &mbAbortBA, mpMap, OptimizerBA::TYPE::INVERSE_DEPTH_SINGLE_PARAM, sigma);
 
                     // inverted depth, 3 params per feature, patch error
                     else if (optimizationType == 3)
                         ; // TODO
                     // inverted depth, 1 param per feature, patch error
                     else if (optimizationType == 4) {
-                        chi2 = Optimizer::LocalBundleAdjustmentInvDepthSingleParam(mpCurrentKeyFrame, &mbAbortBA, mpMap, sigma);
-                        if (baCounter == 20) {
-                            chi2 = Optimizer::LocalBundleAdjustmentInvDepthSingleParamPatch(mpCurrentKeyFrame,
-                                                                                            &mbAbortBA, mpMap, sigma);
+                        chi2 = OptimizerBA::LocalBundleAdjustment(mpCurrentKeyFrame,  &mbAbortBA, mpMap, OptimizerBA::TYPE::INVERSE_DEPTH_SINGLE_PARAM, sigma);
+                        if (baCounter > 20) {
+//                            chi2 = OptimizerBA::LocalBundleAdjustment(mpCurrentKeyFrame,  &mbAbortBA, mpMap, OptimizerBA::TYPE::INVERSE_DEPTH_SINGLE_PARAM_PATCH, sigma);
+                            chi2 =   OptimizerBA::GlobalBundleAdjustment(mpMap, OptimizerBA::TYPE::INVERSE_DEPTH_SINGLE_PARAM_PATCH, sigma);
                             exit(0);
                         }
                     }
 
                     else if (optimizationType == 5) {
-                        chi2 = Optimizer::LocalBundleAdjustmentInvDepthSingleParam(mpCurrentKeyFrame, &mbAbortBA, mpMap, sigma);
-                        if (baCounter > 5) {
-                            chi2 = Optimizer::LocalBundleAdjustmentInvDepthSingleParamPatchBright(mpCurrentKeyFrame,
-                                                                                            &mbAbortBA, mpMap, sigma);
-//                            exit(0);
+                        chi2 = OptimizerBA::LocalBundleAdjustment(mpCurrentKeyFrame,  &mbAbortBA, mpMap, OptimizerBA::TYPE::INVERSE_DEPTH_SINGLE_PARAM, sigma);
+                        if (baCounter % 100 == 99) {
+                            chi2 = OptimizerBA::LocalBundleAdjustment(mpCurrentKeyFrame,  &mbAbortBA, mpMap, OptimizerBA::TYPE::INVERSE_DEPTH_SINGLE_PARAM_PATCH_BRIGHTNESS, sigma);
                         }
                     }
 
@@ -259,56 +258,55 @@ void LocalMapping::Run()
         usleep(3000);
     }
 
-//    printf("Global BA\n");
-//
-//    bool mbStopGBA = false;
+    printf("Global BA\n");
+
+    bool mbStopGBA = false;
 //    chi2statistics = Optimizer::GlobalBundleAdjustemnt(mpMap,10,&mbStopGBA,mpCurrentKeyFrame->mnId,false, sigma);
-//
-//    /*
-//    * We verify the reprojection error
-//    *
-//    */
-////    vector<KeyFrame*> vpKFs = mpMap->GetAllKeyFrames();
-//    vector<MapPoint*> vpMP = mpMap->GetAllMapPoints();
-//
-//    std::vector<double> reprojectionErr;
-//    for(auto lit=vpMP.begin(), lend=vpMP.end(); lit!=lend; lit++) {
-//        MapPoint *pMP = *lit;
-//        cv::Mat mWorldPos = pMP->GetWorldPos();
-//
-//        const map<KeyFrame *, size_t> observations = pMP->GetObservations();
-//
-//        //Set edges
-//        for (map<KeyFrame *, size_t>::const_iterator mit = observations.begin(), mend = observations.end();
-//             mit != mend; mit++) {
-//            KeyFrame *pKFi = mit->first;
-//
-//            if (!pKFi->isBad()) {
-//                const cv::KeyPoint &kpUn = pKFi->mvKeysUn[mit->second];
-//
-//                cv::Mat pointInA = pKFi->GetRotation() * mWorldPos + pKFi->GetTranslation();
-//                cv::Mat projectionInA =  pKFi->mK * pointInA;
-//                double z = projectionInA.at<float>(2,0);
-//                projectionInA.col(0) = projectionInA.col(0) / z;
-//
-//
-//                const float refKpScale =  pKFi->mvScaleFactors[kpUn.octave];
-//
-//                float img1ReprojError = std::sqrt(pow(projectionInA.at<float>(0,0) - kpUn.pt.x, 2) + pow(projectionInA.at<float>(1,0) - kpUn.pt.y, 2))  / refKpScale  ;
-//
-//                if ( std::isnan(img1ReprojError) )
-//                    std::cout <<"NAN" << std::endl;
-//                else
-//                    reprojectionErr.push_back(img1ReprojError);
-//            }
-//        }
-//
-//
-//    }
-//
-//    std::cout << "\tAvg reprojection error : " << accumulate( reprojectionErr.begin(), reprojectionErr.end(), 0.0)/reprojectionErr.size() << std::endl;
-//    reprojectionStatistics = reprojectionErr;
-//    printf("Finished Global BA\n");
+    chi2statistics = OptimizerBA::GlobalBundleAdjustment(mpMap, OptimizerBA::TYPE::INVERSE_DEPTH_SINGLE_PARAM_PATCH, sigma);
+    /*
+    * We verify the reprojection error
+    *
+    */
+    vector<MapPoint*> vpMP = mpMap->GetAllMapPoints();
+
+    std::vector<double> reprojectionErr;
+    for(auto lit=vpMP.begin(), lend=vpMP.end(); lit!=lend; lit++) {
+        MapPoint *pMP = *lit;
+        cv::Mat mWorldPos = pMP->GetWorldPos();
+
+        const map<KeyFrame *, size_t> observations = pMP->GetObservations();
+
+        //Set edges
+        for (map<KeyFrame *, size_t>::const_iterator mit = observations.begin(), mend = observations.end();
+             mit != mend; mit++) {
+            KeyFrame *pKFi = mit->first;
+
+            if (!pKFi->isBad()) {
+                const cv::KeyPoint &kpUn = pKFi->mvKeysUn[mit->second];
+
+                cv::Mat pointInA = pKFi->GetRotation() * mWorldPos + pKFi->GetTranslation();
+                cv::Mat projectionInA =  pKFi->mK * pointInA;
+                double z = projectionInA.at<float>(2,0);
+                projectionInA.col(0) = projectionInA.col(0) / z;
+
+
+                const float refKpScale =  pKFi->mvScaleFactors[kpUn.octave];
+
+                float img1ReprojError = std::sqrt(pow(projectionInA.at<float>(0,0) - kpUn.pt.x, 2) + pow(projectionInA.at<float>(1,0) - kpUn.pt.y, 2))  / refKpScale  ;
+
+                if ( std::isnan(img1ReprojError) )
+                    std::cout <<"NAN" << std::endl;
+                else
+                    reprojectionErr.push_back(img1ReprojError);
+            }
+        }
+
+
+    }
+
+    std::cout << "\tAvg reprojection error : " << accumulate( reprojectionErr.begin(), reprojectionErr.end(), 0.0)/reprojectionErr.size() << std::endl;
+    reprojectionStatistics = reprojectionErr;
+    printf("Finished Global BA\n");
 
     std::cout << std::endl << "Total BA count : " << baCounter << std::endl;
 

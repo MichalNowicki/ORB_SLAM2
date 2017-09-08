@@ -361,7 +361,9 @@ namespace g2o{
 
   int SparseOptimizer::optimize(int iterations, bool online)
   {
-//    if ( iterations == 5 ) std::cout << "SparseOptimizer::optimize called: " << iterations << " " << online << std::endl;
+//    if ( iterations == 5 )
+//
+    //std::cout << "SparseOptimizer::optimize called: " << iterations << " " << online << std::endl;
 
       double t = get_monotonic_time();
     if (_ivMap.size() == 0) {
@@ -385,6 +387,8 @@ namespace g2o{
     
     OptimizationAlgorithm::SolverResult result = OptimizationAlgorithm::OK;
     for (int i=0; i<iterations && ! terminate() && ok; i++){
+
+     //   std::cout << "Iteration i = " << i << std::endl;
         double preT = get_monotonic_time();
       preIteration(i);
         preT = get_monotonic_time()-preT;

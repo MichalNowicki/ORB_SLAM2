@@ -57,7 +57,7 @@ KeyFrame::KeyFrame(Frame &F, Map *pMap, KeyFrameDatabase *pKFDB):
     }
 
     SetPose(F.mTcw);
-    affineA = 1;
+    affineA = 0;
     affineB = 0;
 }
 

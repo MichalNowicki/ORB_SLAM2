@@ -161,9 +161,11 @@ g2o/core/optimization_algorithm.cpp
 g2o/core/optimization_algorithm.h
 g2o/core/optimization_algorithm_with_hessian.cpp 
 g2o/core/optimization_algorithm_with_hessian.h
-g2o/core/optimization_algorithm_levenberg.cpp 
+g2o/core/optimization_algorithm_gauss_newton.cpp
+g2o/core/optimization_algorithm_gauss_newton.h
+g2o/core/optimization_algorithm_levenberg.cpp
 g2o/core/optimization_algorithm_levenberg.h
-g2o/core/jacobian_workspace.cpp 
+g2o/core/jacobian_workspace.cpp
 g2o/core/jacobian_workspace.h
 g2o/core/robust_kernel.cpp 
 g2o/core/robust_kernel.h

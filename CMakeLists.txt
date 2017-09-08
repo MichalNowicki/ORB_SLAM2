@@ -74,7 +74,7 @@ src/MapPoint.cc
 src/KeyFrame.cc
 src/Map.cc
 src/MapDrawer.cc
-src/Optimizer.cc
+        src/Optimizer.cc
 src/PnPsolver.cc
 src/Frame.cc
 src/KeyFrameDatabase.cc
@@ -86,7 +86,8 @@ Modifications/ImageRW_OpenCV.cpp
 Modifications/settings.cpp
 Modifications/globalCalib.cpp
 Modifications/cornerEdgeHarris.cpp
-        Modifications/PatchRefinement.cpp)
+Modifications/PatchRefinement.cpp
+Modifications/OptimizerBA.cpp)
 
 target_link_libraries(${PROJECT_NAME}
 ${OpenCV_LIBS}

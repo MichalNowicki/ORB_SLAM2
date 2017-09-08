@@ -22,12 +22,13 @@
 #include "Thirdparty/g2o/g2o/types/types_seven_dof_expmap.h"
 #include "Thirdparty/g2o/g2o/types/EdgeProjectPSI2UV.h"
 #include "Thirdparty/g2o/g2o/types/EdgeProjectPSI2UVSingleParam.h"
-
-
+#include "Thirdparty/g2o/g2o//types/VertexSE3ExpmapBright.h"
+#include "Thirdparty/g2o/g2o/types/EdgeProjectPSI2UVSingleParamPatchBright.h"
 #include "Converter.h"
 
 #include <opencv2/calib3d.hpp>
-
+#include<opencv2/core/core.hpp>
+#include <opencv2/opencv.hpp>
 
 using namespace std;
 
@@ -110,18 +111,23 @@ inline Eigen::Vector3d invert_depth(const Eigen::Vector3d & x){
 
 
 int main(int argc, char * argv[]) {
+
+    cv::Mat imagecolor = cv::imread("lenaScale.bmp"), image;
+    cv::cvtColor(imagecolor,image,CV_BGR2GRAY);
+
     ORBSLAMBA orbslamba(argv[1]);
 
     // Setup optimizer
     g2o::SparseOptimizer optimizer;
-    g2o::BlockSolver_6_3::LinearSolverType *linearSolver;
 
-    linearSolver = new g2o::LinearSolverEigen<g2o::BlockSolver_6_3::PoseMatrixType>();
-
-    g2o::BlockSolver_6_3 *solver_ptr = new g2o::BlockSolver_6_3(linearSolver);
+    typedef g2o::BlockSolver< g2o::BlockSolverTraits<6, 1> > BlockSolver_6_1;
+    BlockSolver_6_1::LinearSolverType *linearSolver;
+    linearSolver = new g2o::LinearSolverEigen<BlockSolver_6_1::PoseMatrixType>();
+    BlockSolver_6_1 *solver_ptr = new BlockSolver_6_1(linearSolver);
 
     g2o::OptimizationAlgorithmLevenberg *solver = new g2o::OptimizationAlgorithmLevenberg(solver_ptr);
     optimizer.setAlgorithm(solver);
+
 
 
     Eigen::Vector2d principal_point(orbslamba.cx, orbslamba.cy);
@@ -136,7 +142,7 @@ int main(int argc, char * argv[]) {
     // Creating poses
     bool first = true;
     for (auto c : orbslamba.cameras) {
-        g2o::VertexSE3Expmap *vSE3 = new g2o::VertexSE3Expmap();
+        g2o::VertexSE3ExpmapBright *vSE3 = new g2o::VertexSE3ExpmapBright();
 
 
         // Expmap -> rotation matrix and translation vector -> Quaternion
@@ -151,7 +157,12 @@ int main(int argc, char * argv[]) {
         T.row(1).col(3) = c.y;
         T.row(2).col(3) = c.z;
 
-        vSE3->setEstimate(ORB_SLAM2::Converter::toSE3Quat(T));
+        g2o::SE3QuatBright est;
+        est.se3quat = ORB_SLAM2::Converter::toSE3Quat(T);
+        est.a = 1;
+        est.b = 0;
+
+        vSE3->setEstimate(est);
         vSE3->setId(c.id);
         if (first) {
             vSE3->setFixed(true);
@@ -169,51 +180,78 @@ int main(int argc, char * argv[]) {
     std::map<int, g2o::VertexSBAPointXYZ *> vertexMap;
     for (auto p : orbslamba.points) {
 
-        g2o::VertexSBAPointXYZ *vPoint = new g2o::VertexSBAPointXYZ();
 
-        vPoint->setEstimate( invert_depth(p.pos) );
+        g2o::VertexSBAPointInvD *vPoint = new g2o::VertexSBAPointInvD();
+
+        vPoint->setEstimate( 1. / p.pos[2] );
 
         vPoint->setId(p.id);
         vPoint->setMarginalized(true);
         optimizer.addVertex(vPoint);
 
-        vertexMap[p.id]=vPoint;
-
         std::cout <<"Added point " << p.id << " : (invD) = (" << 1/ p.pos[2] << ")" << std::endl;
+    }
+
+    for (auto m : orbslamba.firstObs) {
+
+        std::cout << "Adding first observation : " << m.idC << " to " << m.idP << std::endl;
+        g2o::VertexSBAPointInvD * vPoint = dynamic_cast<g2o::VertexSBAPointInvD *>(optimizer.vertex(m.idP));
+        if (!vPoint)
+            std::cout << "Point does not exist" << std::endl;
+        vPoint->u0 = m.u;
+        vPoint->v0 = m.v;
     }
 
 
     const float thHuberMono = sqrt(5.991);
 
-    vector<g2o::EdgeProjectPSI2UV *> vpEdgesMono;
+    vector<g2o::EdgeProjectPSI2UVSingleParamPatchBright *> vpEdgesMono;
     vpEdgesMono.reserve(orbslamba.obsNum);
 
     // Adding edges that join 3 nodes - point (inv. depth), pose with first obs (pose) and current pose (pos)
     // The measurement of the edge is the (u,v) in the second pose
     for (auto m : orbslamba.measurements) {
 
-        Eigen::Matrix<double, 2, 1> obs;
-        obs << m.u, m.v;
-
-        g2o::EdgeProjectPSI2UV *e = new g2o::EdgeProjectPSI2UV();
-        e->resize(3);
-
         int firstId = orbslamba.firstMeasurement[m.idP];
         auto firstObs = orbslamba.firstObs[firstId];
 
+        std:: cout << "Adding measurement: " <<  m.idC << " " << m.idP << " " << firstId << " " << firstObs.idC << std::endl;
+
+
+        Eigen::Matrix<double, 9, 1> obs;
+        obs << m.u, m.v, 0, 0, 0, 0, 0, 0, 0;
+
+        g2o::EdgeProjectPSI2UVSingleParamPatchBright *e = new g2o::EdgeProjectPSI2UVSingleParamPatchBright();
+        e->resize(3);
+
         e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(m.idP)));
-        e->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(firstObs.idC)));
-        e->setVertex(2, dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(m.idC)));
+        e->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(m.idC)));
+        e->setVertex(2, dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(firstObs.idC)));
 
 
+        std::vector<double> refPatchVec;
+        for (int y = -5; y < 6; y++)
+            for (int x = -5; x < 6; x++)
+                refPatchVec.push_back(image.at<uchar>(firstObs.v + y, firstObs.u + x));
+
+        std::vector<double> curPatchVec;
+        for (int y = -5; y < 6; y++)
+            for (int x = -5; x < 6; x++)
+                curPatchVec.push_back(image.at<uchar>(m.v + y, m.u + x));
 
         e->setMeasurement(obs);
 
-        e->setInformation(Eigen::Matrix2d::Identity() * m.invSigma2);
 
-        g2o::RobustKernelHuber* rk = new g2o::RobustKernelHuber;
-        e->setRobustKernel(rk);
-        rk->setDelta(thHuberMono);
+//        e->setAdditionalData(refPatchVec, curPatchVec, 1.0, 1.0);
+        e->setAdditionalData(refPatchVec, curPatchVec, 1.0, 1.0);
+
+        e->setInformation(Eigen::Matrix<double, 9, 9>::Identity());
+
+
+
+//        g2o::RobustKernelHuber* rk = new g2o::RobustKernelHuber;
+//        e->setRobustKernel(rk);
+//        rk->setDelta(thHuberMono);
 
 
 

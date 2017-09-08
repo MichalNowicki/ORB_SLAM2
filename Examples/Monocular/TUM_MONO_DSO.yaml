@@ -51,7 +51,7 @@ ORBextractor.lambdaThreshold: 0.000000
 
 # Doing patches -> patchSize is not properly connected to code, largePatch is
 ORBextractor.patchSize: 5
-ORBextractor.largePatchSize: 9
+ORBextractor.largePatchSize: 21
 
 # Optimization sigma
 Optimization.sigma: 1.000000
@@ -62,7 +62,8 @@ Optimization.sigma: 1.000000
 # 2 -> inverted depth, 1 param per feature, reprojection error
 # 3 -> inverted depth, 3 params per feature, patch error
 # 4 -> inverted depth, 1 param per feature, patch error
-Optimization.type: 5
+# 5 -> inverted depth, 1 param per feature, patch error with affine brightness estimation
+Optimization.type: 2
 
 #--------------------------------------------------------------------------------------------
 # Viewer Parameters
