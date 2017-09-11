@@ -35,7 +35,7 @@ namespace ORB_SLAM2
         };
 
 
-        std::vector<double> static LocalBundleAdjustment(KeyFrame *pKF, bool *pbStopFlag, Map *pMap, OptimizerBA::TYPE type, float sigma = 1.0);
+        std::vector<double> static LocalBundleAdjustment(KeyFrame *pKF, bool *pbStopFlag, Map *pMap, OptimizerBA::TYPE type, int optimizationCounter, float sigma = 1.0);
 
         std::vector<double> static GlobalBundleAdjustment(Map* pMap, OptimizerBA::TYPE type, float sigma = 1.0);
 
@@ -57,9 +57,11 @@ namespace ORB_SLAM2
         void static saveBAProblem(KeyFrame *pKF, bool* pbStopFlag, Map* pMap, float sigma, std::string name);
 
 
-        void static prepareKFsAndMapPoints(KeyFrame *pKF, Map *pMap, list<KeyFrame *> &lLocalKeyFrames, set<MapPoint *> &lLocalMapPoints, list<KeyFrame *> &lFixedCameras);
+        void static prepareKFsAndMapPoints(KeyFrame *pKF, Map *pMap, list<KeyFrame *> &lLocalKeyFrames,
+                                           set<MapPoint *> &lLocalMapPoints, list<KeyFrame *> &lFixedCameras,
+                                           int optimizationCounter);
 
-        void static VerifyReprojectionError(list<KeyFrame *> lLocalKeyFrames, set<MapPoint *> lLocalMapPoints, list<KeyFrame *> lFixedCameras);
+        void static VerifyReprojectionError(list<KeyFrame *> lLocalKeyFrames, set<MapPoint *> lLocalMapPoints, list<KeyFrame *> lFixedCameras, std::string name);
 
     };
 

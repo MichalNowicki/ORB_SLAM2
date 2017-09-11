@@ -144,7 +144,7 @@ namespace ORB_SLAM2 {
         saveStream.close();
     }
 
-    void OptimizerBA::VerifyReprojectionError(list<KeyFrame *> lLocalKeyFrames, set<MapPoint *> lLocalMapPoints, list<KeyFrame *> lFixedCameras) {
+    void OptimizerBA::VerifyReprojectionError(list<KeyFrame *> lLocalKeyFrames, set<MapPoint *> lLocalMapPoints, list<KeyFrame *> lFixedCameras, std::string name) {
 
         std::vector<double> reprojectionErr;
         for (set<MapPoint *>::iterator lit = lLocalMapPoints.begin(), lend = lLocalMapPoints.end(); lit != lend; lit++) {
@@ -183,20 +183,28 @@ namespace ORB_SLAM2 {
 
         }
 
-        std::cout << "\tAvg reprojection error computed in each scale: " << accumulate( reprojectionErr.begin(), reprojectionErr.end(), 0.0)/reprojectionErr.size() << std::endl;
+        std::cout << name << " avg reproj: " << accumulate( reprojectionErr.begin(), reprojectionErr.end(), 0.0)/reprojectionErr.size() << std::endl;
     }
 
 
-    void OptimizerBA::prepareKFsAndMapPoints(KeyFrame *pKF, Map *pMap, list<KeyFrame *> &lLocalKeyFrames, set<MapPoint *> &lLocalMapPoints, list<KeyFrame *> &lFixedCameras) {
+    void OptimizerBA::prepareKFsAndMapPoints(KeyFrame *pKF, Map *pMap, list<KeyFrame *> &lLocalKeyFrames,
+                                             set<MapPoint *> &lLocalMapPoints,
+                                             list<KeyFrame *> &lFixedCameras,
+                                             int optimizationCounter) {
         // Local KeyFrames: First Breath Search from Current Keyframe
         lLocalKeyFrames.clear();
         lLocalKeyFrames.push_back(pKF);
-        pKF->mnBALocalForKF = pKF->mnId;
+        pKF->mnBALocalForKF = optimizationCounter;
 
-        const vector<KeyFrame *> vNeighKFs = pKF->GetVectorCovisibleKeyFrames();
+        vector<KeyFrame *> vNeighKFs = pKF->GetVectorCovisibleKeyFrames();
+
+        // TODO: I constraint the optimization window to 5 frames
+//        if ( vNeighKFs.size() > 5)
+//            vNeighKFs.resize(5);
+
         for (int i = 0, iend = vNeighKFs.size(); i < iend; i++) {
             KeyFrame *pKFi = vNeighKFs[i];
-            pKFi->mnBALocalForKF = pKF->mnId;
+            pKFi->mnBALocalForKF = optimizationCounter;
             if (!pKFi->isBad())
                 lLocalKeyFrames.push_back(pKFi);
         }
@@ -210,7 +218,7 @@ namespace ORB_SLAM2 {
                 if (pMP)
                     if (!pMP->isBad()) {
                             lLocalMapPoints.insert(pMP);
-                            pMP->mnBALocalForKF = pKF->mnId;
+                            pMP->mnBALocalForKF = optimizationCounter;
                         }
             }
         }
@@ -223,8 +231,8 @@ namespace ORB_SLAM2 {
                  mit != mend; mit++) {
                 KeyFrame *pKFi = mit->first;
 
-                if (pKFi->mnBALocalForKF != pKF->mnId && pKFi->mnBAFixedForKF != pKF->mnId) {
-                    pKFi->mnBAFixedForKF = pKF->mnId;
+                if (pKFi->mnBALocalForKF != optimizationCounter && pKFi->mnBAFixedForKF != optimizationCounter) {
+                    pKFi->mnBAFixedForKF = optimizationCounter;
                     if (!pKFi->isBad())
                         lFixedCameras.push_back(pKFi);
                 }
@@ -233,13 +241,14 @@ namespace ORB_SLAM2 {
     }
 
 
-    std::vector<double>  OptimizerBA::LocalBundleAdjustment(KeyFrame *pKF, bool *pbStopFlag, Map *pMap, OptimizerBA::TYPE type, float sigma)
-    {
+    std::vector<double>  OptimizerBA::LocalBundleAdjustment(KeyFrame *pKF, bool *pbStopFlag, Map *pMap,
+                                                            OptimizerBA::TYPE type, int optimizationCounter,
+                                                            float sigma) {
         list<KeyFrame *> lLocalKeyFrames, lFixedCameras;
         set<MapPoint *> lLocalMapPoints;
 
         // Find the keyframes that will take part in optimization
-        OptimizerBA::prepareKFsAndMapPoints(pKF, pMap, lLocalKeyFrames, lLocalMapPoints, lFixedCameras);
+        OptimizerBA::prepareKFsAndMapPoints(pKF, pMap, lLocalKeyFrames, lLocalMapPoints, lFixedCameras, optimizationCounter);
 
         if (type == OptimizerBA::TYPE::INVERSE_DEPTH)
             return OptimizerBA::BundleAdjustmentInvDepth(lLocalKeyFrames, lFixedCameras, lLocalMapPoints, pbStopFlag, pMap, sigma);
@@ -261,6 +270,9 @@ namespace ORB_SLAM2 {
         list<KeyFrame *> lLocalKeyFrames(vpKFs.begin(), vpKFs.end()), lFixedCameras;
         set<MapPoint *> lLocalMapPoints(vpMP.begin(), vpMP.end());
 
+
+        std::cout <<" -- OptimizerBA --  LKF.size() = " << lLocalKeyFrames.size() << " LMPs.size() = " << lLocalMapPoints.size() << std::endl;
+
         if (type == OptimizerBA::TYPE::INVERSE_DEPTH)
             return OptimizerBA::BundleAdjustmentInvDepth(lLocalKeyFrames, lFixedCameras, lLocalMapPoints, &pbStopFlag, pMap, sigma);
         if (type == OptimizerBA::TYPE::INVERSE_DEPTH_SINGLE_PARAM)
@@ -274,6 +286,7 @@ namespace ORB_SLAM2 {
 
     std::vector<double> OptimizerBA::BundleAdjustmentInvDepth(list<KeyFrame *> lLocalKeyFrames, list<KeyFrame *> lFixedCameras, set<MapPoint *> lLocalMapPoints, bool *pbStopFlag, Map *pMap, float sigma)
     {
+        string name = "\tLBA InvD: ";
         const float thHuberMono = 5.991;
         const int blockSolverCameras = 6;
         const int blockSolverPoses = 1;
@@ -529,7 +542,7 @@ namespace ORB_SLAM2 {
 
 
         // We verify the reprojection error
-        OptimizerBA::VerifyReprojectionError(lLocalKeyFrames, lLocalMapPoints, lFixedCameras);
+        OptimizerBA::VerifyReprojectionError(lLocalKeyFrames, lLocalMapPoints, lFixedCameras, name);
 
         return chi2Statistics;
     }
@@ -539,6 +552,7 @@ namespace ORB_SLAM2 {
 
     std::vector<double> OptimizerBA::BundleAdjustmentInvDepthSingleParam(list<KeyFrame *> lLocalKeyFrames, list<KeyFrame *> lFixedCameras, set<MapPoint *> lLocalMapPoints, bool *pbStopFlag, Map *pMap, float sigma)
     {
+        std::string optimizationName = "\tLBA InvD Single: ";
         const float thHuberMono = sqrt(5.991);
         const int blockSolverCameras = 6;
         const int blockSolverPoses = 1;
@@ -682,7 +696,7 @@ namespace ORB_SLAM2 {
                         g2o::OptimizableGraph::Vertex *v2 = dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(pKFi->mnId));
                         g2o::OptimizableGraph::Vertex *v3 = dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(refKF->mnId));
                         if (!v1 || !v2 || !v3)
-                            std::cout << "InvDepth: Vertices should exists but at least one doesn't. Why? Don't know yet" << std::endl;
+                            std::cout << optimizationName << " Vertices should exists but at least one doesn't. Why? Don't know yet" << std::endl;
                         else
                             optimizer.addEdge(e);
                         vpEdgesMono.push_back(e);
@@ -709,12 +723,12 @@ namespace ORB_SLAM2 {
             if (pMP->isBad())
                 continue;
 
-            if (e->chi2() <= 5.991 && e->isDepthPositive()) {
+            if (e->chi2() <= thHuberMono && e->isDepthPositive()) {
                 initchi2 += e->chi2();
                 count++;
             }
         }
-        std::cout << "\tLocalBA: avg initial chi2 = " << initchi2 / count << " over " << count << " measurements "
+        std::cout << optimizationName << "avg initial chi2 = " << initchi2 / count << " over " << count << " measurements "
                   << std::endl;
 
 
@@ -748,7 +762,7 @@ namespace ORB_SLAM2 {
                 if (pMP->isBad())
                     continue;
 
-                if (e->chi2() > 5.991 || !e->isDepthPositive()) {
+                if (e->chi2() > thHuberMono || !e->isDepthPositive()) {
                     e->setLevel(1);
                 }
 
@@ -794,7 +808,7 @@ namespace ORB_SLAM2 {
             if (pMP->isBad())
                 continue;
 
-            if (e->chi2() > 5.991 || !e->isDepthPositive()) {
+            if (e->chi2() > thHuberMono || !e->isDepthPositive()) {
                 KeyFrame *pKFi = vpEdgeKFMono[i];
                 vToErase.push_back(make_pair(pKFi, pMP));
             } else {
@@ -805,7 +819,7 @@ namespace ORB_SLAM2 {
                 chi2Statistics.push_back(e->chi2());
             }
         }
-        std::cout << "\tLocalBA: avg chi2() = "
+        std::cout << optimizationName << "avg chi2() = "
                   << accumulate(chi2Statistics.begin(), chi2Statistics.end(), 0.0) / chi2Statistics.size() << " over "
                   << chi2Statistics.size() << " measurements" << std::endl;
 
@@ -854,11 +868,11 @@ namespace ORB_SLAM2 {
 
 
         // We verify the reprojection error
-        OptimizerBA::VerifyReprojectionError(lLocalKeyFrames, lLocalMapPoints, lFixedCameras);
+        OptimizerBA::VerifyReprojectionError(lLocalKeyFrames, lLocalMapPoints, lFixedCameras, optimizationName);
 
 
-        cout << "\t LBA InvD Single: Initialization time: " << chrono::duration <double, milli> (diff).count() << " "<<  chrono::duration <double, milli> (diff3).count() << " ms" << endl;
-        cout << "\t LBA InvD Single: Pure optimization time: " << chrono::duration <double, milli> (diff2).count() << " " << chrono::duration <double, milli> (diff4).count()
+        cout << optimizationName << "Initialization time: " << chrono::duration <double, milli> (diff).count() << " "<<  chrono::duration <double, milli> (diff3).count() << " ms" << endl;
+        cout << optimizationName << "Pure optimization time: " << chrono::duration <double, milli> (diff2).count() << " " << chrono::duration <double, milli> (diff4).count()
              << " " << chrono::duration <double, milli> (diff5).count() << " ms" << endl;
 
 
@@ -870,9 +884,15 @@ namespace ORB_SLAM2 {
 
     std::vector<double> OptimizerBA::BundleAdjustmentInvDepthSingleParamPatch(list<KeyFrame *> lLocalKeyFrames, list<KeyFrame *> lFixedCameras, set<MapPoint *> lLocalMapPoints, bool *pbStopFlag, Map *pMap, float sigma)
     {
+        std::string optimizationName = "\tLBA InvD Single Patches: ";
         const float thHuber = 9;
+        const float thHuberSquared = thHuber*thHuber;
+
         const int blockSolverCameras = 6;
         const int blockSolverPoses = 1;
+
+
+        std::cout << optimizationName << "LKFs.size() = " << lLocalKeyFrames.size() << " lFCs.size() = " << lFixedCameras.size() << " lMPs.size() = " << lLocalMapPoints.size() << std::endl;
 
         // Setup optimizer
         g2o::SparseOptimizer optimizer;
@@ -1021,7 +1041,7 @@ namespace ORB_SLAM2 {
                         const float &invSigma2 = pKFi->mvInvLevelSigma2[kpUn.octave];
                         const float assumedDetInvSigma2 = 1.0 / (sigma * sigma);
 //                    e->setInformation(Eigen::Matrix2d::Identity() * invSigma2 * assumedDetInvSigma2);
-                        e->setInformation(Eigen::Matrix<double, 9, 9>::Identity() * 0.01);
+                        e->setInformation(Eigen::Matrix<double, 9, 9>::Identity());
 
                         g2o::RobustKernelHuber *rk = new g2o::RobustKernelHuber;
                         e->setRobustKernel(rk);
@@ -1033,14 +1053,23 @@ namespace ORB_SLAM2 {
                         g2o::OptimizableGraph::Vertex *v1 = dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(id));
                         g2o::OptimizableGraph::Vertex *v2 = dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(pKFi->mnId));
                         g2o::OptimizableGraph::Vertex *v3 = dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(refKF->mnId));
-                        if (!v1 || !v2 || !v3)
-                            std::cout << "Vertices should exists but at least one doesn't. Why? Don't know yet" << std::endl;
-                        else
+                        if (!v1 || !v2 || !v3) {
+                            std::cout << optimizationName
+                                      << "Vertices should exists but at least one doesn't. Why? Don't know yet"
+                                      << std::endl;
+                            if (!v1)
+                                std::cout << "Missing v1 " << std::endl;
+                            else if (!v2)
+                                std::cout << "Missing v2 " << std::endl;
+                            else
+                                std::cout << "Missing v3 " << std::endl;
+                        }
+                        else {
                             optimizer.addEdge(e);
-                        vpEdgesMono.push_back(e);
-                        vpEdgeKFMono.push_back(pKFi);
-                        vpMapPointEdgeMono.push_back(pMP);
-
+                            vpEdgesMono.push_back(e);
+                            vpEdgeKFMono.push_back(pKFi);
+                            vpMapPointEdgeMono.push_back(pMP);
+                        }
                     }
                 }
             }
@@ -1066,15 +1095,14 @@ namespace ORB_SLAM2 {
             if (pMP->isBad())
                 continue;
 
-            if (e->chi2() <= thHuber && e->isDepthPositive()) {
+            if (e->chi2() <= thHuberSquared && e->isDepthPositive()) {
 //            std::cout << " ??? " << e->chi2() << std::endl;
                 initchi2 += e->chi2();
                 count ++;
             }
         }
-        std::cout << "\tLocalBA Patches: avg initial chi2 = " << initchi2 / count<< " over " << count << " measurements " << std::endl;
-
-
+        std::cout << optimizationName << " avg initial chi2 = " << initchi2 / count<< " over " << count << " measurements " << std::endl;
+        std::cout << optimizationName << " Number of vertices in g2o: " << optimizer.vertices().size() << " Edges: " << optimizer.edges().size() << std::endl;
 
 //    std::cout << "!!!!!!!!! ---------- !!!!!!!!!! " << std::endl;
         auto start2 = chrono::steady_clock::now();
@@ -1101,7 +1129,7 @@ namespace ORB_SLAM2 {
                 if (pMP->isBad())
                     continue;
 
-                if (e->chi2() > thHuber || !e->isDepthPositive()) {
+                if (e->chi2() > thHuberSquared || !e->isDepthPositive()) {
                     e->setLevel(1);
                 }
 
@@ -1146,7 +1174,7 @@ namespace ORB_SLAM2 {
             if (pMP->isBad())
                 continue;
 
-            if (e->chi2() > thHuber || !e->isDepthPositive()) {
+            if (e->chi2() > thHuberSquared || !e->isDepthPositive()) {
                 KeyFrame *pKFi = vpEdgeKFMono[i];
                 vToErase.push_back(make_pair(pKFi, pMP));
             } else {
@@ -1157,7 +1185,7 @@ namespace ORB_SLAM2 {
                 chi2Statistics.push_back(e->chi2());
             }
         }
-        std::cout << "\tLocalBA Patches: avg chi2() = "
+        std::cout << optimizationName << " avg chi2() = "
                   << accumulate(chi2Statistics.begin(), chi2Statistics.end(), 0.0) / chi2Statistics.size() << " over "
                   << chi2Statistics.size() << " measurements" << std::endl;
 
@@ -1208,10 +1236,10 @@ namespace ORB_SLAM2 {
 
 
         // We verify the reprojection error
-        OptimizerBA::VerifyReprojectionError(lLocalKeyFrames, lLocalMapPoints, lFixedCameras);
+        OptimizerBA::VerifyReprojectionError(lLocalKeyFrames, lLocalMapPoints, lFixedCameras, optimizationName);
 
-        cout << "\t LBA InvD Patches: Initialization time: " << chrono::duration <double, milli> (diff).count() << " "<<  chrono::duration <double, milli> (diff3).count() << " ms" << endl;
-        cout << "\t LBA InvD Patches: Pure optimization time: " << chrono::duration <double, milli> (diff2).count() << " " << chrono::duration <double, milli> (diff4).count()
+        cout << optimizationName << " Initialization time: " << chrono::duration <double, milli> (diff).count() << " "<<  chrono::duration <double, milli> (diff3).count() << " ms" << endl;
+        cout << optimizationName << " Pure optimization time: " << chrono::duration <double, milli> (diff2).count() << " " << chrono::duration <double, milli> (diff4).count()
              << " " << chrono::duration <double, milli> (diff5).count() << " ms" << endl;
         return chi2Statistics;
     }
@@ -1219,8 +1247,10 @@ namespace ORB_SLAM2 {
 
     std::vector<double> OptimizerBA::BundleAdjustmentInvDepthSingleParamPatchBright(list<KeyFrame *> lLocalKeyFrames, list<KeyFrame *> lFixedCameras, set<MapPoint *> lLocalMapPoints,  bool *pbStopFlag, Map *pMap, float sigma) {
 
-        const float thHuber = 81; // as in the DSO
-        const float sqrtThHuber = sqrt(thHuber);
+        std::string optimizationName = "\tLBA InvD Single Patch Bright: ";
+        const float thHuber = 9;
+        const float thHuberSquared = thHuber*thHuber; // as in the DSO
+
         const int blockSolverCameras = 8;
         const int blockSolverPoses = 1;
 
@@ -1404,7 +1434,7 @@ namespace ORB_SLAM2 {
 
                         g2o::RobustKernelHuber *rk = new g2o::RobustKernelHuber;
                         e->setRobustKernel(rk);
-                        rk->setDelta(sqrtThHuber);
+                        rk->setDelta(thHuber);
 
                         e->setParameterId(0, 0);
 
@@ -1446,27 +1476,27 @@ namespace ORB_SLAM2 {
             if (pMP->isBad())
                 continue;
 
-            if (e->chi2() <= thHuber && e->isDepthPositive()) {
+            if (e->chi2() <= thHuberSquared && e->isDepthPositive()) {
 //            std::cout << " ??? " << e->chi2() << std::endl;
                 initchi2 += e->chi2();
                 count++;
             }
         }
-        std::cout << "\tLBA InvD Patches: avg initial chi2 = " << initchi2 / count << " over " << count << " measurements "
+        std::cout << optimizationName << "avg initial chi2 = " << initchi2 / count << " over " << count << " measurements "
                   << std::endl;
 
 
 
 //    std::cout << "!!!!!!!!! ---------- !!!!!!!!!! " << std::endl;
         auto start2 = chrono::steady_clock::now();
-        optimizer.optimize(10);
+        optimizer.optimize(5);
         auto end2 = chrono::steady_clock::now();
         auto diff2 = end2 - start2;
 //    std::cout << "!!!!!!!!! ---------- !!!!!!!!!! " << std::endl;
 
         auto diff3 = diff2, diff4 = diff2, diff5 = diff2;
 
-        bool bDoMore = false; // We won't do more in that case
+        bool bDoMore = true; // We won't do more in that case
 
         if (pbStopFlag)
             if (*pbStopFlag)
@@ -1482,7 +1512,7 @@ namespace ORB_SLAM2 {
                 if (pMP->isBad())
                     continue;
 
-                if (e->chi2() > thHuber || !e->isDepthPositive()) {
+                if (e->chi2() > thHuberSquared || !e->isDepthPositive()) {
                     e->setLevel(1);
                 }
 
@@ -1529,7 +1559,7 @@ namespace ORB_SLAM2 {
             if (pMP->isBad())
                 continue;
 
-            if (e->chi2() > thHuber || !e->isDepthPositive()) {
+            if (e->chi2() > thHuberSquared || !e->isDepthPositive()) {
                 KeyFrame *pKFi = vpEdgeKFMono[i];
                 vToErase.push_back(make_pair(pKFi, pMP));
             } else {
@@ -1540,7 +1570,7 @@ namespace ORB_SLAM2 {
                 chi2Statistics.push_back(e->chi2());
             }
         }
-        std::cout << "\tLBA InvD Patches:: avg chi2() = "
+        std::cout << optimizationName << "avg chi2() = "
                   << accumulate(chi2Statistics.begin(), chi2Statistics.end(), 0.0) / chi2Statistics.size() << " over "
                   << chi2Statistics.size() << " measurements" << std::endl;
 
@@ -1566,7 +1596,7 @@ namespace ORB_SLAM2 {
             g2o::SE3QuatBright est = vSE3->estimate();
             g2o::SE3Quat SE3quat = est.se3quat;
 
-//            std::cout << "Retrieved poses: " << vSE3->id() << " a=" << est.a << " b=" <<est.b<< std::endl << est.se3quat << std::endl;
+//            std::cout << optimizationName << "Retrieved poses: " << vSE3->id() << " a=" << est.a << " b=" <<est.b<< std::endl << est.se3quat << std::endl;
             pKF->SetPose(Converter::toCvMat(SE3quat));
             pKF->affineA = est.a;
             pKF->affineB = est.b;
@@ -1595,10 +1625,10 @@ namespace ORB_SLAM2 {
 
 
         // We verify the reprojection error
-        OptimizerBA::VerifyReprojectionError(lLocalKeyFrames, lLocalMapPoints, lFixedCameras);
+        OptimizerBA::VerifyReprojectionError(lLocalKeyFrames, lLocalMapPoints, lFixedCameras, optimizationName);
 
 
-        cout << "\t LBA InvD Patches: Pure optimization time: " << chrono::duration<double, milli>(diff2).count() << " "
+        cout << optimizationName << "Pure optimization time: " << chrono::duration<double, milli>(diff2).count() << " "
              << chrono::duration<double, milli>(diff4).count()
              << " " << chrono::duration<double, milli>(diff5).count() << " ms" << endl;
 

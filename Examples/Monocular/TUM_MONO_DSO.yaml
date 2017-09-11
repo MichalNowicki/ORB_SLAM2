@@ -16,7 +16,7 @@ Camera.p1: 0.0
 Camera.p2: 0.0
 
 # Camera frames per second 
-Camera.fps: 30.0
+Camera.fps: 10.0
 
 # Color order of the images (0: BGR, 1: RGB. It is ignored if images are grayscale)
 Camera.RGB: 1
@@ -63,7 +63,7 @@ Optimization.sigma: 1.000000
 # 3 -> inverted depth, 3 params per feature, patch error
 # 4 -> inverted depth, 1 param per feature, patch error
 # 5 -> inverted depth, 1 param per feature, patch error with affine brightness estimation
-Optimization.type: 2
+Optimization.type: 5
 
 #--------------------------------------------------------------------------------------------
 # Viewer Parameters

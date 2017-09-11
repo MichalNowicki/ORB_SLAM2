@@ -105,7 +105,7 @@ namespace g2o {
         virtual bool read  (std::istream& is);
         virtual bool write (std::ostream& os) const;
         void computeError();
-//        virtual void linearizeOplus ();
+        virtual void linearizeOplus ();
 
 
         inline Eigen::Matrix<double, 1, 2> d_inten_d_proj(const double u, const double v) ;

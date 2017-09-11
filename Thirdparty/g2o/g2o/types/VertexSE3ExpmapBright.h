@@ -37,7 +37,7 @@ namespace g2o {
         virtual void setToOriginImpl() {
             SE3QuatBright est;
             est.se3quat = SE3Quat();
-            est.a = 1;
+            est.a = 0;
             est.b = 0;
             _estimate = est;
         }

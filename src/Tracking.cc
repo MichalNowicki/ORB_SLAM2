@@ -1090,7 +1090,9 @@ bool Tracking::NeedNewKeyFrame()
     // Condition 2: Few tracked points compared to reference keyframe. Lots of visual odometry compared to map matches.
     const bool c2 = ((mnMatchesInliers<nRefMatches*thRefRatio|| bNeedToInsertClose) && mnMatchesInliers>15);
 
-    if((c1a||c1b||c1c)&&c2)
+    std::cout <<"Insert conitions " << c1a << " " << c1b << " " << c1c << " " <<c2 << std::endl;
+    std::cout <<"Insert conitions : mnMatchesInliers = " << mnMatchesInliers << " nRefMatches = " << nRefMatches << std::endl;
+    if((c1a||c1b||c1c)&&(c2||mnMatchesInliers < 200)) // TODO: MODIFICATION, old: if((c1a||c1b||c1c)&&c2)
     {
         // If the mapping accepts keyframes, insert keyframe.
         // Otherwise send a signal to interrupt BA
