@@ -132,7 +132,7 @@ void MapPoint::EraseObservation(KeyFrame* pKF)
 //                mnFirstKFid = -1;
 
                 // TODO: If we remove the first observation, the dense error does not make sense
-                bBad = true;
+                //bBad = true;
 
                 mpRefKF = mObservations.begin()->first;
                 mnFirstKFid = mpRefKF->mnId;

@@ -18,6 +18,7 @@
 #include "Thirdparty/g2o/g2o/types/EdgeProjectPSI2UVPatch.h"
 #include "Thirdparty/g2o/g2o/types/EdgeProjectPSI2UVSingleParamPatch.h"
 #include "Thirdparty/g2o/g2o/types/EdgeProjectPSI2UVSingleParamPatchBright.h"
+#include "Thirdparty/g2o/g2o/types/EdgeProjectXYZPatch.h"
 
 namespace ORB_SLAM2
 {
@@ -29,6 +30,7 @@ namespace ORB_SLAM2
     public:
         enum TYPE {
             INVERSE_DEPTH,
+            PATCH,
             INVERSE_DEPTH_SINGLE_PARAM,
             INVERSE_DEPTH_SINGLE_PARAM_PATCH,
             INVERSE_DEPTH_SINGLE_PARAM_PATCH_BRIGHTNESS,
@@ -42,6 +44,9 @@ namespace ORB_SLAM2
 
         // Possible Bundle Adjustments
         std::vector<double> static BundleAdjustmentInvDepth(list<KeyFrame *> lLocalKeyFrames, list<KeyFrame *> lFixedCameras,
+                                                            set<MapPoint *> lLocalMapPoints, bool *pbStopFlag, Map *pMap,
+                                                            float sigma = 1.0);
+        std::vector<double> static BundleAdjustmentPatch(list<KeyFrame *> lLocalKeyFrames, list<KeyFrame *> lFixedCameras,
                                                             set<MapPoint *> lLocalMapPoints, bool *pbStopFlag, Map *pMap,
                                                             float sigma = 1.0);
         std::vector<double> static BundleAdjustmentInvDepthSingleParam(list<KeyFrame *> lLocalKeyFrames, list<KeyFrame *> lFixedCameras,

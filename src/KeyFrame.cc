@@ -57,8 +57,17 @@ KeyFrame::KeyFrame(Frame &F, Map *pMap, KeyFrameDatabase *pKFDB):
     }
 
     SetPose(F.mTcw);
-    affineA = 0;
-    affineB = 0;
+
+    // The initial values from the ref KF
+    if (F.mpReferenceKF) {
+        affineA = F.mpReferenceKF->affineA;
+        affineB = F.mpReferenceKF->affineB;
+    }
+    else
+    {
+        affineA = 0;
+        affineB = 0;
+    }
 }
 
 void KeyFrame::ComputeBoW()

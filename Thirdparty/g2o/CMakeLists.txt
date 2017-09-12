@@ -90,6 +90,8 @@ ADD_LIBRARY(g2o ${G2O_LIB_TYPE}
 #types
 g2o/types/VertexSE3ExpmapBright.h
 g2o/types/VertexSE3ExpmapBright.cpp
+g2o/types/EdgeProjectXYZPatch.h
+g2o/types/EdgeProjectXYZPatch.cpp
 g2o/types/EdgeProjectPSI2UVSingleParamPatchBright.h
 g2o/types/EdgeProjectPSI2UVSingleParamPatchBright.cpp
 g2o/types/EdgeProjectPSI2UVSingleParamPatch.h

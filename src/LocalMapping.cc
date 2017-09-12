@@ -109,8 +109,18 @@ namespace ORB_SLAM2 {
                                                                       baCounter, sigma);
                             baCounter++;
                         }
-                            // inverted depth, 3 params per feature, patch error
-                        else if (optimizationType == 3); // TODO
+                            // not inverted depth, 3 params per feature, patch error
+                        else if (optimizationType == 3) {
+                            if (baCounter < 10) {
+                                chi2 = Optimizer::LocalBundleAdjustment(mpCurrentKeyFrame, &mbAbortBA, mpMap, sigma);
+                                baCounter++;
+                            }
+                            chi2 = OptimizerBA::LocalBundleAdjustment(mpCurrentKeyFrame, &mbAbortBA, mpMap,
+                                                                      OptimizerBA::TYPE::PATCH,
+                                                                      baCounter, sigma);
+                            baCounter++;
+
+                        }
                             // inverted depth, 1 param per feature, patch error
                         else if (optimizationType == 4) {
 
@@ -139,11 +149,11 @@ namespace ORB_SLAM2 {
                             baCounter++;
 
 
-                            chi2 = OptimizerBA::LocalBundleAdjustment(mpCurrentKeyFrame, &mbAbortBA, mpMap,
-                                                                      OptimizerBA::TYPE::INVERSE_DEPTH_SINGLE_PARAM_PATCH,
-                                                                      baCounter, sigma);
-                            baCounter++;
-                                                
+//                            chi2 = OptimizerBA::LocalBundleAdjustment(mpCurrentKeyFrame, &mbAbortBA, mpMap,
+//                                                                      OptimizerBA::TYPE::INVERSE_DEPTH_SINGLE_PARAM_PATCH,
+//                                                                      baCounter, sigma);
+//                            baCounter++;
+
 
                         }
 
@@ -501,7 +511,7 @@ namespace ORB_SLAM2 {
 
         const float ratioFactor = 1.5f * mpCurrentKeyFrame->mfScaleFactor;
 
-        int nnew = 0;
+        int nnew = 0, allPossiblePoints = 0;
 
         // Search matches with epipolar restriction and triangulate
         for (size_t i = 0; i < vpNeighKFs.size(); i++) {
@@ -549,7 +559,9 @@ namespace ORB_SLAM2 {
 
             // Triangulate each match
             const int nmatches = vMatchedIndices.size();
+            allPossiblePoints += nmatches;
             for (int ikp = 0; ikp < nmatches; ikp++) {
+
                 const int &idx1 = vMatchedIndices[ikp].first;
                 const int &idx2 = vMatchedIndices[ikp].second;
 
@@ -704,6 +716,8 @@ namespace ORB_SLAM2 {
                 nnew++;
             }
         }
+
+        std::cout <<"= = = Added " << nnew << " mappoints out of possible " << allPossiblePoints << " triangulation" << std::endl;
     }
 
     void LocalMapping::SearchInNeighbors() {

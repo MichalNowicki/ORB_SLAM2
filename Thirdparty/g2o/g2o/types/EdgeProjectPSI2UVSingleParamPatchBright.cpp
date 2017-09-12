@@ -109,7 +109,7 @@ namespace g2o {
 //            computedError(i,0) = T_anchor_est.a / T_p_est.a * (refValue - T_anchor_est.b) - (obsValue - T_p_est.b);
 
 
-            computedError(i,0) = exp(T_anchor_est.a) / exp(T_p_est.a) * (refValue - T_anchor_est.b) - (obsValue - T_p_est.b);
+            computedError(i,0) = exp(T_p_est.a) / exp(T_anchor_est.a)  * (refValue - T_anchor_est.b) - (obsValue - T_p_est.b);
 
 //            computedError(i,0) = refValue - obsValue;
 
@@ -248,12 +248,12 @@ namespace g2o {
             _jacobianOplus[0].row(i) = - Ji * Jcam * d_Tinvpsi_d_psi(T_ca, psi_a);
 
             _jacobianOplus[1].block<1,6>(i,0) = - Ji * Jcam * d_expy_d_y(pointInObs);
-            _jacobianOplus[1](i,6) = - exp( vanchor_est.a) / exp (vpose_est.a) * (Ianchor);
+            _jacobianOplus[1](i,6) = exp (vpose_est.a) / exp( vanchor_est.a) * (Ianchor);
             _jacobianOplus[1](i,7) = 1;
 
             _jacobianOplus[2].block<1,6>(i,0) = Ji * Jcam * T_ca.rotation().toRotationMatrix() * d_expy_d_y(pointInFirst);
-            _jacobianOplus[2](i,6) = exp( vanchor_est.a) / exp (vpose_est.a) * (Ianchor);
-            _jacobianOplus[2](i,7) = - exp( vanchor_est.a) / exp (vpose_est.a);
+            _jacobianOplus[2](i,6) = - exp (vpose_est.a) / exp( vanchor_est.a) * (Ianchor);
+            _jacobianOplus[2](i,7) = - exp (vpose_est.a) / exp( vanchor_est.a);
 
 //            std::cout << "Ji: " << std::endl<< Ji << std::endl;
 //            std::cout << "Jcam: " << std::endl<< Jcam << std::endl;
