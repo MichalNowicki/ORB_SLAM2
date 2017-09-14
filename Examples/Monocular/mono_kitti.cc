@@ -61,6 +61,7 @@ int main(int argc, char **argv)
     cout << "Images in the sequence: " << nImages << endl << endl;
 
     // Main loop
+    double playbackSpeed = 2;
     cv::Mat im;
     for(int ni=0; ni<nImages; ni++)
     {
@@ -73,6 +74,8 @@ int main(int argc, char **argv)
             cerr << endl << "Failed to load image at: " << vstrImageFilenames[ni] << endl;
             return 1;
         }
+
+        printf ("Processing image : %d \tTimestamp %f\r\n", ni, vTimestamps[ni]);
 
 #ifdef COMPILEDWITHC11
         std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
@@ -101,7 +104,7 @@ int main(int argc, char **argv)
             T = tframe-vTimestamps[ni-1];
 
         if(ttrack<T)
-            usleep((T-ttrack)*1e6);
+            usleep((T*playbackSpeed-ttrack)*1e6);
     }
 
     // Stop all threads

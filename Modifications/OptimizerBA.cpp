@@ -292,7 +292,7 @@ namespace ORB_SLAM2 {
         string name = "\tLBA InvD: ";
         const float thHuberMono = 5.991;
         const int blockSolverCameras = 6;
-        const int blockSolverPoses = 1;
+        const int blockSolverPoses = 3;
 
         // Setup optimizer
         g2o::SparseOptimizer optimizer;
@@ -345,6 +345,8 @@ namespace ORB_SLAM2 {
             if (pKFi->mnId > maxKFid)
                 maxKFid = pKFi->mnId;
         }
+
+        std::cout << " A " << std::endl;
 
         // Set MapPoint vertices
         const int nExpectedSize = (lLocalKeyFrames.size() + lFixedCameras.size()) * lLocalMapPoints.size();
@@ -405,11 +407,13 @@ namespace ORB_SLAM2 {
                         g2o::OptimizableGraph::Vertex * v = dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(refKF->mnId));
                         if (!v)
                         {
+                            std::cout << "In 0 " << std::endl;
                             g2o::VertexSE3Expmap *vSE3 = new g2o::VertexSE3Expmap();
                             vSE3->setEstimate(Converter::toSE3Quat(refKF->GetPose()));
                             vSE3->setId(refKF->mnId);
                             vSE3->setFixed(true);
                             optimizer.addVertex(vSE3);
+                            std::cout << "Out 0 " << std::endl;
                         }
 
                         e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(id)));
@@ -441,9 +445,13 @@ namespace ORB_SLAM2 {
                 return std::vector<double>(); // Modified
 
 
+        std::cout << " C " << std::endl;
+
         // Optimization for 5 iterations
         optimizer.initializeOptimization();
         optimizer.optimize(5);
+
+        std::cout << " D " << std::endl;
 
         bool bDoMore = true;
 
@@ -511,6 +519,7 @@ namespace ORB_SLAM2 {
         }
 
 // Recover optimized data
+
 
 //Keyframes
         for (list<KeyFrame *>::iterator lit = lLocalKeyFrames.begin(), lend = lLocalKeyFrames.end(); lit != lend; lit++) {

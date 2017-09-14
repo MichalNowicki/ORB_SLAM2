@@ -59,7 +59,7 @@ KeyFrame::KeyFrame(Frame &F, Map *pMap, KeyFrameDatabase *pKFDB):
     SetPose(F.mTcw);
 
     // The initial values from the ref KF
-    if (F.mpReferenceKF) {
+    if (static_cast<KeyFrame*>(F.mpReferenceKF) != NULL) {
         affineA = F.mpReferenceKF->affineA;
         affineB = F.mpReferenceKF->affineB;
     }
@@ -68,6 +68,7 @@ KeyFrame::KeyFrame(Frame &F, Map *pMap, KeyFrameDatabase *pKFDB):
         affineA = 0;
         affineB = 0;
     }
+
 }
 
 void KeyFrame::ComputeBoW()
