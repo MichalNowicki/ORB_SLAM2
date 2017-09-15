@@ -61,7 +61,7 @@ int main(int argc, char **argv)
     cout << "Images in the sequence: " << nImages << endl << endl;
 
     // Main loop
-    double playbackSpeed = 2;
+    double playbackSpeed = 20;
     cv::Mat im;
     for(int ni=0; ni<nImages; ni++)
     {
@@ -103,7 +103,7 @@ int main(int argc, char **argv)
         else if(ni>0)
             T = tframe-vTimestamps[ni-1];
 
-        if(ttrack<T)
+        if(ttrack<T*playbackSpeed)
             usleep((T*playbackSpeed-ttrack)*1e6);
     }
 

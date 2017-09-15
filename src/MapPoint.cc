@@ -134,7 +134,51 @@ void MapPoint::EraseObservation(KeyFrame* pKF)
                 // TODO: If we remove the first observation, the dense error does not make sense
                 //bBad = true;
 
-                mpRefKF = mObservations.begin()->first;
+
+                // Let's change the refKF for the one with the most similar observation angle
+                cv::Mat worldPos;
+                {
+                    unique_lock<mutex> lock2(mMutexPos);
+                    worldPos = mWorldPos;
+                }
+
+                // Current observation angle
+                cv::Mat curObsNormal = worldPos - mpRefKF->GetCameraCenter();
+                curObsNormal = curObsNormal / cv::norm(curObsNormal);
+
+                // Finding the refPatch of the original detection or the one with closest observation angle
+                double minAngle = 3.1415265;
+                KeyFrame *patchRefKF;
+                bool success = false;
+
+                // For all observations of the feature
+                for(map<KeyFrame*,size_t>::iterator mit=mObservations.begin(), mend=mObservations.end(); mit!=mend; mit++) {
+                    KeyFrame *pKF = mit->first;
+
+                    if ( pKF != mpRefKF ) {
+                        // We compute the observation angle
+                        cv::Mat kfObsNormal = worldPos - pKF->GetCameraCenter();
+                        kfObsNormal = kfObsNormal / cv::norm(kfObsNormal);
+                        cv::Mat dotProduct = curObsNormal.t() * kfObsNormal;
+                        double angle = acos(dotProduct.at<float>(0, 0));
+
+                        // We look for the keyframe with most similar observation angle
+                        if (angle < minAngle) {
+                            patchRefKF = pKF;
+                            minAngle = angle;
+                            success = true;
+                        }
+                    }
+
+                }
+
+                if (success)
+                    mpRefKF = patchRefKF;
+                else
+                    bBad = true;
+
+//                mpRefKF = mObservations.begin()->first;
+
                 mnFirstKFid = mpRefKF->mnId;
             }
 

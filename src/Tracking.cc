@@ -928,7 +928,9 @@ bool Tracking::TrackWithMotionModel()
         th=15;
     else
         th=7;
-    int nmatches = matcher.SearchByProjection(mCurrentFrame,mLastFrame,th,mSensor==System::MONOCULAR);
+    int nmatches = matcher.SearchByProjection(mCurrentFrame,mLastFrame,10*th,mSensor==System::MONOCULAR);
+
+    std::cout << "Tracking: matched " << nmatches << std::endl;
 
     // If few matches, uses a wider window search
     if(nmatches<20)
@@ -1091,7 +1093,8 @@ bool Tracking::NeedNewKeyFrame()
 
     std::cout <<"Insert conditions " << c1a << " " << c1b << " " << c1c << " " <<c2 << std::endl;
     std::cout <<"Insert conditions : mnMatchesInliers = " << mnMatchesInliers << " nRefMatches = " << nRefMatches << std::endl;
-    if((c1a||c1b||c1c)&&c2) // if((c1a||c1b||c1c)&&(c2||mnMatchesInliers < 200)) // TODO: MODIFICATION, old: if((c1a||c1b||c1c)&&c2)
+    //if((c1a||c1b||c1c)&&c2) // if((c1a||c1b||c1c)&&(c2||mnMatchesInliers < 200)) // TODO: MODIFICATION, old: if((c1a||c1b||c1c)&&c2)
+    if (true)
     {
         // If the mapping accepts keyframes, insert keyframe.
         // Otherwise send a signal to interrupt BA
@@ -1238,14 +1241,14 @@ void Tracking::SearchLocalPoints()
 
     if(nToMatch>0)
     {
-        ORBmatcher matcher(0.8);
+        ORBmatcher matcher(0.95); // TODO: Instread of 0.8
         int th = 1;
         if(mSensor==System::RGBD)
             th=3;
         // If the camera has been relocalised recently, perform a coarser search
         if(mCurrentFrame.mnId<mnLastRelocFrameId+2)
             th=5;
-        matcher.SearchByProjection(mCurrentFrame,mvpLocalMapPoints,th);
+        matcher.SearchByProjection(mCurrentFrame,mvpLocalMapPoints,th*5); // TODO: Instread of th
     }
 
 }

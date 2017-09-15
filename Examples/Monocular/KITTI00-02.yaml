@@ -32,14 +32,14 @@ ORBextractor.nFeatures: 2000
 ORBextractor.scaleFactor: 1.2
 
 # ORB Extractor: Number of levels in the scale pyramid	
-ORBextractor.nLevels: 8
+ORBextractor.nLevels: 1
 
 # ORB Extractor: Fast threshold
 # Image is divided in a grid. At each cell FAST are extracted imposing a minimum response.
 # Firstly we impose iniThFAST. If no corners are detected we impose a lower value minThFAST
 # You can lower these values if your images have low contrast			
 ORBextractor.iniThFAST: 20
-ORBextractor.minThFAST: 7
+ORBextractor.minThFAST: 2
 
 #### Parameters for tests
 # FAST Harris ShiTomasi
@@ -63,7 +63,7 @@ Optimization.sigma: 1.000000
 # 3 -> not inverted depth, 3 params per feature, patch error
 # 4 -> inverted depth, 1 param per feature, patch error
 # 5 -> inverted depth, 1 param per feature, patch error with affine brightness estimation
-Optimization.type: 1
+Optimization.type: 5
 
 #--------------------------------------------------------------------------------------------
 # Viewer Parameters

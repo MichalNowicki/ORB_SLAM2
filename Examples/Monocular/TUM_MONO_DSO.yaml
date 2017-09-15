@@ -63,7 +63,7 @@ Optimization.sigma: 1.000000
 # 3 -> not inverted depth, 3 params per feature, patch error
 # 4 -> inverted depth, 1 param per feature, patch error
 # 5 -> inverted depth, 1 param per feature, patch error with affine brightness estimation
-Optimization.type: 3
+Optimization.type: 5
 
 #--------------------------------------------------------------------------------------------
 # Viewer Parameters

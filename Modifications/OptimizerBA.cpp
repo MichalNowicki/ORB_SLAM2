@@ -346,8 +346,6 @@ namespace ORB_SLAM2 {
                 maxKFid = pKFi->mnId;
         }
 
-        std::cout << " A " << std::endl;
-
         // Set MapPoint vertices
         const int nExpectedSize = (lLocalKeyFrames.size() + lFixedCameras.size()) * lLocalMapPoints.size();
 
@@ -445,13 +443,9 @@ namespace ORB_SLAM2 {
                 return std::vector<double>(); // Modified
 
 
-        std::cout << " C " << std::endl;
-
         // Optimization for 5 iterations
         optimizer.initializeOptimization();
         optimizer.optimize(5);
-
-        std::cout << " D " << std::endl;
 
         bool bDoMore = true;
 
@@ -715,7 +709,7 @@ namespace ORB_SLAM2 {
 //                        const float &invSigma2 = pKFi->mvInvLevelSigma2[kpUn.octave];
 //                        const float assumedDetInvSigma2 = 1.0 / (sigma * sigma);
 //                    e->setInformation(Eigen::Matrix2d::Identity() * invSigma2 * assumedDetInvSigma2);
-                        e->setInformation(Eigen::Matrix<double, 9, 9>::Identity());
+                        e->setInformation(Eigen::Matrix<double, 9, 9>::Identity() / 9);
 
                         g2o::RobustKernelHuber *rk = new g2o::RobustKernelHuber;
                         e->setRobustKernel(rk);
@@ -1398,7 +1392,7 @@ namespace ORB_SLAM2 {
                         const float &invSigma2 = pKFi->mvInvLevelSigma2[kpUn.octave];
                         const float assumedDetInvSigma2 = 1.0 / (sigma * sigma);
 //                    e->setInformation(Eigen::Matrix2d::Identity() * invSigma2 * assumedDetInvSigma2);
-                        e->setInformation(Eigen::Matrix<double, 9, 9>::Identity());
+                        e->setInformation(Eigen::Matrix<double, 9, 9>::Identity() / 9);
 
                         g2o::RobustKernelHuber *rk = new g2o::RobustKernelHuber;
                         e->setRobustKernel(rk);
@@ -1605,11 +1599,14 @@ namespace ORB_SLAM2 {
     std::vector<double> OptimizerBA::BundleAdjustmentInvDepthSingleParamPatchBright(list<KeyFrame *> lLocalKeyFrames, list<KeyFrame *> lFixedCameras, set<MapPoint *> lLocalMapPoints,  bool *pbStopFlag, Map *pMap, float sigma) {
 
         std::string optimizationName = "\tLBA InvD Single Patch Bright: ";
-        const float thHuber = 9;
+        const float thHuber = 9; // DSO has 9
         const float thHuberSquared = thHuber*thHuber; // as in the DSO
+        const float minInlierRatio = 0.3;
 
         const int blockSolverCameras = 8;
         const int blockSolverPoses = 1;
+
+        std::cout << optimizationName << "START" << std::endl;
 
         // Setup optimizer
         g2o::SparseOptimizer optimizer;
@@ -1787,7 +1784,7 @@ namespace ORB_SLAM2 {
                         const float &invSigma2 = pKFi->mvInvLevelSigma2[kpUn.octave];
                         const float assumedDetInvSigma2 = 1.0 / (sigma * sigma);
 
-                        e->setInformation(Eigen::Matrix<double, 9, 9>::Identity());
+                        e->setInformation(Eigen::Matrix<double, 9, 9>::Identity() / 9);
 
                         g2o::RobustKernelHuber *rk = new g2o::RobustKernelHuber;
                         e->setRobustKernel(rk);
@@ -1813,9 +1810,11 @@ namespace ORB_SLAM2 {
             }
         }
 
-        if (pbStopFlag)
-            if (*pbStopFlag)
-                return std::vector<double>(); // Modified
+
+        // TODO: Won't stop when asked!
+//        if (pbStopFlag)
+//            if (*pbStopFlag)
+//                return std::vector<double>(); // Modified
 
         auto start = chrono::steady_clock::now();
         optimizer.initializeOptimization(0);
@@ -1855,9 +1854,10 @@ namespace ORB_SLAM2 {
 
         bool bDoMore = true; // We won't do more in that case
 
-        if (pbStopFlag)
-            if (*pbStopFlag)
-                bDoMore = false;
+        // TODO: Won't stop when asked!
+//        if (pbStopFlag)
+//            if (*pbStopFlag)
+//                bDoMore = false;
 
         int countInliers = 0;
         if (bDoMore) {
@@ -1881,8 +1881,8 @@ namespace ORB_SLAM2 {
 
             }
 
-            std::cout << "Inliers: " << countInliers << " out of " << count << std::endl;
-            if ( countInliers > 0.5 * count) {
+            std::cout << optimizationName << "Inliers: " << countInliers << " out of " << count << std::endl;
+            if ( countInliers > minInlierRatio * count) {
 
 // Optimize again without the outliers
 //        std::cout << " ------- " << std::endl;
@@ -1912,8 +1912,8 @@ namespace ORB_SLAM2 {
         }
 
         std::vector<double> chi2Statistics;
-        // We do not update if 50% was considered an outlier
-        if ( countInliers > 0.5 * count) {
+        // We do not update if minInlierRatio was considered an outlier
+        if ( countInliers > minInlierRatio * count) {
             vector<pair<KeyFrame *, MapPoint *> > vToErase;
             vToErase.reserve(vpEdgesMono.size()); //+ vpEdgesStereo.size());
 
@@ -1941,23 +1941,68 @@ namespace ORB_SLAM2 {
                       << accumulate(chi2Statistics.begin(), chi2Statistics.end(), 0.0) / chi2Statistics.size() << " over "
                       << chi2Statistics.size() << " measurements" << std::endl;
 
+            if (  chi2Statistics.size() > minInlierRatio * count) {
+
+                // Get Map Mutex
+                unique_lock<mutex> lock(pMap->mMutexMapUpdate);
+
+                if (!vToErase.empty()) {
+                    for (size_t i = 0; i < vToErase.size(); i++) {
+                        KeyFrame *pKFi = vToErase[i].first;
+                        MapPoint *pMPi = vToErase[i].second;
+                        //                     TODO: test
+                        pKFi->EraseMapPointMatch(pMPi);
+                        pMPi->EraseObservation(pKFi);
+                    }
+                }
+
+                // Recover optimized data
+
+                //Keyframes
+                for (list<KeyFrame *>::iterator lit = lLocalKeyFrames.begin(), lend = lLocalKeyFrames.end();
+                     lit != lend; lit++) {
+                    KeyFrame *pKF = *lit;
+                    g2o::VertexSE3ExpmapBright *vSE3 = static_cast<g2o::VertexSE3ExpmapBright *>(optimizer.vertex(
+                            pKF->mnId));
+                    g2o::SE3QuatBright est = vSE3->estimate();
+                    g2o::SE3Quat SE3quat = est.se3quat;
+
+                    //            std::cout << optimizationName << "Retrieved poses: " << vSE3->id() << " a=" << est.a << " b=" <<est.b<< std::endl << est.se3quat << std::endl;
+                    pKF->SetPose(Converter::toCvMat(SE3quat));
+                    pKF->affineA = est.a;
+                    pKF->affineB = est.b;
+                }
+
+                //Points
+                for (set<MapPoint *>::iterator lit = lLocalMapPoints.begin(), lend = lLocalMapPoints.end();
+                     lit != lend; lit++) {
+                    MapPoint *pMP = *lit;
+
+                    g2o::VertexSBAPointInvD *vPoint = static_cast<g2o::VertexSBAPointInvD *>(optimizer.vertex(
+                            pMP->mnId + maxKFid + 1));
+                    KeyFrame *refKF = pMP->GetReferenceKeyFrame();
+
+                    cv::Mat pointInFirst = cv::Mat(3, 1, CV_32F), worldPos = cv::Mat(3, 1, CV_32F);
+                    pointInFirst.at<float>(2) = 1. / vPoint->estimate();
+                    pointInFirst.at<float>(0) = (vPoint->u0 - refKF->cx) * pointInFirst.at<float>(2) / refKF->fx;
+                    pointInFirst.at<float>(1) = (vPoint->v0 - refKF->cy) * pointInFirst.at<float>(2) / refKF->fy;
 
 
-            // Get Map Mutex
-            unique_lock<mutex> lock(pMap->mMutexMapUpdate);
+                    cv::Mat worldPointPos =
+                            refKF->GetRotation().t() * pointInFirst -
+                            refKF->GetRotation().t() * refKF->GetTranslation();
 
-            if (!vToErase.empty()) {
-                for (size_t i = 0; i < vToErase.size(); i++) {
-                    KeyFrame *pKFi = vToErase[i].first;
-                    MapPoint *pMPi = vToErase[i].second;
-                    pKFi->EraseMapPointMatch(pMPi);
-                    pMPi->EraseObservation(pKFi);
+                    pMP->SetWorldPos(worldPointPos);
+                    pMP->UpdateNormalAndDepth();
                 }
             }
+            else
+                std::cout <<"\033[0;35m " << " TOO MANY OUTLIERS (Second iter):" << chi2Statistics.size() << " " << count  <<"\033[0m" << std::endl;
+        }
+        else {
+            std::cout <<"\033[0;35m " << " TOO MANY OUTLIERS :" << countInliers << " " << count  <<"\033[0m" << std::endl;
 
-            // Recover optimized data
-
-            //Keyframes
+            std::cout <<"\033[0;35m ";
             for (list<KeyFrame *>::iterator lit = lLocalKeyFrames.begin(), lend = lLocalKeyFrames.end();
                  lit != lend; lit++) {
                 KeyFrame *pKF = *lit;
@@ -1966,33 +2011,9 @@ namespace ORB_SLAM2 {
                 g2o::SE3QuatBright est = vSE3->estimate();
                 g2o::SE3Quat SE3quat = est.se3quat;
 
-                //            std::cout << optimizationName << "Retrieved poses: " << vSE3->id() << " a=" << est.a << " b=" <<est.b<< std::endl << est.se3quat << std::endl;
-                pKF->SetPose(Converter::toCvMat(SE3quat));
-                pKF->affineA = est.a;
-                pKF->affineB = est.b;
+                cout << "AB: " << est.a << " " << est.b << std::endl;
             }
-
-            //Points
-            for (set<MapPoint *>::iterator lit = lLocalMapPoints.begin(), lend = lLocalMapPoints.end();
-                 lit != lend; lit++) {
-                MapPoint *pMP = *lit;
-
-                g2o::VertexSBAPointInvD *vPoint = static_cast<g2o::VertexSBAPointInvD *>(optimizer.vertex(
-                        pMP->mnId + maxKFid + 1));
-                KeyFrame *refKF = pMP->GetReferenceKeyFrame();
-
-                cv::Mat pointInFirst = cv::Mat(3, 1, CV_32F), worldPos = cv::Mat(3, 1, CV_32F);
-                pointInFirst.at<float>(2) = 1. / vPoint->estimate();
-                pointInFirst.at<float>(0) = (vPoint->u0 - refKF->cx) * pointInFirst.at<float>(2) / refKF->fx;
-                pointInFirst.at<float>(1) = (vPoint->v0 - refKF->cy) * pointInFirst.at<float>(2) / refKF->fy;
-
-
-                cv::Mat worldPointPos =
-                        refKF->GetRotation().t() * pointInFirst - refKF->GetRotation().t() * refKF->GetTranslation();
-
-                pMP->SetWorldPos(worldPointPos);
-                pMP->UpdateNormalAndDepth();
-            }
+            std::cout <<"\033[0m" << std::endl;
         }
 
 

@@ -70,13 +70,20 @@ namespace ORB_SLAM2 {
                 // Check recent MapPoints
                 MapPointCulling();
 
+                std::cout << "Test condition 1 : " << mpCurrentKeyFrame->GetMapPoints().size() << std::endl;
+
                 // Triangulate new MapPoints
                 CreateNewMapPoints();
 
-                if (!CheckNewKeyFrames()) {
+                std::cout << "Test condition 2 : " << mpCurrentKeyFrame->GetMapPoints().size() << std::endl;
+
+                // TODO: Always search in neighbours
+//                if (!CheckNewKeyFrames()) {
                     // Find more matches in neighbor keyframes and fuse point duplications
                     SearchInNeighbors();
-                }
+//                }
+
+                std::cout << "Test condition 3 : " << mpCurrentKeyFrame->GetMapPoints().size() << std::endl;
 
                 mbAbortBA = false;
 
@@ -136,18 +143,22 @@ namespace ORB_SLAM2 {
                             baCounter++;
                         } else if (optimizationType == 5) {
 
-                            if (baCounter < 10) {
+                            //if (baCounter < 10) {
                                 chi2 = OptimizerBA::LocalBundleAdjustment(mpCurrentKeyFrame, &mbAbortBA, mpMap,
                                                                           OptimizerBA::TYPE::INVERSE_DEPTH_SINGLE_PARAM,
                                                                           baCounter, sigma);
                                 baCounter++;
+                           // }
+
+                            // TODO: Do optimization on patches only if more than 100 matches were recorded for current frame
+
+                            if ( mpCurrentKeyFrame->GetMapPoints().size() >= 200 ) {
+
+                                chi2 = OptimizerBA::LocalBundleAdjustment(mpCurrentKeyFrame, &mbAbortBA, mpMap,
+                                                                          OptimizerBA::TYPE::INVERSE_DEPTH_SINGLE_PARAM_PATCH_BRIGHTNESS,
+                                                                          baCounter, sigma);
+                                baCounter++;
                             }
-
-                            chi2 = OptimizerBA::LocalBundleAdjustment(mpCurrentKeyFrame, &mbAbortBA, mpMap,
-                                                                      OptimizerBA::TYPE::INVERSE_DEPTH_SINGLE_PARAM_PATCH_BRIGHTNESS,
-                                                                      baCounter, sigma);
-                            baCounter++;
-
 
 //                            chi2 = OptimizerBA::LocalBundleAdjustment(mpCurrentKeyFrame, &mbAbortBA, mpMap,
 //                                                                      OptimizerBA::TYPE::INVERSE_DEPTH_SINGLE_PARAM_PATCH,
@@ -532,8 +543,9 @@ namespace ORB_SLAM2 {
                 const float medianDepthKF2 = pKF2->ComputeSceneMedianDepth(2);
                 const float ratioBaselineDepth = baseline / medianDepthKF2;
 
-                if (ratioBaselineDepth < 0.01)
-                    continue;
+                // TODO: Removed
+//                if (ratioBaselineDepth < 0.01)
+//                    continue;
             }
 
             // Compute Fundamental Matrix
@@ -594,7 +606,7 @@ namespace ORB_SLAM2 {
 
                 cv::Mat x3D;
                 if (cosParallaxRays < cosParallaxStereo && cosParallaxRays > 0 &&
-                    (bStereo1 || bStereo2 || cosParallaxRays < 0.9998)) {
+                    (bStereo1 || bStereo2 || cosParallaxRays <= 1.0)) { // cosParallaxRays < 0.9998
                     // Linear Triangulation Method
                     cv::Mat A(4, 4, CV_32F);
                     A.row(0) = xn1.at<float>(0) * Tcw1.row(2) - Tcw1.row(0);
@@ -717,7 +729,7 @@ namespace ORB_SLAM2 {
             }
         }
 
-        std::cout <<"= = = Added " << nnew << " mappoints out of possible " << allPossiblePoints << " triangulation" << std::endl;
+        std::cout <<"\033[0;31m = = = Added " << nnew << " mappoints out of possible " << allPossiblePoints << " triangulation\033[0m" << std::endl;
     }
 
     void LocalMapping::SearchInNeighbors() {
@@ -779,7 +791,7 @@ namespace ORB_SLAM2 {
         }
 
         int densifyCount = matcher.Fuse(mpCurrentKeyFrame, vpFuseCandidates);
-//    std:: cout << "Fuse added new measurements: " << densifyCount << std::endl;
+    std:: cout << "Fuse added new measurements: " << densifyCount << std::endl;
 
         // Update points
         vpMapPointMatches = mpCurrentKeyFrame->GetMapPointMatches();
