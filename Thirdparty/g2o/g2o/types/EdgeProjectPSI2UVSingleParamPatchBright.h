@@ -17,12 +17,16 @@
 #include <Eigen/Core>
 #include "../types/VertexSE3ExpmapBright.h"
 
+
+
 namespace g2o {
     using namespace std;
 
     typedef Eigen::Matrix<double,9,1,Eigen::ColMajor> Vector9D;
+    typedef Eigen::Matrix<double,25,1,Eigen::ColMajor> Vector25D;
 
-    class EdgeProjectPSI2UVSingleParamPatchBright : public g2o::BaseMultiEdge<9, Vector9D> {
+
+    class EdgeProjectPSI2UVSingleParamPatchBright : public g2o::BaseMultiEdge<25, Vector25D> {
     public:
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
@@ -30,20 +34,31 @@ namespace g2o {
             resizeParameters(1);
             installParameter(_cam, 0);
 
-            //   x
-            //  x x
-            // x x x - neighbours used in optimization
-            //  x x
-            //   x
-            neighbours.push_back(make_pair(0,0));
-            neighbours.push_back(make_pair(0,2));
-            neighbours.push_back(make_pair(1,1));
-            neighbours.push_back(make_pair(2,0));
-            neighbours.push_back(make_pair(1,-1));
-            neighbours.push_back(make_pair(0,-2));
-            neighbours.push_back(make_pair(-1,-1));
-            neighbours.push_back(make_pair(-2,0));
-            neighbours.push_back(make_pair(-1,1));
+
+//            //   x
+//            //  x x
+//            // x x x - neighbours used in optimization
+//            //  x x
+//            //   x
+//            neighbours.push_back(make_pair(0,0));
+//            neighbours.push_back(make_pair(0,2));
+//            neighbours.push_back(make_pair(1,1));
+//            neighbours.push_back(make_pair(2,0));
+//            neighbours.push_back(make_pair(1,-1));
+//            neighbours.push_back(make_pair(0,-2));
+//            neighbours.push_back(make_pair(-1,-1));
+//            neighbours.push_back(make_pair(-2,0));
+//            neighbours.push_back(make_pair(-1,1));
+
+            // xxxxx
+            // xxxxx
+            // xxxxx - neighbours used in optimization
+            // xxxxx
+            // xxxxx
+            for (int i = -2; i<= 2; i++)
+                for (int j = -2; j<= 2; j++)
+                    neighbours.push_back(make_pair(i,j));
+
         }
 
         void setAdditionalData(std::vector<double> _largePatchAnchor, std::vector<double> _largePatchObs,
@@ -105,7 +120,7 @@ namespace g2o {
         virtual bool read  (std::istream& is);
         virtual bool write (std::ostream& os) const;
         void computeError();
-        virtual void linearizeOplus ();
+//        virtual void linearizeOplus ();
 
 
         inline Eigen::Matrix<double, 1, 2> d_inten_d_proj(const double u, const double v) ;
@@ -137,6 +152,8 @@ namespace g2o {
         std::vector< Vector2D > largePatchObsGradient;
         double pointAnchorScale, pointObsScale;
         int largePatchCenter, largePatchStride;
+
+        const int errorSize = 25;
     };
 }
 

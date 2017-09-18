@@ -70,20 +70,20 @@ namespace ORB_SLAM2 {
                 // Check recent MapPoints
                 MapPointCulling();
 
-                std::cout << "Test condition 1 : " << mpCurrentKeyFrame->GetMapPoints().size() << std::endl;
+                std::cout << "Map matches: " << mpCurrentKeyFrame->GetMapPoints().size() << std::endl;
 
                 // Triangulate new MapPoints
                 CreateNewMapPoints();
 
-                std::cout << "Test condition 2 : " << mpCurrentKeyFrame->GetMapPoints().size() << std::endl;
+                std::cout << "Map matches + new points : " << mpCurrentKeyFrame->GetMapPoints().size() << std::endl;
 
                 // TODO: Always search in neighbours
-//                if (!CheckNewKeyFrames()) {
+                if (!CheckNewKeyFrames()) {
                     // Find more matches in neighbor keyframes and fuse point duplications
                     SearchInNeighbors();
-//                }
+                }
 
-                std::cout << "Test condition 3 : " << mpCurrentKeyFrame->GetMapPoints().size() << std::endl;
+                std::cout << "Map matches + new points + searchInNeighbours : " << mpCurrentKeyFrame->GetMapPoints().size() << std::endl;
 
                 mbAbortBA = false;
 
@@ -131,16 +131,17 @@ namespace ORB_SLAM2 {
                             // inverted depth, 1 param per feature, patch error
                         else if (optimizationType == 4) {
 
-                            if (baCounter < 10) {
-                                chi2 = OptimizerBA::LocalBundleAdjustment(mpCurrentKeyFrame, &mbAbortBA, mpMap,
+                            chi2 = OptimizerBA::LocalBundleAdjustment(mpCurrentKeyFrame, &mbAbortBA, mpMap,
                                                                           OptimizerBA::TYPE::INVERSE_DEPTH_SINGLE_PARAM,
                                                                           baCounter, sigma);
                                 baCounter++;
+
+                            if ( mpCurrentKeyFrame->GetMapPoints().size() >= 200 ) {
+                                chi2 = OptimizerBA::LocalBundleAdjustment(mpCurrentKeyFrame, &mbAbortBA, mpMap,
+                                                                          OptimizerBA::TYPE::INVERSE_DEPTH_SINGLE_PARAM_PATCH,
+                                                                          baCounter, sigma);
+                                baCounter++;
                             }
-                            chi2 = OptimizerBA::LocalBundleAdjustment(mpCurrentKeyFrame, &mbAbortBA, mpMap,
-                                                                      OptimizerBA::TYPE::INVERSE_DEPTH_SINGLE_PARAM_PATCH,
-                                                                      baCounter, sigma);
-                            baCounter++;
                         } else if (optimizationType == 5) {
 
                             //if (baCounter < 10) {
@@ -150,7 +151,7 @@ namespace ORB_SLAM2 {
                                 baCounter++;
                            // }
 
-                            // TODO: Do optimization on patches only if more than 100 matches were recorded for current frame
+                            // TODO: Do optimization on patches only if more than X matches were recorded for current frame
 
                             if ( mpCurrentKeyFrame->GetMapPoints().size() >= 200 ) {
 
@@ -606,7 +607,7 @@ namespace ORB_SLAM2 {
 
                 cv::Mat x3D;
                 if (cosParallaxRays < cosParallaxStereo && cosParallaxRays > 0 &&
-                    (bStereo1 || bStereo2 || cosParallaxRays <= 1.0)) { // cosParallaxRays < 0.9998
+                    (bStereo1 || bStereo2 || cosParallaxRays <= 0.9998)) { // cosParallaxRays < 0.9998
                     // Linear Triangulation Method
                     cv::Mat A(4, 4, CV_32F);
                     A.row(0) = xn1.at<float>(0) * Tcw1.row(2) - Tcw1.row(0);

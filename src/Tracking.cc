@@ -918,19 +918,42 @@ bool Tracking::TrackWithMotionModel()
     // Create "visual odometry" points if in Localization Mode
     UpdateLastFrame();
 
-    mCurrentFrame.SetPose(mVelocity*mLastFrame.mTcw);
+    std::vector< cv::Mat > possiblePoses;
+//    // Rotations around y
+//    for (double rot = -30; rot <= 30; rot+=5 ) {
+//        double beta = rot * 3.1415/180.0;
+//
+//
+//        float rotData[16] = { cos(beta), 0, sin(beta), 0,
+//                              0 , 1, 0, 0,
+//                              -sin(beta), 0, cos(beta), 0,
+//                              0, 0, 0, 1};
+//        cv::Mat rotY = cv::Mat(4, 4, CV_32F, rotData);
+//        possiblePoses.push_back(rotY*mVelocity*mLastFrame.mTcw);
+//    }
+    possiblePoses.push_back(mVelocity*mLastFrame.mTcw);
 
-    fill(mCurrentFrame.mvpMapPoints.begin(),mCurrentFrame.mvpMapPoints.end(),static_cast<MapPoint*>(NULL));
 
-    // Project points seen in previous frame
-    int th;
-    if(mSensor!=System::STEREO)
-        th=15;
-    else
-        th=7;
-    int nmatches = matcher.SearchByProjection(mCurrentFrame,mLastFrame,10*th,mSensor==System::MONOCULAR);
+    int nmatches = 0, th;
+    for (cv::Mat pose : possiblePoses) {
 
-    std::cout << "Tracking: matched " << nmatches << std::endl;
+        mCurrentFrame.SetPose(pose);
+
+        fill(mCurrentFrame.mvpMapPoints.begin(), mCurrentFrame.mvpMapPoints.end(), static_cast<MapPoint *>(NULL));
+
+        // Project points seen in previous frame
+        if (mSensor != System::STEREO)
+            th = 15;
+        else
+            th = 7;
+
+        auto start5 = chrono::steady_clock::now();
+        nmatches = matcher.SearchByProjection(mCurrentFrame, mLastFrame, th, mSensor == System::MONOCULAR);
+        auto diff = chrono::steady_clock::now() - start5;
+        std::cout << "\033[0;31m " << "Tracking: matched " << nmatches <<  " out of " << mLastFrame.mvpMapPoints.size() << " Time: "
+                  << chrono::duration<double, milli>(diff).count() << " ms " << "\033[0m" << std::endl;
+
+    }
 
     // If few matches, uses a wider window search
     if(nmatches<20)
@@ -1093,8 +1116,8 @@ bool Tracking::NeedNewKeyFrame()
 
     std::cout <<"Insert conditions " << c1a << " " << c1b << " " << c1c << " " <<c2 << std::endl;
     std::cout <<"Insert conditions : mnMatchesInliers = " << mnMatchesInliers << " nRefMatches = " << nRefMatches << std::endl;
-    //if((c1a||c1b||c1c)&&c2) // if((c1a||c1b||c1c)&&(c2||mnMatchesInliers < 200)) // TODO: MODIFICATION, old: if((c1a||c1b||c1c)&&c2)
-    if (true)
+    if((c1a||c1b||c1c)&&c2) // if((c1a||c1b||c1c)&&(c2||mnMatchesInliers < 200)) // TODO: MODIFICATION, old: if((c1a||c1b||c1c)&&c2)
+//    if (true)
     {
         // If the mapping accepts keyframes, insert keyframe.
         // Otherwise send a signal to interrupt BA

@@ -34,7 +34,7 @@ using namespace std;
 namespace ORB_SLAM2
 {
 
-const int ORBmatcher::TH_HIGH = 300; // TODO: TH_HIGH = 100;
+const int ORBmatcher::TH_HIGH = 400; // TODO: TH_HIGH = 100;
 const int ORBmatcher::TH_LOW = 50;
 const int ORBmatcher::HISTO_LENGTH = 30;
 
@@ -1348,6 +1348,7 @@ int ORBmatcher::SearchByProjection(Frame &CurrentFrame, const Frame &LastFrame, 
     const bool bForward = tlc.at<float>(2)>CurrentFrame.mb && !bMono;
     const bool bBackward = -tlc.at<float>(2)>CurrentFrame.mb && !bMono;
 
+    int lastFramecorrectPoints = 0;
     for(int i=0; i<LastFrame.N; i++)
     {
         MapPoint* pMP = LastFrame.mvpMapPoints[i];
@@ -1356,6 +1357,7 @@ int ORBmatcher::SearchByProjection(Frame &CurrentFrame, const Frame &LastFrame, 
         {
             if(!LastFrame.mvbOutlier[i])
             {
+                lastFramecorrectPoints++;
                 // Project
                 cv::Mat x3Dw = pMP->GetWorldPos();
                 cv::Mat x3Dc = Rcw*x3Dw+tcw;
@@ -1443,6 +1445,8 @@ int ORBmatcher::SearchByProjection(Frame &CurrentFrame, const Frame &LastFrame, 
             }
         }
     }
+
+    std::cout << "Last frame correct points: " << lastFramecorrectPoints << std::endl;
 
     //Apply rotation consistency
     if(mbCheckOrientation)

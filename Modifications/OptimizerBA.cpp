@@ -1235,364 +1235,365 @@ namespace ORB_SLAM2 {
 
     std::vector<double> OptimizerBA::BundleAdjustmentInvDepthSingleParamPatch(list<KeyFrame *> lLocalKeyFrames, list<KeyFrame *> lFixedCameras, set<MapPoint *> lLocalMapPoints, bool *pbStopFlag, Map *pMap, float sigma)
     {
-        std::string optimizationName = "\tLBA InvD Single Patches: ";
-        const float thHuber = 9;
-        const float thHuberSquared = thHuber*thHuber;
-
-        const int blockSolverCameras = 6;
-        const int blockSolverPoses = 1;
-
-
-        std::cout << optimizationName << "LKFs.size() = " << lLocalKeyFrames.size() << " lFCs.size() = " << lFixedCameras.size() << " lMPs.size() = " << lLocalMapPoints.size() << std::endl;
-
-        // Setup optimizer
-        g2o::SparseOptimizer optimizer;
-
-        typedef g2o::BlockSolver< g2o::BlockSolverTraits<blockSolverCameras, blockSolverPoses> > OurBlockSolver;
-        OurBlockSolver::LinearSolverType *linearSolver;
-        linearSolver = new g2o::LinearSolverEigen<OurBlockSolver::PoseMatrixType>();
-        OurBlockSolver *solver_ptr = new OurBlockSolver(linearSolver);
-
-        g2o::OptimizationAlgorithmLevenberg *solver = new g2o::OptimizationAlgorithmLevenberg(solver_ptr);
-        optimizer.setAlgorithm(solver);
-
-        if (pbStopFlag)
-            optimizer.setForceStopFlag(pbStopFlag);
-
-        KeyFrame *pKF = *lLocalKeyFrames.begin(); // TODO: Now setting it as camera params of 1st camera
-        Eigen::Vector2d principal_point(pKF->cx, pKF->cy);
-        g2o::CameraParameters *cam_params
-                = new g2o::CameraParameters(pKF->fx, pKF->fy, principal_point, 0.);
-        cam_params->setId(0);
-
-        if (!optimizer.addParameter(cam_params)) {
-            assert(false);
-        }
-
-        unsigned long maxKFid = 0;
-
-// Set Local KeyFrame vertices
-        for (list<KeyFrame *>::iterator lit = lLocalKeyFrames.begin(), lend = lLocalKeyFrames.end(); lit != lend; lit++) {
-            KeyFrame *pKFi = *lit;
-            g2o::VertexSE3Expmap *vSE3 = new g2o::VertexSE3Expmap();
-            vSE3->setEstimate(Converter::toSE3Quat(pKFi->GetPose()));
-            vSE3->setId(pKFi->mnId);
-            vSE3->setFixed(pKFi->mnId == 0);
-            optimizer.addVertex(vSE3);
-            if (pKFi->mnId > maxKFid)
-                maxKFid = pKFi->mnId;
-        }
-
-// Set Fixed KeyFrame vertices
-        for (list<KeyFrame *>::iterator lit = lFixedCameras.begin(), lend = lFixedCameras.end(); lit != lend; lit++) {
-            KeyFrame *pKFi = *lit;
-            g2o::VertexSE3Expmap *vSE3 = new g2o::VertexSE3Expmap();
-            vSE3->setEstimate(Converter::toSE3Quat(pKFi->GetPose()));
-            vSE3->setId(pKFi->mnId);
-            vSE3->setFixed(true);
-            optimizer.addVertex(vSE3);
-            if (pKFi->mnId > maxKFid)
-                maxKFid = pKFi->mnId;
-        }
-
-// Set MapPoint vertices
-        const int nExpectedSize = (lLocalKeyFrames.size() + lFixedCameras.size()) * lLocalMapPoints.size();
-
-        vector<g2o::EdgeProjectPSI2UVSingleParamPatch *> vpEdgesMono;
-        vpEdgesMono.reserve(nExpectedSize);
-
-        vector<KeyFrame *> vpEdgeKFMono;
-        vpEdgeKFMono.reserve(nExpectedSize);
-
-        vector<MapPoint *> vpMapPointEdgeMono;
-        vpMapPointEdgeMono.reserve(nExpectedSize);
-
-
-        for (set<MapPoint *>::iterator lit = lLocalMapPoints.begin(), lend = lLocalMapPoints.end(); lit != lend; lit++) {
-            MapPoint *pMP = *lit;
-            KeyFrame *refKF = pMP->GetReferenceKeyFrame();
-            const map<KeyFrame *, size_t> observations = pMP->GetObservations();
-
-
-            g2o::VertexSBAPointInvD *vPoint = new g2o::VertexSBAPointInvD();
-
-// Moving from world coordinate to local coordinate in ref kf and then saving depth as inverse Z
-            cv::Mat worldPos = pMP->GetWorldPos();
-            cv::Mat pointInRef = refKF->GetRotation() * worldPos + refKF->GetTranslation();
-            vPoint->setEstimate(1. / pointInRef.at<float>(2));
-
-//  original observation
-            int indexOfFirstObs = observations.find(refKF)->second;
-            vPoint->u0 = refKF->mvKeysUn[indexOfFirstObs].pt.x;
-            vPoint->v0 = refKF->mvKeysUn[indexOfFirstObs].pt.y;
-            const int level = refKF->mvKeysUn[indexOfFirstObs].octave;
-            const double refScaleFactor = refKF->mvScaleFactors[level];
-            cv::Mat refPatch = refKF->mPatches[indexOfFirstObs];
-
-            std::vector<double> refPatchVec;
-            for (int y = 0; y < refPatch.rows; y++)
-                for (int x = 0; x < refPatch.cols; x++)
-                    refPatchVec.push_back((double) refPatch.at<uchar>(y, x));
-
-
-            int id = pMP->mnId + maxKFid + 1;
-            vPoint->setId(id);
-            vPoint->setMarginalized(true);
-            optimizer.addVertex(vPoint);
-
-//Set edges
-            for (map<KeyFrame *, size_t>::const_iterator mit = observations.begin(), mend = observations.end();
-                 mit != mend; mit++) {
-                KeyFrame *pKFi = mit->first;
-
-// First observation is treated differently -> it is not added at all
-                if (refKF == pKFi)
-                    continue;
-
-                if (!pKFi->isBad()) {
-                    const cv::KeyPoint &kpUn = pKFi->mvKeysUn[mit->second];
-                    cv::Mat curPatch = pKFi->mPatches[mit->second];
-
-                    std::vector<double> curPatchVec;
-                    for (int y = 0; y < curPatch.rows; y++)
-                        for (int x = 0; x < curPatch.cols; x++)
-                            curPatchVec.push_back((double) curPatch.at<uchar>(y, x));
-
-// Monocular observation
-                    if (pKFi->mvuRight[mit->second] < 0) {
-
-                        Eigen::Matrix<double, 9, 1> obs;
-                        obs << kpUn.pt.x, kpUn.pt.y, 0, 0, 0, 0, 0, 0, 0;
-
-                        g2o::EdgeProjectPSI2UVSingleParamPatch *e = new g2o::EdgeProjectPSI2UVSingleParamPatch();
-                        e->resize(3);
-
-// RefKp might not have been added yet
-                        g2o::OptimizableGraph::Vertex *v = dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(
-                                refKF->mnId));
-                        if (!v) {
-                            g2o::VertexSE3Expmap *vSE3 = new g2o::VertexSE3Expmap();
-                            vSE3->setEstimate(Converter::toSE3Quat(refKF->GetPose()));
-                            vSE3->setId(refKF->mnId);
-                            vSE3->setFixed(true);
-                            optimizer.addVertex(vSE3);
-                        }
-
-                        e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(id)));
-                        e->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(pKFi->mnId)));
-                        e->setVertex(2, dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(refKF->mnId)));
-
-
-// TODO: Setting the necessary values
-                        const double curScaleFactor = pKFi->mvScaleFactors[kpUn.octave];
-                        e->setAdditionalData(refPatchVec, curPatchVec, refScaleFactor, curScaleFactor);
-
-
-                        e->setMeasurement(obs);
-                        const float &invSigma2 = pKFi->mvInvLevelSigma2[kpUn.octave];
-                        const float assumedDetInvSigma2 = 1.0 / (sigma * sigma);
-//                    e->setInformation(Eigen::Matrix2d::Identity() * invSigma2 * assumedDetInvSigma2);
-                        e->setInformation(Eigen::Matrix<double, 9, 9>::Identity() / 9);
-
-                        g2o::RobustKernelHuber *rk = new g2o::RobustKernelHuber;
-                        e->setRobustKernel(rk);
-                        rk->setDelta(thHuber);
-
-                        e->setParameterId(0, 0);
-
-
-                        g2o::OptimizableGraph::Vertex *v1 = dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(id));
-                        g2o::OptimizableGraph::Vertex *v2 = dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(pKFi->mnId));
-                        g2o::OptimizableGraph::Vertex *v3 = dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(refKF->mnId));
-                        if (!v1 || !v2 || !v3) {
-                            std::cout << optimizationName
-                                      << "Vertices should exists but at least one doesn't. Why? Don't know yet"
-                                      << std::endl;
-                            if (!v1)
-                                std::cout << "Missing v1 " << std::endl;
-                            else if (!v2)
-                                std::cout << "Missing v2 " << std::endl;
-                            else
-                                std::cout << "Missing v3 " << std::endl;
-                        }
-                        else {
-                            optimizer.addEdge(e);
-                            vpEdgesMono.push_back(e);
-                            vpEdgeKFMono.push_back(pKFi);
-                            vpMapPointEdgeMono.push_back(pMP);
-                        }
-                    }
-                }
-            }
-        }
-
-        if (pbStopFlag)
-            if (*pbStopFlag)
-                return std::vector<double>(); // Modified
-
-        auto start = chrono::steady_clock::now();
-        optimizer.initializeOptimization(0);
-        auto end = chrono::steady_clock::now();
-        auto diff = end - start;
-
-
-        double initchi2 = 0;
-        int count = 0;
-        for (size_t i = 0, iend = vpEdgesMono.size(); i < iend; i++) {
-            g2o::EdgeProjectPSI2UVSingleParamPatch *e = vpEdgesMono[i];
-            MapPoint *pMP = vpMapPointEdgeMono[i];
-
-            e->computeError();
-            if (pMP->isBad())
-                continue;
-
-            if (e->chi2() <= thHuberSquared && e->isDepthPositive()) {
-//            std::cout << " ??? " << e->chi2() << std::endl;
-                initchi2 += e->chi2();
-                count ++;
-            }
-        }
-        std::cout << optimizationName << " avg initial chi2 = " << initchi2 / count<< " over " << count << " measurements " << std::endl;
-        std::cout << optimizationName << " Number of vertices in g2o: " << optimizer.vertices().size() << " Edges: " << optimizer.edges().size() << std::endl;
-
-//    std::cout << "!!!!!!!!! ---------- !!!!!!!!!! " << std::endl;
-        auto start2 = chrono::steady_clock::now();
-        optimizer.optimize(5);
-        auto end2 = chrono::steady_clock::now();
-        auto diff2 = end2 - start2;
-//    std::cout << "!!!!!!!!! ---------- !!!!!!!!!! " << std::endl;
-
-        auto diff3 = diff2, diff4 = diff2, diff5 = diff2;
-
-        bool bDoMore = true;
-
-        if (pbStopFlag)
-            if (*pbStopFlag)
-                bDoMore = false;
-
-        if (bDoMore) {
-
-// Check inlier observations
-            for (size_t i = 0, iend = vpEdgesMono.size(); i < iend; i++) {
-                g2o::EdgeProjectPSI2UVSingleParamPatch *e = vpEdgesMono[i];
-                MapPoint *pMP = vpMapPointEdgeMono[i];
-
-                if (pMP->isBad())
-                    continue;
-
-                if (e->chi2() > thHuberSquared || !e->isDepthPositive()) {
-                    e->setLevel(1);
-                }
-
-                e->setRobustKernel(0);
-            }
-
-// Optimize again without the outliers
-//        std::cout << " ------- " << std::endl;
-
-            auto start3 = chrono::steady_clock::now();
-            optimizer.initializeOptimization(0);
-            auto end3 = chrono::steady_clock::now();
-            diff3 = end3 - start3;
-
-//        std::cout << " ------- " << std::endl;
-
-            auto start4 = chrono::steady_clock::now();
-            optimizer.optimize(5);
-            auto end4 = chrono::steady_clock::now();
-            diff4 = end4 - start4;
-
-//        std::cout << " ------- " << std::endl;
-
-            auto start5 = chrono::steady_clock::now();
-            optimizer.optimize(5);
-            auto end5 = chrono::steady_clock::now();
-            diff5 = end5 - start5;
-
-//        std::cout << " ------- " << std::endl;
-
-        }
-
-        vector<pair<KeyFrame *, MapPoint *> > vToErase;
-        vToErase.reserve(vpEdgesMono.size()); //+ vpEdgesStereo.size());
-
-// Check inlier observations
-        std::vector<double> chi2Statistics;
-        for (size_t i = 0, iend = vpEdgesMono.size(); i < iend; i++) {
-            g2o::EdgeProjectPSI2UVSingleParamPatch *e = vpEdgesMono[i];
-            MapPoint *pMP = vpMapPointEdgeMono[i];
-
-            if (pMP->isBad())
-                continue;
-
-            if (e->chi2() > thHuberSquared || !e->isDepthPositive()) {
-                KeyFrame *pKFi = vpEdgeKFMono[i];
-                vToErase.push_back(make_pair(pKFi, pMP));
-            } else {
-//            double * err = e->errorData();
-//            double * inf = e->informationData();
-//            double eDist = std::sqrt(err[0] * err[0] + err[1] * err[1]);
-//            std::cout << "ERR: " <<  err[0] << " " <<  err[1] << " ReprojError: " << eDist <<" Chi2: " << e->chi2() << std::endl;
-                chi2Statistics.push_back(e->chi2());
-            }
-        }
-        std::cout << optimizationName << " avg chi2() = "
-                  << accumulate(chi2Statistics.begin(), chi2Statistics.end(), 0.0) / chi2Statistics.size() << " over "
-                  << chi2Statistics.size() << " measurements" << std::endl;
-
-
-
-// Get Map Mutex
-        unique_lock<mutex> lock(pMap->mMutexMapUpdate);
-
-        if (!vToErase.empty()) {
-            for (size_t i = 0; i < vToErase.size(); i++) {
-                KeyFrame *pKFi = vToErase[i].first;
-                MapPoint *pMPi = vToErase[i].second;
-                pKFi->EraseMapPointMatch(pMPi);
-                pMPi->EraseObservation(pKFi);
-            }
-        }
-
-// Recover optimized data
-
-//Keyframes
-        for (list<KeyFrame *>::iterator lit = lLocalKeyFrames.begin(), lend = lLocalKeyFrames.end(); lit != lend; lit++) {
-            KeyFrame *pKF = *lit;
-            g2o::VertexSE3Expmap *vSE3 = static_cast<g2o::VertexSE3Expmap *>(optimizer.vertex(pKF->mnId));
-            g2o::SE3Quat SE3quat = vSE3->estimate();
-            pKF->SetPose(Converter::toCvMat(SE3quat));
-        }
-
-//Points
-        for (set<MapPoint *>::iterator lit = lLocalMapPoints.begin(), lend = lLocalMapPoints.end(); lit != lend; lit++) {
-            MapPoint *pMP = *lit;
-
-            g2o::VertexSBAPointInvD *vPoint = static_cast<g2o::VertexSBAPointInvD *>(optimizer.vertex(
-                    pMP->mnId + maxKFid + 1));
-            KeyFrame *refKF = pMP->GetReferenceKeyFrame();
-
-            cv::Mat pointInFirst = cv::Mat(3, 1, CV_32F), worldPos = cv::Mat(3, 1, CV_32F);
-            pointInFirst.at<float>(2) = 1. / vPoint->estimate();
-            pointInFirst.at<float>(0) = (vPoint->u0 - refKF->cx) * pointInFirst.at<float>(2) / refKF->fx;
-            pointInFirst.at<float>(1) = (vPoint->v0 - refKF->cy) * pointInFirst.at<float>(2) / refKF->fy;
-
-
-            cv::Mat worldPointPos =
-                    refKF->GetRotation().t() * pointInFirst - refKF->GetRotation().t() * refKF->GetTranslation();
-
-            pMP->SetWorldPos(worldPointPos);
-            pMP->UpdateNormalAndDepth();
-        }
-
-
-        // We verify the reprojection error
-        OptimizerBA::VerifyReprojectionError(lLocalKeyFrames, lLocalMapPoints, lFixedCameras, optimizationName);
-
-        cout << optimizationName << " Initialization time: " << chrono::duration <double, milli> (diff).count() << " "<<  chrono::duration <double, milli> (diff3).count() << " ms" << endl;
-        cout << optimizationName << " Pure optimization time: " << chrono::duration <double, milli> (diff2).count() << " " << chrono::duration <double, milli> (diff4).count()
-             << " " << chrono::duration <double, milli> (diff5).count() << " ms" << endl;
-        return chi2Statistics;
+        return std::vector<double>();
+//        std::string optimizationName = "\tLBA InvD Single Patches: ";
+//        const float thHuber = 9;
+//        const float thHuberSquared = thHuber*thHuber;
+//
+//        const int blockSolverCameras = 6;
+//        const int blockSolverPoses = 1;
+//
+//
+//        std::cout << optimizationName << "LKFs.size() = " << lLocalKeyFrames.size() << " lFCs.size() = " << lFixedCameras.size() << " lMPs.size() = " << lLocalMapPoints.size() << std::endl;
+//
+//        // Setup optimizer
+//        g2o::SparseOptimizer optimizer;
+//
+//        typedef g2o::BlockSolver< g2o::BlockSolverTraits<blockSolverCameras, blockSolverPoses> > OurBlockSolver;
+//        OurBlockSolver::LinearSolverType *linearSolver;
+//        linearSolver = new g2o::LinearSolverEigen<OurBlockSolver::PoseMatrixType>();
+//        OurBlockSolver *solver_ptr = new OurBlockSolver(linearSolver);
+//
+//        g2o::OptimizationAlgorithmLevenberg *solver = new g2o::OptimizationAlgorithmLevenberg(solver_ptr);
+//        optimizer.setAlgorithm(solver);
+//
+//        if (pbStopFlag)
+//            optimizer.setForceStopFlag(pbStopFlag);
+//
+//        KeyFrame *pKF = *lLocalKeyFrames.begin(); // TODO: Now setting it as camera params of 1st camera
+//        Eigen::Vector2d principal_point(pKF->cx, pKF->cy);
+//        g2o::CameraParameters *cam_params
+//                = new g2o::CameraParameters(pKF->fx, pKF->fy, principal_point, 0.);
+//        cam_params->setId(0);
+//
+//        if (!optimizer.addParameter(cam_params)) {
+//            assert(false);
+//        }
+//
+//        unsigned long maxKFid = 0;
+//
+//// Set Local KeyFrame vertices
+//        for (list<KeyFrame *>::iterator lit = lLocalKeyFrames.begin(), lend = lLocalKeyFrames.end(); lit != lend; lit++) {
+//            KeyFrame *pKFi = *lit;
+//            g2o::VertexSE3Expmap *vSE3 = new g2o::VertexSE3Expmap();
+//            vSE3->setEstimate(Converter::toSE3Quat(pKFi->GetPose()));
+//            vSE3->setId(pKFi->mnId);
+//            vSE3->setFixed(pKFi->mnId == 0);
+//            optimizer.addVertex(vSE3);
+//            if (pKFi->mnId > maxKFid)
+//                maxKFid = pKFi->mnId;
+//        }
+//
+//// Set Fixed KeyFrame vertices
+//        for (list<KeyFrame *>::iterator lit = lFixedCameras.begin(), lend = lFixedCameras.end(); lit != lend; lit++) {
+//            KeyFrame *pKFi = *lit;
+//            g2o::VertexSE3Expmap *vSE3 = new g2o::VertexSE3Expmap();
+//            vSE3->setEstimate(Converter::toSE3Quat(pKFi->GetPose()));
+//            vSE3->setId(pKFi->mnId);
+//            vSE3->setFixed(true);
+//            optimizer.addVertex(vSE3);
+//            if (pKFi->mnId > maxKFid)
+//                maxKFid = pKFi->mnId;
+//        }
+//
+//// Set MapPoint vertices
+//        const int nExpectedSize = (lLocalKeyFrames.size() + lFixedCameras.size()) * lLocalMapPoints.size();
+//
+//        vector<g2o::EdgeProjectPSI2UVSingleParamPatch *> vpEdgesMono;
+//        vpEdgesMono.reserve(nExpectedSize);
+//
+//        vector<KeyFrame *> vpEdgeKFMono;
+//        vpEdgeKFMono.reserve(nExpectedSize);
+//
+//        vector<MapPoint *> vpMapPointEdgeMono;
+//        vpMapPointEdgeMono.reserve(nExpectedSize);
+//
+//
+//        for (set<MapPoint *>::iterator lit = lLocalMapPoints.begin(), lend = lLocalMapPoints.end(); lit != lend; lit++) {
+//            MapPoint *pMP = *lit;
+//            KeyFrame *refKF = pMP->GetReferenceKeyFrame();
+//            const map<KeyFrame *, size_t> observations = pMP->GetObservations();
+//
+//
+//            g2o::VertexSBAPointInvD *vPoint = new g2o::VertexSBAPointInvD();
+//
+//// Moving from world coordinate to local coordinate in ref kf and then saving depth as inverse Z
+//            cv::Mat worldPos = pMP->GetWorldPos();
+//            cv::Mat pointInRef = refKF->GetRotation() * worldPos + refKF->GetTranslation();
+//            vPoint->setEstimate(1. / pointInRef.at<float>(2));
+//
+////  original observation
+//            int indexOfFirstObs = observations.find(refKF)->second;
+//            vPoint->u0 = refKF->mvKeysUn[indexOfFirstObs].pt.x;
+//            vPoint->v0 = refKF->mvKeysUn[indexOfFirstObs].pt.y;
+//            const int level = refKF->mvKeysUn[indexOfFirstObs].octave;
+//            const double refScaleFactor = refKF->mvScaleFactors[level];
+//            cv::Mat refPatch = refKF->mPatches[indexOfFirstObs];
+//
+//            std::vector<double> refPatchVec;
+//            for (int y = 0; y < refPatch.rows; y++)
+//                for (int x = 0; x < refPatch.cols; x++)
+//                    refPatchVec.push_back((double) refPatch.at<uchar>(y, x));
+//
+//
+//            int id = pMP->mnId + maxKFid + 1;
+//            vPoint->setId(id);
+//            vPoint->setMarginalized(true);
+//            optimizer.addVertex(vPoint);
+//
+////Set edges
+//            for (map<KeyFrame *, size_t>::const_iterator mit = observations.begin(), mend = observations.end();
+//                 mit != mend; mit++) {
+//                KeyFrame *pKFi = mit->first;
+//
+//// First observation is treated differently -> it is not added at all
+//                if (refKF == pKFi)
+//                    continue;
+//
+//                if (!pKFi->isBad()) {
+//                    const cv::KeyPoint &kpUn = pKFi->mvKeysUn[mit->second];
+//                    cv::Mat curPatch = pKFi->mPatches[mit->second];
+//
+//                    std::vector<double> curPatchVec;
+//                    for (int y = 0; y < curPatch.rows; y++)
+//                        for (int x = 0; x < curPatch.cols; x++)
+//                            curPatchVec.push_back((double) curPatch.at<uchar>(y, x));
+//
+//// Monocular observation
+//                    if (pKFi->mvuRight[mit->second] < 0) {
+//
+//                        Eigen::Matrix<double, 9, 1> obs;
+//                        obs << kpUn.pt.x, kpUn.pt.y, 0, 0, 0, 0, 0, 0, 0;
+//
+//                        g2o::EdgeProjectPSI2UVSingleParamPatch *e = new g2o::EdgeProjectPSI2UVSingleParamPatch();
+//                        e->resize(3);
+//
+//// RefKp might not have been added yet
+//                        g2o::OptimizableGraph::Vertex *v = dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(
+//                                refKF->mnId));
+//                        if (!v) {
+//                            g2o::VertexSE3Expmap *vSE3 = new g2o::VertexSE3Expmap();
+//                            vSE3->setEstimate(Converter::toSE3Quat(refKF->GetPose()));
+//                            vSE3->setId(refKF->mnId);
+//                            vSE3->setFixed(true);
+//                            optimizer.addVertex(vSE3);
+//                        }
+//
+//                        e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(id)));
+//                        e->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(pKFi->mnId)));
+//                        e->setVertex(2, dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(refKF->mnId)));
+//
+//
+//// TODO: Setting the necessary values
+//                        const double curScaleFactor = pKFi->mvScaleFactors[kpUn.octave];
+//                        e->setAdditionalData(refPatchVec, curPatchVec, refScaleFactor, curScaleFactor);
+//
+//
+//                        e->setMeasurement(obs);
+//                        const float &invSigma2 = pKFi->mvInvLevelSigma2[kpUn.octave];
+//                        const float assumedDetInvSigma2 = 1.0 / (sigma * sigma);
+////                    e->setInformation(Eigen::Matrix2d::Identity() * invSigma2 * assumedDetInvSigma2);
+//                        e->setInformation(Eigen::Matrix<double, 9, 9>::Identity() / 9);
+//
+//                        g2o::RobustKernelHuber *rk = new g2o::RobustKernelHuber;
+//                        e->setRobustKernel(rk);
+//                        rk->setDelta(thHuber);
+//
+//                        e->setParameterId(0, 0);
+//
+//
+//                        g2o::OptimizableGraph::Vertex *v1 = dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(id));
+//                        g2o::OptimizableGraph::Vertex *v2 = dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(pKFi->mnId));
+//                        g2o::OptimizableGraph::Vertex *v3 = dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(refKF->mnId));
+//                        if (!v1 || !v2 || !v3) {
+//                            std::cout << optimizationName
+//                                      << "Vertices should exists but at least one doesn't. Why? Don't know yet"
+//                                      << std::endl;
+//                            if (!v1)
+//                                std::cout << "Missing v1 " << std::endl;
+//                            else if (!v2)
+//                                std::cout << "Missing v2 " << std::endl;
+//                            else
+//                                std::cout << "Missing v3 " << std::endl;
+//                        }
+//                        else {
+//                            optimizer.addEdge(e);
+//                            vpEdgesMono.push_back(e);
+//                            vpEdgeKFMono.push_back(pKFi);
+//                            vpMapPointEdgeMono.push_back(pMP);
+//                        }
+//                    }
+//                }
+//            }
+//        }
+//
+//        if (pbStopFlag)
+//            if (*pbStopFlag)
+//                return std::vector<double>(); // Modified
+//
+//        auto start = chrono::steady_clock::now();
+//        optimizer.initializeOptimization(0);
+//        auto end = chrono::steady_clock::now();
+//        auto diff = end - start;
+//
+//
+//        double initchi2 = 0;
+//        int count = 0;
+//        for (size_t i = 0, iend = vpEdgesMono.size(); i < iend; i++) {
+//            g2o::EdgeProjectPSI2UVSingleParamPatch *e = vpEdgesMono[i];
+//            MapPoint *pMP = vpMapPointEdgeMono[i];
+//
+//            e->computeError();
+//            if (pMP->isBad())
+//                continue;
+//
+//            if (e->chi2() <= thHuberSquared && e->isDepthPositive()) {
+////            std::cout << " ??? " << e->chi2() << std::endl;
+//                initchi2 += e->chi2();
+//                count ++;
+//            }
+//        }
+//        std::cout << optimizationName << " avg initial chi2 = " << initchi2 / count<< " over " << count << " measurements " << std::endl;
+//        std::cout << optimizationName << " Number of vertices in g2o: " << optimizer.vertices().size() << " Edges: " << optimizer.edges().size() << std::endl;
+//
+////    std::cout << "!!!!!!!!! ---------- !!!!!!!!!! " << std::endl;
+//        auto start2 = chrono::steady_clock::now();
+//        optimizer.optimize(5);
+//        auto end2 = chrono::steady_clock::now();
+//        auto diff2 = end2 - start2;
+////    std::cout << "!!!!!!!!! ---------- !!!!!!!!!! " << std::endl;
+//
+//        auto diff3 = diff2, diff4 = diff2, diff5 = diff2;
+//
+//        bool bDoMore = true;
+//
+//        if (pbStopFlag)
+//            if (*pbStopFlag)
+//                bDoMore = false;
+//
+//        if (bDoMore) {
+//
+//// Check inlier observations
+//            for (size_t i = 0, iend = vpEdgesMono.size(); i < iend; i++) {
+//                g2o::EdgeProjectPSI2UVSingleParamPatch *e = vpEdgesMono[i];
+//                MapPoint *pMP = vpMapPointEdgeMono[i];
+//
+//                if (pMP->isBad())
+//                    continue;
+//
+//                if (e->chi2() > thHuberSquared || !e->isDepthPositive()) {
+//                    e->setLevel(1);
+//                }
+//
+//                e->setRobustKernel(0);
+//            }
+//
+//// Optimize again without the outliers
+////        std::cout << " ------- " << std::endl;
+//
+//            auto start3 = chrono::steady_clock::now();
+//            optimizer.initializeOptimization(0);
+//            auto end3 = chrono::steady_clock::now();
+//            diff3 = end3 - start3;
+//
+////        std::cout << " ------- " << std::endl;
+//
+//            auto start4 = chrono::steady_clock::now();
+//            optimizer.optimize(5);
+//            auto end4 = chrono::steady_clock::now();
+//            diff4 = end4 - start4;
+//
+////        std::cout << " ------- " << std::endl;
+//
+//            auto start5 = chrono::steady_clock::now();
+//            optimizer.optimize(5);
+//            auto end5 = chrono::steady_clock::now();
+//            diff5 = end5 - start5;
+//
+////        std::cout << " ------- " << std::endl;
+//
+//        }
+//
+//        vector<pair<KeyFrame *, MapPoint *> > vToErase;
+//        vToErase.reserve(vpEdgesMono.size()); //+ vpEdgesStereo.size());
+//
+//// Check inlier observations
+//        std::vector<double> chi2Statistics;
+//        for (size_t i = 0, iend = vpEdgesMono.size(); i < iend; i++) {
+//            g2o::EdgeProjectPSI2UVSingleParamPatch *e = vpEdgesMono[i];
+//            MapPoint *pMP = vpMapPointEdgeMono[i];
+//
+//            if (pMP->isBad())
+//                continue;
+//
+//            if (e->chi2() > thHuberSquared || !e->isDepthPositive()) {
+//                KeyFrame *pKFi = vpEdgeKFMono[i];
+//                vToErase.push_back(make_pair(pKFi, pMP));
+//            } else {
+////            double * err = e->errorData();
+////            double * inf = e->informationData();
+////            double eDist = std::sqrt(err[0] * err[0] + err[1] * err[1]);
+////            std::cout << "ERR: " <<  err[0] << " " <<  err[1] << " ReprojError: " << eDist <<" Chi2: " << e->chi2() << std::endl;
+//                chi2Statistics.push_back(e->chi2());
+//            }
+//        }
+//        std::cout << optimizationName << " avg chi2() = "
+//                  << accumulate(chi2Statistics.begin(), chi2Statistics.end(), 0.0) / chi2Statistics.size() << " over "
+//                  << chi2Statistics.size() << " measurements" << std::endl;
+//
+//
+//
+//// Get Map Mutex
+//        unique_lock<mutex> lock(pMap->mMutexMapUpdate);
+//
+//        if (!vToErase.empty()) {
+//            for (size_t i = 0; i < vToErase.size(); i++) {
+//                KeyFrame *pKFi = vToErase[i].first;
+//                MapPoint *pMPi = vToErase[i].second;
+//                pKFi->EraseMapPointMatch(pMPi);
+//                pMPi->EraseObservation(pKFi);
+//            }
+//        }
+//
+//// Recover optimized data
+//
+////Keyframes
+//        for (list<KeyFrame *>::iterator lit = lLocalKeyFrames.begin(), lend = lLocalKeyFrames.end(); lit != lend; lit++) {
+//            KeyFrame *pKF = *lit;
+//            g2o::VertexSE3Expmap *vSE3 = static_cast<g2o::VertexSE3Expmap *>(optimizer.vertex(pKF->mnId));
+//            g2o::SE3Quat SE3quat = vSE3->estimate();
+//            pKF->SetPose(Converter::toCvMat(SE3quat));
+//        }
+//
+////Points
+//        for (set<MapPoint *>::iterator lit = lLocalMapPoints.begin(), lend = lLocalMapPoints.end(); lit != lend; lit++) {
+//            MapPoint *pMP = *lit;
+//
+//            g2o::VertexSBAPointInvD *vPoint = static_cast<g2o::VertexSBAPointInvD *>(optimizer.vertex(
+//                    pMP->mnId + maxKFid + 1));
+//            KeyFrame *refKF = pMP->GetReferenceKeyFrame();
+//
+//            cv::Mat pointInFirst = cv::Mat(3, 1, CV_32F), worldPos = cv::Mat(3, 1, CV_32F);
+//            pointInFirst.at<float>(2) = 1. / vPoint->estimate();
+//            pointInFirst.at<float>(0) = (vPoint->u0 - refKF->cx) * pointInFirst.at<float>(2) / refKF->fx;
+//            pointInFirst.at<float>(1) = (vPoint->v0 - refKF->cy) * pointInFirst.at<float>(2) / refKF->fy;
+//
+//
+//            cv::Mat worldPointPos =
+//                    refKF->GetRotation().t() * pointInFirst - refKF->GetRotation().t() * refKF->GetTranslation();
+//
+//            pMP->SetWorldPos(worldPointPos);
+//            pMP->UpdateNormalAndDepth();
+//        }
+//
+//
+//        // We verify the reprojection error
+//        OptimizerBA::VerifyReprojectionError(lLocalKeyFrames, lLocalMapPoints, lFixedCameras, optimizationName);
+//
+//        cout << optimizationName << " Initialization time: " << chrono::duration <double, milli> (diff).count() << " "<<  chrono::duration <double, milli> (diff3).count() << " ms" << endl;
+//        cout << optimizationName << " Pure optimization time: " << chrono::duration <double, milli> (diff2).count() << " " << chrono::duration <double, milli> (diff4).count()
+//             << " " << chrono::duration <double, milli> (diff5).count() << " ms" << endl;
+//        return chi2Statistics;
     }
 
 
@@ -1602,6 +1603,7 @@ namespace ORB_SLAM2 {
         const float thHuber = 9; // DSO has 9
         const float thHuberSquared = thHuber*thHuber; // as in the DSO
         const float minInlierRatio = 0.3;
+        const int errorSize = 25;
 
         const int blockSolverCameras = 8;
         const int blockSolverPoses = 1;
@@ -1745,8 +1747,9 @@ namespace ORB_SLAM2 {
 // Monocular observation
                     if (pKFi->mvuRight[mit->second] < 0) {
 
-                        Eigen::Matrix<double, 9, 1> obs;
-                        obs << kpUn.pt.x, kpUn.pt.y, 0, 0, 0, 0, 0, 0, 0;
+                        Eigen::Matrix<double, errorSize, 1> obs;
+//                        obs << kpUn.pt.x, kpUn.pt.y, 0, 0, 0, 0, 0, 0, 0;
+                        obs << kpUn.pt.x, kpUn.pt.y, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0;
 
                         g2o::EdgeProjectPSI2UVSingleParamPatchBright *e = new g2o::EdgeProjectPSI2UVSingleParamPatchBright();
                         e->resize(3);
@@ -1784,7 +1787,7 @@ namespace ORB_SLAM2 {
                         const float &invSigma2 = pKFi->mvInvLevelSigma2[kpUn.octave];
                         const float assumedDetInvSigma2 = 1.0 / (sigma * sigma);
 
-                        e->setInformation(Eigen::Matrix<double, 9, 9>::Identity() / 9);
+                        e->setInformation(Eigen::Matrix<double, errorSize, errorSize>::Identity() / errorSize);
 
                         g2o::RobustKernelHuber *rk = new g2o::RobustKernelHuber;
                         e->setRobustKernel(rk);
@@ -1907,6 +1910,8 @@ namespace ORB_SLAM2 {
                 diff5 = end5 - start5;
 
 //        std::cout << " ------- " << std::endl;
+
+                std::cout <<"\033[0;32m " << " DID TWO STEP OPTIMIZATION " <<"\033[0m" << std::endl;
             }
 
         }
@@ -1914,6 +1919,9 @@ namespace ORB_SLAM2 {
         std::vector<double> chi2Statistics;
         // We do not update if minInlierRatio was considered an outlier
         if ( countInliers > minInlierRatio * count) {
+
+            std::cout <<"\033[0;32m " << " HAS INLIERS AFTER TWO STEP OPTIMIZATION " <<"\033[0m" << std::endl;
+
             vector<pair<KeyFrame *, MapPoint *> > vToErase;
             vToErase.reserve(vpEdgesMono.size()); //+ vpEdgesStereo.size());
 
