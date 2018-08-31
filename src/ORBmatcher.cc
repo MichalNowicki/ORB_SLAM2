@@ -1466,6 +1466,8 @@ int ORBmatcher::SearchByProjection(Frame &CurrentFrame, const Frame &LastFrame, 
         }
     }
 
+    std::cout << "LastFrame points: " << LastFrame.mvpMapPoints.size() << " vs " << nmatches << std::endl;
+
     return nmatches;
 }
 
