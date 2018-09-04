@@ -112,6 +112,10 @@ public:
 
     static std::mutex mGlobalMutex;
 
+
+    // Flag indicating that it was photometrically tracked at least once (not matched with descriptor)
+    bool rescued;
+
 protected:    
 
      // Position in absolute coordinates

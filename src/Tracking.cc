@@ -29,6 +29,7 @@
 #include"Converter.h"
 #include"Map.h"
 #include"Initializer.h"
+#include"PhotoTracker.h"
 
 #include"Optimizer.h"
 #include"PnPsolver.h"
@@ -267,6 +268,8 @@ cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp)
 
 void Tracking::Track()
 {
+    std::cout << "---- " << std::endl;
+
     if(mState==NO_IMAGES_YET)
     {
         mState = NOT_INITIALIZED;
@@ -409,6 +412,7 @@ void Tracking::Track()
             if(bOK && !mbVO)
                 bOK = TrackLocalMap();
         }
+
 
         if(bOK)
             mState = OK;
@@ -757,6 +761,8 @@ void Tracking::CheckReplacedInLastFrame()
 
 bool Tracking::TrackReferenceKeyFrame()
 {
+    std::cout << "\t\t Tracking::TrackReferenceKeyFrame()" << std::endl;
+
     // Compute Bag of Words vector
     mCurrentFrame.ComputeBoW();
 
@@ -895,6 +901,17 @@ bool Tracking::TrackWithMotionModel()
     if(nmatches<20)
         return false;
 
+    // TODO: Experimental
+    PhotoTracker tracker;
+    int photoMatches = tracker.SearchByPhoto(mCurrentFrame, mLastFrame);
+
+    std::cout<<"Matches prior to PoseOptimization: " << nmatches << " & photo matches: " << photoMatches << std::endl;
+
+//    int aaa;
+//    cin >> aaa;
+
+
+
     // Optimize frame pose with all matches
     Optimizer::PoseOptimization(&mCurrentFrame);
 
@@ -917,7 +934,9 @@ bool Tracking::TrackWithMotionModel()
             else if(mCurrentFrame.mvpMapPoints[i]->Observations()>0)
                 nmatchesMap++;
         }
-    }    
+    }
+
+    std::cout<<"Matches after the PoseOptimization: " << nmatches << std::endl;
 
     if(mbOnlyTracking)
     {
@@ -936,6 +955,16 @@ bool Tracking::TrackLocalMap()
     UpdateLocalMap();
 
     SearchLocalPoints();
+
+    int xxx = 0;
+    for(int i=0; i<mCurrentFrame.N; i++) {
+        if (mCurrentFrame.mvpMapPoints[i]) {
+            if (!mCurrentFrame.mvbOutlier[i]) {
+                xxx++;
+            }
+        }
+    }
+    std::cout<<"Matches after the PoseOptimization (prior to trackLocalMap): " << xxx << std::endl;
 
     // Optimize Pose
     Optimizer::PoseOptimization(&mCurrentFrame);
@@ -962,6 +991,8 @@ bool Tracking::TrackLocalMap()
 
         }
     }
+
+    std::cout<<"Matches after the PoseOptimization (after trackLocalMap): " << mnMatchesInliers << std::endl;
 
     // Decide if the tracking was succesful
     // More restrictive if there was a relocalization recently
@@ -1189,7 +1220,10 @@ void Tracking::SearchLocalPoints()
         // If the camera has been relocalised recently, perform a coarser search
         if(mCurrentFrame.mnId<mnLastRelocFrameId+2)
             th=5;
-        matcher.SearchByProjection(mCurrentFrame,mvpLocalMapPoints,th);
+
+        std::cout << "Tracking::SearchLocalPoints() additional candidates (nToMatch) = " << nToMatch << std::endl;
+        int succesfulMatches = matcher.SearchByProjection(mCurrentFrame,mvpLocalMapPoints,th);
+        std::cout << "Tracking::SearchLocalPoints() additional matches (nToMatch) = " << succesfulMatches << " (" << int(succesfulMatches*100.0 / nToMatch) << "%)" <<std::endl;
     }
 }
 

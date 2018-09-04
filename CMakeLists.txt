@@ -55,6 +55,7 @@ src/LocalMapping.cc
 src/LoopClosing.cc
 src/ORBextractor.cc
 src/ORBmatcher.cc
+src/PhotoTracker.cc
 src/FrameDrawer.cc
 src/Converter.cc
 src/MapPoint.cc
@@ -68,7 +69,7 @@ src/KeyFrameDatabase.cc
 src/Sim3Solver.cc
 src/Initializer.cc
 src/Viewer.cc
-)
+        include/PhotoTracker.h)
 
 target_link_libraries(${PROJECT_NAME}
 ${OpenCV_LIBS}
