@@ -1469,7 +1469,7 @@ int ORBmatcher::SearchByProjection(Frame &CurrentFrame, const Frame &LastFrame, 
         }
     }
 
-    std::cout << "LastFrame mvpMapPoints inliers: " << xxx << std::endl;
+    std::cout << "LastFrame -> mvpMapPoints inliers: " << xxx << std::endl;
     return nmatches;
 }
 

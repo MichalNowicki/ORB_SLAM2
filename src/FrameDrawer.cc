@@ -203,7 +203,7 @@ void FrameDrawer::Update(Tracking *pTracker)
             {
                 if(!pTracker->mCurrentFrame.mvbOutlier[i])
                 {
-                    if(pMP->rescued)
+                    if(pMP->rescuedAtLeastOnce)
                         mvbRes[i] = true;
                     if(pMP->Observations()>0)
                         mvbMap[i]=true;

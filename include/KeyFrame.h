@@ -29,6 +29,8 @@
 #include "Frame.h"
 #include "KeyFrameDatabase.h"
 
+#include "Thirdparty/g2o/g2o/types/types_six_dof_photo.h"
+
 #include <mutex>
 
 
@@ -188,6 +190,9 @@ public:
     const int mnMaxY;
     const cv::Mat mK;
 
+    // Image pyramids for photometric optimization
+    std::vector< g2o::imgStr* > imagePyramidLeft;
+    std::vector< g2o::imgStr* > imagePyramidRight;
 
     // The following variables need to be accessed trough a mutex to be thread safe.
 protected:

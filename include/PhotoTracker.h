@@ -24,22 +24,22 @@ namespace ORB_SLAM2 {
         // Performs tracking of feature motion
         int SearchByPhoto(Frame &CurrentFrame, const Frame &LastFrame);
 
+        // Performs tracking of mappoint found in neighbouring KFs
+        int SearchByPhoto(Frame &CurrentFrame, const vector<MapPoint*> &vpMapPoints);
+
     private:
 
         // Computes distance from point3D to plane defined by normal
-        double getDistanceToPlane(const cv::Mat &point3D, const cv::Mat &normal);
-
-        // Normalizes to (u,v,1)
-        cv::Mat normalize2D(cv::Mat p);
+        double getDistanceToPlane(const Eigen::Vector3d &point3D, const Eigen::Vector3d &normal);
 
         // Computes the inverse pose
         cv::Mat getInversePose(cv::Mat Tcw);
 
         // Creates camera matrix from (fx, y, cx, cy)
-        cv::Mat getCameraMatrix(float fx, float fy, float cx, float cy);
+        Eigen::Matrix3d getCameraMatrix(float fx, float fy, float cx, float cy);
 
         // Computes homography
-        cv::Mat computeHomography(cv::Mat Tba, cv::Mat n, double d, cv::Mat Ka, cv::Mat Kb);
+        Eigen::Matrix3d computeHomography(Eigen::Matrix4d Tba, Eigen::Vector3d n, double d, Eigen::Matrix3d Ka, Eigen::Matrix3d Kb);
 
         // Gets the subpixel value using bilinear interpolation
         double getSubpixImageValue(double u, double v, std::vector< std::vector< float> > &image);

@@ -114,7 +114,7 @@ public:
 
 
     // Flag indicating that it was photometrically tracked at least once (not matched with descriptor)
-    bool rescued;
+    bool rescuedAtLeastOnce, rescuedLast;
 
 protected:    
 

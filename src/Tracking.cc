@@ -869,6 +869,9 @@ void Tracking::UpdateLastFrame()
         if(vDepthIdx[j].first>mThDepth && nPoints>100)
             break;
     }
+
+    for(int i=0;i<mLastFrame.N;i++)
+        mLastFrame.mvpMapPoints[i]->rescuedLast = false;
 }
 
 bool Tracking::TrackWithMotionModel()
@@ -906,14 +909,12 @@ bool Tracking::TrackWithMotionModel()
     int photoMatches = tracker.SearchByPhoto(mCurrentFrame, mLastFrame);
 
     std::cout<<"Matches prior to PoseOptimization: " << nmatches << " & photo matches: " << photoMatches << std::endl;
-
-//    int aaa;
-//    cin >> aaa;
-
-
+    int totalMatches = nmatches + photoMatches;
 
     // Optimize frame pose with all matches
-    Optimizer::PoseOptimization(&mCurrentFrame);
+//    Optimizer::PoseOptimization(&mCurrentFrame);
+
+    Optimizer::PoseOptimizationWithPhotometric(&mLastFrame, &mCurrentFrame);
 
     // Discard outliers
     int nmatchesMap = 0;
@@ -929,19 +930,19 @@ bool Tracking::TrackWithMotionModel()
                 mCurrentFrame.mvbOutlier[i]=false;
                 pMP->mbTrackInView = false;
                 pMP->mnLastFrameSeen = mCurrentFrame.mnId;
-                nmatches--;
+                totalMatches--;
             }
             else if(mCurrentFrame.mvpMapPoints[i]->Observations()>0)
                 nmatchesMap++;
         }
     }
 
-    std::cout<<"Matches after the PoseOptimization: " << nmatches << std::endl;
+    std::cout<<"Matches after the PoseOptimization: " << totalMatches << std::endl;
 
     if(mbOnlyTracking)
     {
         mbVO = nmatchesMap<10;
-        return nmatches>20;
+        return totalMatches>20;
     }
 
     return nmatchesMap>=10;
@@ -964,12 +965,14 @@ bool Tracking::TrackLocalMap()
             }
         }
     }
-    std::cout<<"Matches after the PoseOptimization (prior to trackLocalMap): " << xxx << std::endl;
+    std::cout<<"PoseOptimization (trackLocalMap) - all: " << xxx << std::endl;
 
     // Optimize Pose
     Optimizer::PoseOptimization(&mCurrentFrame);
+//    Optimizer::PoseOptimizationWithPhotometric(&mLastFrame, &mCurrentFrame);
     mnMatchesInliers = 0;
 
+    int rescuedCount = 0;
     // Update MapPoints Statistics
     for(int i=0; i<mCurrentFrame.N; i++)
     {
@@ -977,6 +980,9 @@ bool Tracking::TrackLocalMap()
         {
             if(!mCurrentFrame.mvbOutlier[i])
             {
+                if (mCurrentFrame.mvpMapPoints[i]->rescuedLast)
+                    rescuedCount++;
+
                 mCurrentFrame.mvpMapPoints[i]->IncreaseFound();
                 if(!mbOnlyTracking)
                 {
@@ -992,7 +998,10 @@ bool Tracking::TrackLocalMap()
         }
     }
 
-    std::cout<<"Matches after the PoseOptimization (after trackLocalMap): " << mnMatchesInliers << std::endl;
+    std::cout<<"PoseOptimization (trackLocalMap) - inliers: " << mnMatchesInliers << " including " << rescuedCount << " rescued" << std::endl;
+
+    int abc;
+    std::cin >> abc;
 
     // Decide if the tracking was succesful
     // More restrictive if there was a relocalization recently
@@ -1221,9 +1230,27 @@ void Tracking::SearchLocalPoints()
         if(mCurrentFrame.mnId<mnLastRelocFrameId+2)
             th=5;
 
-        std::cout << "Tracking::SearchLocalPoints() additional candidates (nToMatch) = " << nToMatch << std::endl;
+        int alreadyVisible = 0;
+        for(vector<MapPoint*>::iterator vit=mvpLocalMapPoints.begin(), vend=mvpLocalMapPoints.end(); vit!=vend; vit++) {
+            MapPoint *pMP = *vit;
+            for (int j = 0; j < mCurrentFrame.N; j++) {
+                if (mCurrentFrame.mvpMapPoints[j] == pMP) {
+                    alreadyVisible++;
+                    break;
+                }
+            }
+        }
+
+        std::cout << "Tracking::SearchLocalPoints()" << std::endl <<"\tcandidates (nToMatch) = " << nToMatch << " (already visible = " << alreadyVisible << ")" << std::endl;
         int succesfulMatches = matcher.SearchByProjection(mCurrentFrame,mvpLocalMapPoints,th);
-        std::cout << "Tracking::SearchLocalPoints() additional matches (nToMatch) = " << succesfulMatches << " (" << int(succesfulMatches*100.0 / nToMatch) << "%)" <<std::endl;
+        std::cout << "\tadditional matches (nToMatch) = " << succesfulMatches << " (" << int(succesfulMatches*100.0 / nToMatch) << "%)" <<std::endl;
+
+
+        // TODO: Tracker
+
+        PhotoTracker tracker;
+        int rescued = tracker.SearchByPhoto(mCurrentFrame, mvpLocalMapPoints);
+        std::cout << "\trescued matches = " << rescued << std::endl;
     }
 }
 
