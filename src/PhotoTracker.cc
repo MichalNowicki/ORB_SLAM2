@@ -296,6 +296,11 @@ namespace ORB_SLAM2 {
     int PhotoTracker::SearchByPhoto(Frame &CurrentFrame, const vector<MapPoint*> &vpMapPoints) {
         int nmatches=0;
 
+        // Current frame position
+        const cv::Mat Rcw = CurrentFrame.mTcw.rowRange(0, 3).colRange(0, 3);
+        const cv::Mat tcw = CurrentFrame.mTcw.rowRange(0, 3).col(3);
+        cv::Mat Tbw = CurrentFrame.mTcw;
+
         // For all neighbouring features
         for(size_t iMP=0; iMP<vpMapPoints.size(); iMP++) {
             MapPoint *pMP = vpMapPoints[iMP];
@@ -317,10 +322,10 @@ namespace ORB_SLAM2 {
                 continue;
             }
 
-            const int &nPredictedLevel = pMP->mnTrackScaleLevel;
-
-            std::map<KeyFrame*,size_t> observations = pMP->GetObservations();
+            // Selecting the frame for tracking
             // TODO: We probably should select the KF with the closest viewing angle that still contains necessary image for optimization
+            std::map<KeyFrame*,size_t> observations = pMP->GetObservations();
+
             KeyFrame* pKF;
             int pKFIndex = 0;
             for(map<KeyFrame*,size_t>::iterator mit=observations.begin(), mend=observations.end(); mit!=mend; mit++)
@@ -330,16 +335,11 @@ namespace ORB_SLAM2 {
                 break;
             }
 
-            // Current frame position
-            const cv::Mat Rcw = CurrentFrame.mTcw.rowRange(0, 3).colRange(0, 3);
-            const cv::Mat tcw = CurrentFrame.mTcw.rowRange(0, 3).col(3);
-
             // Last frame position
             const cv::Mat Rlw = pKF->GetPose().rowRange(0, 3).colRange(0, 3);
             const cv::Mat tlw = pKF->GetPose().rowRange(0, 3).col(3);
 
             cv::Mat Twa = getInversePose(pKF->GetPose());
-            cv::Mat Tbw = CurrentFrame.mTcw;
             Eigen::Matrix4d Twa_eig, Tbw_eig;
             cv::cv2eigen(Twa, Twa_eig);
             cv::cv2eigen(Tbw, Tbw_eig);
@@ -351,7 +351,7 @@ namespace ORB_SLAM2 {
             cv::Mat x3Dc = Rcw * x3Dw + tcw;
             cv::Mat x3Dl = Rlw * x3Dw + tlw;
 
-
+            // Getting the 3D feature location in last and current frame
             Eigen::Vector3d featureInCurrent, featureInLast;
             cv::cv2eigen(x3Dc, featureInCurrent);
             cv::cv2eigen(x3Dl, featureInLast);
@@ -380,6 +380,7 @@ namespace ORB_SLAM2 {
             float currentU = current(0), currentV = current(1);
 
             // Getting the octave in last frame
+//            const int &nPredictedLevel = pMP->mnTrackScaleLevel;
             int pyramidIndex = pKF->mvKeysUn[pKFIndex].octave;
 
             // Getting the image pyramids
@@ -390,7 +391,6 @@ namespace ORB_SLAM2 {
             const float pyramidScale = currentImage->imageScale;
 
             // For all points that are considered neighbours (can be patch)
-            double error = 0;
             bool success = true;
             std::vector<double> refPatch, curPatch;
             refPatch.reserve(neighbours.size());
@@ -428,12 +428,11 @@ namespace ORB_SLAM2 {
                 //double errorWithAffine = computePatchDiffAffine(refPatch, curPatch);
                 double errorAvg = computePatchDiffAvg(refPatch, curPatch);
 
-                // If RMSE is lower than threshold then we are succesful
+                // If RMSE is lower than threshold then we are successful
                 if (errorAvg < photoThreshold) {
 
                     //std::cout << "[" << i << "] -> Matched: " << featureMatched << " | RMSE_Avg = " << errorAvg << std::endl;
 
-                    // TODO: How to only mark for future?
                     pMP->rescuedLast = true;
                     pMP->rescuedAtLeastOnce = true;
                     CurrentFrame.N++;

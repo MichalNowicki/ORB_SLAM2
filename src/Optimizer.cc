@@ -1359,18 +1359,45 @@ int Optimizer::OptimizeSim3(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint *> &
                             //e2->pyramidIndex = pFrame->mvKeys[i].octave;
                             e2->pyramidIndex = 0;
                             e2->imgObs = pFrame->mpORBextractorLeft->photobaImagePyramid;
-                            e2->imgAnchor = lastFrame->mpORBextractorLeft->photobaImagePyramid;
 
-                            Eigen::Matrix4d poseA;
-                            cv::cv2eigen(lastFrame->mTcw, poseA);
-                            e2->poseA = poseA;
+                            // Frame2Frame
+                            if(lastFrame) {
+                                e2->imgAnchor = lastFrame->mpORBextractorLeft->photobaImagePyramid;
 
-                            for (int j = 0; j < lastFrame->N; j++) {
-                                MapPoint *pMP2 = lastFrame->mvpMapPoints[j];
-                                if (pMP == pMP2) {
-                                    e2->lastU = lastFrame->mvKeysUn[j].pt.x;
-                                    e2->lastV = lastFrame->mvKeysUn[j].pt.y;
+                                Eigen::Matrix4d poseA;
+                                cv::cv2eigen(lastFrame->mTcw, poseA);
+                                e2->poseA = poseA;
+
+                                for (int j = 0; j < lastFrame->N; j++) {
+                                    MapPoint *pMP2 = lastFrame->mvpMapPoints[j];
+                                    if (pMP == pMP2) {
+                                        e2->lastU = lastFrame->mvKeysUn[j].pt.x;
+                                        e2->lastV = lastFrame->mvKeysUn[j].pt.y;
+                                    }
                                 }
+                            }
+                            // Frame2Map
+                            else {
+                                std::map<KeyFrame*,size_t> observations = pMP->GetObservations();
+
+                                KeyFrame* pKF;
+                                int pKFIndex = 0;
+                                for(map<KeyFrame*,size_t>::iterator mit=observations.begin(), mend=observations.end(); mit!=mend; mit++)
+                                {
+                                    pKF = mit->first;
+                                    pKFIndex = mit->second;
+                                    break;
+                                }
+
+                                e2->imgAnchor = pKF->imagePyramidLeft;
+
+                                Eigen::Matrix4d poseA;
+                                cv::cv2eigen(pKF->GetPose(), poseA);
+                                e2->poseA = poseA;
+
+                                e2->lastU = pKF->mvKeysUn[pKFIndex].pt.x;
+                                e2->lastV = pKF->mvKeysUn[pKFIndex].pt.y;
+
                             }
 
                             optimizer.addEdge(e2);

@@ -1327,7 +1327,7 @@ int ORBmatcher::SearchBySim3(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint*> &
 
 int ORBmatcher::SearchByProjection(Frame &CurrentFrame, const Frame &LastFrame, const float th, const bool bMono)
 {
-    int xxx=0;
+    int matched=0, tracked=0;
 
     int nmatches = 0;
 
@@ -1358,7 +1358,11 @@ int ORBmatcher::SearchByProjection(Frame &CurrentFrame, const Frame &LastFrame, 
         {
             if(!LastFrame.mvbOutlier[i])
             {
-                xxx++;
+                if(pMP->rescuedLast)
+                    tracked++;
+                else
+                    matched++;
+
                 // Project
                 cv::Mat x3Dw = pMP->GetWorldPos();
                 cv::Mat x3Dc = Rcw*x3Dw+tcw;
@@ -1469,7 +1473,7 @@ int ORBmatcher::SearchByProjection(Frame &CurrentFrame, const Frame &LastFrame, 
         }
     }
 
-    std::cout << "LastFrame -> mvpMapPoints inliers: " << xxx << std::endl;
+    std::cout << "\tinliers: " << tracked+matched << " [matched=" << matched <<", tracked=" << tracked << "]" << std::endl;
     return nmatches;
 }
 
