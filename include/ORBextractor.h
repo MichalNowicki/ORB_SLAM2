@@ -24,7 +24,8 @@
 #include <vector>
 #include <list>
 #include <opencv/cv.h>
-#include "Thirdparty/g2o/g2o/types/types_six_dof_photo.h"
+//#include "Thirdparty/g2o/g2o/types/types_six_dof_photo.h"
+#include "g2oPhotoError.h"
 
 namespace ORB_SLAM2
 {

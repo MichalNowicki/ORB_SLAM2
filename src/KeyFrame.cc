@@ -99,6 +99,22 @@ cv::Mat KeyFrame::GetPoseInverse()
     return Twc.clone();
 }
 
+Eigen::Matrix4d KeyFrame::GetPoseEigen()
+{
+    unique_lock<mutex> lock(mMutexPose);
+    Eigen::Matrix4d T;
+    cv::cv2eigen(Tcw, T);
+    return T;
+}
+
+Eigen::Matrix4d KeyFrame::GetPoseInverseEigen()
+{
+    unique_lock<mutex> lock(mMutexPose);
+    Eigen::Matrix4d T;
+    cv::cv2eigen(Twc, T);
+    return T;
+}
+
 cv::Mat KeyFrame::GetCameraCenter()
 {
     unique_lock<mutex> lock(mMutexPose);

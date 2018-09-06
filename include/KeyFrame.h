@@ -29,7 +29,8 @@
 #include "Frame.h"
 #include "KeyFrameDatabase.h"
 
-#include "Thirdparty/g2o/g2o/types/types_six_dof_photo.h"
+//#include "Thirdparty/g2o/g2o/types/types_six_dof_photo.h"
+#include "g2oPhotoError.h"
 
 #include <mutex>
 
@@ -51,6 +52,8 @@ public:
     void SetPose(const cv::Mat &Tcw);
     cv::Mat GetPose();
     cv::Mat GetPoseInverse();
+    Eigen::Matrix4d GetPoseEigen();
+    Eigen::Matrix4d GetPoseInverseEigen();
     cv::Mat GetCameraCenter();
     cv::Mat GetStereoCenter();
     cv::Mat GetRotation();

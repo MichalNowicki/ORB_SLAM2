@@ -50,11 +50,18 @@ namespace ORB_SLAM2 {
         // Computes the difference between patches with mean subtraction
         double computePatchDiffAvg(const std::vector< double> &refPatch,  const std::vector< double> &curPatch);
 
+        // Add tracked map point to currently observed
+        //      It simulates the correct matching be placing the keypoint in the projected location
+        void addTrackedMapPoint(Frame &CurrentFrame, MapPoint *pMP, cv::KeyPoint kp, double currentU, double currentV);
+
+        bool trackMapPoint(MapPoint *pMP, Frame &CurrentFrame,
+                Eigen::Vector3d featureInLast, Eigen::Matrix4d Tba, Eigen::Matrix3d Ka,
+                g2o::imgStr *lastImage, cv::KeyPoint kp);
+
+        /// Variables
+
         // Defines the neighbourhood used in comparisons
         std::vector< std::pair<double, double> > neighbours;
-
-
-        ///
 
         // Photometric error threshold to rescue feature
         double photoThreshold;

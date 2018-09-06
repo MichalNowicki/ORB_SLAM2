@@ -69,7 +69,7 @@ src/KeyFrameDatabase.cc
 src/Sim3Solver.cc
 src/Initializer.cc
 src/Viewer.cc
-        include/PhotoTracker.h)
+src/g2oPhotoError.cpp)
 
 target_link_libraries(${PROJECT_NAME}
 ${OpenCV_LIBS}

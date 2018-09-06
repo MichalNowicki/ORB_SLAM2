@@ -996,6 +996,8 @@ bool Tracking::TrackLocalMap()
     mnMatchesInliers = 0;
 
     int rescuedLastCount = 0, rescuedAtLeastOnceCount = 0;
+    int longestMatchAfterRescue = 0;
+
     // Update MapPoints Statistics
     for(int i=0; i<mCurrentFrame.N; i++)
     {
@@ -1003,10 +1005,19 @@ bool Tracking::TrackLocalMap()
         {
             if(!mCurrentFrame.mvbOutlier[i])
             {
-                if (mCurrentFrame.mvpMapPoints[i]->rescuedLast)
-                    rescuedLastCount++;
                 if (mCurrentFrame.mvpMapPoints[i]->rescuedAtLeastOnce)
+                {
                     rescuedAtLeastOnceCount++;
+                    if (mCurrentFrame.mvpMapPoints[i]->rescuedLast) {
+                        rescuedLastCount++;
+                        mCurrentFrame.mvpMapPoints[i]->timesMatchedAfterRescue=0;
+                    }
+                    else
+                        mCurrentFrame.mvpMapPoints[i]->timesMatchedAfterRescue++;
+
+                    if ( mCurrentFrame.mvpMapPoints[i]->timesMatchedAfterRescue > longestMatchAfterRescue)
+                        longestMatchAfterRescue = mCurrentFrame.mvpMapPoints[i]->timesMatchedAfterRescue;
+                }
 
                 mCurrentFrame.mvpMapPoints[i]->IncreaseFound();
                 if(!mbOnlyTracking)
@@ -1025,6 +1036,7 @@ bool Tracking::TrackLocalMap()
 
     std::cout<<"\tinliers: " << mnMatchesInliers <<
              " [rescuedLastCount="<<rescuedLastCount<<", rescuedAtLeastOnceCount=" << rescuedAtLeastOnceCount<<"]" << std::endl;
+    std::cout <<"\tlongestMatchAfterRescue = " << longestMatchAfterRescue <<std::endl;
 
     int abc;
     std::cin >> abc;

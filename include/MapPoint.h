@@ -44,6 +44,7 @@ public:
 
     void SetWorldPos(const cv::Mat &Pos);
     cv::Mat GetWorldPos();
+    Eigen::Vector3d GetWorldPosEigen();
 
     cv::Mat GetNormal();
     KeyFrame* GetReferenceKeyFrame();
@@ -115,6 +116,7 @@ public:
 
     // Flag indicating that it was photometrically tracked at least once (not matched with descriptor)
     bool rescuedAtLeastOnce, rescuedLast;
+    int timesMatchedAfterRescue;
 
 protected:    
 

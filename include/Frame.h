@@ -31,6 +31,8 @@
 #include "ORBextractor.h"
 
 #include <opencv2/opencv.hpp>
+#include <opencv2/core/eigen.hpp>
+
 
 namespace ORB_SLAM2
 {
@@ -97,6 +99,12 @@ public:
 
     // Backprojects a keypoint (if stereo/depth info available) into 3D world coordinates.
     cv::Mat UnprojectStereo(const int &i);
+
+    Eigen::Matrix4d getPose() const {
+        Eigen::Matrix4d Taw;
+        cv::cv2eigen(mTcw, Taw);
+        return Taw;
+    }
 
 public:
     // Vocabulary used for relocalization.

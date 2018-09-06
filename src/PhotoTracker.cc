@@ -124,27 +124,14 @@ namespace ORB_SLAM2 {
     }
 
 
-
-
     int PhotoTracker::SearchByPhoto(Frame &CurrentFrame, const Frame &LastFrame) {
-
-        // Current frame position
-        const cv::Mat Rcw = CurrentFrame.mTcw.rowRange(0, 3).colRange(0, 3);
-        const cv::Mat tcw = CurrentFrame.mTcw.rowRange(0, 3).col(3);
-
-        // Last frame position
-        const cv::Mat Rlw = LastFrame.mTcw.rowRange(0, 3).colRange(0, 3);
-        const cv::Mat tlw = LastFrame.mTcw.rowRange(0, 3).col(3);
-
-        cv::Mat Twa = getInversePose(LastFrame.mTcw);
-        cv::Mat Tbw = CurrentFrame.mTcw;
-        Eigen::Matrix4d Twa_eig, Tbw_eig;
-        cv::cv2eigen(Twa, Twa_eig);
-        cv::cv2eigen(Tbw, Tbw_eig);
-
-        Eigen::Matrix4d Tba = Tbw_eig * Twa_eig;
-
+        // Number of tracked features
         int nmatches = 0;
+
+        // Relative transformation between frames in Eigen
+        Eigen::Matrix4d Taw = LastFrame.getPose();
+        Eigen::Matrix4d Tbw = CurrentFrame.getPose();
+        Eigen::Matrix4d Tba = Tbw * Taw.inverse();
 
         // For all map points observed in last frame
         for (int i = 0; i < LastFrame.N; i++) {
@@ -166,124 +153,28 @@ namespace ORB_SLAM2 {
                         continue;
 
                     // Project it onto current and last frame to check if depth is positive
-                    cv::Mat x3Dw = pMP->GetWorldPos();
-                    cv::Mat x3Dc = Rcw * x3Dw + tcw;
-                    cv::Mat x3Dl = Rlw * x3Dw + tlw;
-
-                    Eigen::Vector3d featureInCurrent, featureInLast;
-                    cv::cv2eigen(x3Dc, featureInCurrent);
-                    cv::cv2eigen(x3Dl, featureInLast);
+                    Eigen::Vector3d featureInGlobal = pMP->GetWorldPosEigen();
+                    Eigen::Vector3d featureInLast = Taw.block<3,3>(0,0) * featureInGlobal + Taw.block<3,1>(0,3);
+                    Eigen::Vector3d featureInCurrent = Tbw.block<3,3>(0,0) * featureInGlobal + Tbw.block<3,1>(0,3);
                     if (featureInCurrent(3) < 0 || featureInLast(3) < 0)
                         continue;
 
-                    // The patch normal in ref observation is assumed to be [0,0,-1]
-                    Eigen::Vector3d n(0,0,-1);
-
-                    // Computation of the distance to patch plane in image A
-                    double d = getDistanceToPlane(featureInLast, n);
-
-                    // Computation of the homography between A and B
+                    /// Information about last frame needed for tracking
+                    // Camera matrix
                     Eigen::Matrix3d Ka = getCameraMatrix(LastFrame.fx, LastFrame.fy, LastFrame.cx, LastFrame.cy);
-                    Eigen::Matrix3d Kb = getCameraMatrix(CurrentFrame.fx, CurrentFrame.fy, CurrentFrame.cx, CurrentFrame.cy);
-                    Eigen::Matrix3d H = computeHomography(Tba, n, d, Ka, Kb);
 
-                    // Location in last frame
-                    float lastU = LastFrame.mvKeysUn[i].pt.x;
-                    float lastV = LastFrame.mvKeysUn[i].pt.y;
-
-                    // Location in current frame
-                    Eigen::Vector3d last(lastU, lastV, 1);
-                    Eigen::Vector3d current = H * last;
-                    current = current / current(2);
-                    float currentU = current(0), currentV = current(1);
+                    // Point to track
+                    cv::KeyPoint kp = LastFrame.mvKeysUn[i];
 
                     // Getting the octave in last frame
-                    int pyramidIndex = LastFrame.mvKeysUn[i].octave;
+                    int pyramidIndex = kp.octave;
 
-                    // Getting the image pyramids
+                    // Getting the image pyramid for tracking
                     g2o::imgStr *lastImage = LastFrame.mpORBextractorLeft->photobaImagePyramid[pyramidIndex];
-                    g2o::imgStr *currentImage = CurrentFrame.mpORBextractorLeft->photobaImagePyramid[pyramidIndex];
 
-                    // Getting the scale of the selected lvl
-                    const float pyramidScale = currentImage->imageScale;
-
-                    // For all points that are considered neighbours (can be patch)
-                    double error = 0;
-                    bool success = true;
-                    std::vector<double> refPatch, curPatch;
-                    refPatch.reserve(neighbours.size());
-                    curPatch.reserve(neighbours.size());
-
-                    for (int i = 0; i < neighbours.size(); i++) {
-
-                        // Getting the patch value in last frame
-                        double refU = lastU / pyramidScale + neighbours[i].first;
-                        double refV = lastV / pyramidScale + neighbours[i].second;
-                        double refValue = getSubpixImageValue(refU, refV, lastImage->image);
-                        refPatch.push_back(refValue);
-
-                        // Projecting (x,y) from image A into image B with  H
-                        Eigen::Vector3d pInA(refU * pyramidScale, refV * pyramidScale, 1);
-                        Eigen::Vector3d pInB = H * pInA;
-                        pInB = pInB / pInB(2);
-
-                        // Getting the patch value in current frame
-                        double obsU = pInB(0) / pyramidScale;
-                        double obsV = pInB(1) / pyramidScale;
-                        double obsValue = getSubpixImageValue(obsU, obsV, currentImage->image);
-                        curPatch.push_back(obsValue);
-
-                        // std::cout << "(" << refU << "," << refV <<") = " << refValue << "\t (" << obsU << "," << obsV<<") = " << obsValue << std::endl;
-
-                        // Either of values is outside of the image
-                        if (refValue < 0 || obsValue < 0) {
-                            success = false;
-                            break;
-                        }
-                    }
-
-                    if (success) {
-                        //double errorWithAffine = computePatchDiffAffine(refPatch, curPatch);
-                        double errorAvg = computePatchDiffAvg(refPatch, curPatch);
-
-
-                        // If RMSE is lower than threshold then we are succesful
-                        if (errorAvg < photoThreshold) {
-
-                            //std::cout << "[" << i << "] -> Matched: " << featureMatched << " | RMSE_Avg = " << errorAvg << std::endl;
-
-                            // TODO: How to only mark for future?
-                            pMP->rescuedLast = true;
-                            pMP->rescuedAtLeastOnce = true;
-                            CurrentFrame.N++;
-                            CurrentFrame.mvpMapPoints.push_back(pMP);
-                            CurrentFrame.mvbOutlier.push_back(false);
-
-                            cv::KeyPoint kp = LastFrame.mvKeys[i];
-                            kp.pt.x = currentU;
-                            kp.pt.y = currentV;
-                            CurrentFrame.mvKeys.push_back(kp);
-
-                            kp = LastFrame.mvKeysUn[i];
-                            kp.pt.x = currentU;
-                            kp.pt.y = currentV;
-                            CurrentFrame.mvKeysUn.push_back(kp);
-
-
-                            CurrentFrame.mvuRight.push_back(-1);
-                            CurrentFrame.mvDepth.push_back(-1);
-
-                            cv::Mat emptyDescriptor = cv::Mat::zeros(1, CurrentFrame.mDescriptors.cols,
-                                                                     CurrentFrame.mDescriptors.type());
-                            CurrentFrame.mDescriptors.push_back(emptyDescriptor);
-
-                            // Simulate descriptor ?
-
-                            nmatches++;
-
-
-                        }
-                    }
+                    // Perform tracking
+                    if ( trackMapPoint(pMP, CurrentFrame, featureInLast, Tba, Ka, lastImage, kp) )
+                        nmatches++;
                 }
             }
         }
@@ -294,23 +185,24 @@ namespace ORB_SLAM2 {
     }
 
     int PhotoTracker::SearchByPhoto(Frame &CurrentFrame, const vector<MapPoint*> &vpMapPoints) {
+        // Number of tracked features
         int nmatches=0;
 
         // Current frame position
-        const cv::Mat Rcw = CurrentFrame.mTcw.rowRange(0, 3).colRange(0, 3);
-        const cv::Mat tcw = CurrentFrame.mTcw.rowRange(0, 3).col(3);
-        cv::Mat Tbw = CurrentFrame.mTcw;
+        Eigen::Matrix4d Tbw = CurrentFrame.getPose();
 
         // For all neighbouring features
         for(size_t iMP=0; iMP<vpMapPoints.size(); iMP++) {
             MapPoint *pMP = vpMapPoints[iMP];
+
+            // Feature was not projected onto current frame
             if (!pMP->mbTrackInView)
                 continue;
 
             if (pMP->isBad())
                 continue;
 
-            // Let's not consider already matched or tracked features
+            // Let's not consider already matched or tracked features in previous VO step
             bool found = false;
             for (int j = 0; j < CurrentFrame.N; j++) {
                 if (CurrentFrame.mvpMapPoints[j] == pMP) {
@@ -336,135 +228,136 @@ namespace ORB_SLAM2 {
             }
 
             // Last frame position
-            const cv::Mat Rlw = pKF->GetPose().rowRange(0, 3).colRange(0, 3);
-            const cv::Mat tlw = pKF->GetPose().rowRange(0, 3).col(3);
+            Eigen::Matrix4d Taw = pKF->GetPoseEigen();
 
-            cv::Mat Twa = getInversePose(pKF->GetPose());
-            Eigen::Matrix4d Twa_eig, Tbw_eig;
-            cv::cv2eigen(Twa, Twa_eig);
-            cv::cv2eigen(Tbw, Tbw_eig);
-
-            Eigen::Matrix4d Tba = Tbw_eig * Twa_eig;
+            // Relative transformation between poses
+            Eigen::Matrix4d Tba = Tbw * Taw.inverse();
 
             // Project it onto current and last frame to check if depth is positive
-            cv::Mat x3Dw = pMP->GetWorldPos();
-            cv::Mat x3Dc = Rcw * x3Dw + tcw;
-            cv::Mat x3Dl = Rlw * x3Dw + tlw;
-
-            // Getting the 3D feature location in last and current frame
-            Eigen::Vector3d featureInCurrent, featureInLast;
-            cv::cv2eigen(x3Dc, featureInCurrent);
-            cv::cv2eigen(x3Dl, featureInLast);
+            Eigen::Vector3d featureInGlobal = pMP->GetWorldPosEigen();
+            Eigen::Vector3d featureInLast = Taw.block<3,3>(0,0) * featureInGlobal + Taw.block<3,1>(0,3);
+            Eigen::Vector3d featureInCurrent = Tbw.block<3,3>(0,0) * featureInGlobal + Tbw.block<3,1>(0,3);
             if (featureInCurrent(3) < 0 || featureInLast(3) < 0)
                 continue;
 
-            // The patch normal in ref observation is assumed to be [0,0,-1]
-            Eigen::Vector3d n(0,0,-1);
-
-            // Computation of the distance to patch plane in image A
-            double d = getDistanceToPlane(featureInLast, n);
-
-            // Computation of the homography between A and B
+            /// Information about last frame needed for tracking
+            // Camera matrix
             Eigen::Matrix3d Ka = getCameraMatrix(pKF->fx, pKF->fy, pKF->cx, pKF->cy);
-            Eigen::Matrix3d Kb = getCameraMatrix(CurrentFrame.fx, CurrentFrame.fy, CurrentFrame.cx, CurrentFrame.cy);
-            Eigen::Matrix3d H = computeHomography(Tba, n, d, Ka, Kb);
 
-            // Location in last frame
-            int lastU = pKF->mvKeysUn[pKFIndex].pt.x;
-            int lastV = pKF->mvKeysUn[pKFIndex].pt.y;
-
-            // Location in current frame
-            Eigen::Vector3d last(lastU, lastV, 1);
-            Eigen::Vector3d current = H * last;
-            current = current / current(2);
-            float currentU = current(0), currentV = current(1);
+            // Point to track
+            cv::KeyPoint kp = pKF->mvKeysUn[pKFIndex];
 
             // Getting the octave in last frame
-//            const int &nPredictedLevel = pMP->mnTrackScaleLevel;
-            int pyramidIndex = pKF->mvKeysUn[pKFIndex].octave;
+            int pyramidIndex = kp.octave;
 
-            // Getting the image pyramids
+            // Getting the image pyramid for tracking
             g2o::imgStr *lastImage = pKF->imagePyramidLeft[pyramidIndex];
-            g2o::imgStr *currentImage = CurrentFrame.mpORBextractorLeft->photobaImagePyramid[pyramidIndex];
 
-            // Getting the scale of the selected lvl
-            const float pyramidScale = currentImage->imageScale;
+            // Perform tracking
+            if ( trackMapPoint(pMP, CurrentFrame, featureInLast, Tba, Ka, lastImage, kp) )
+                nmatches++;
 
-            // For all points that are considered neighbours (can be patch)
-            bool success = true;
-            std::vector<double> refPatch, curPatch;
-            refPatch.reserve(neighbours.size());
-            curPatch.reserve(neighbours.size());
-
-            for (int i = 0; i < neighbours.size(); i++) {
-
-                // Getting the patch value in last frame
-                double refU = lastU / pyramidScale + neighbours[i].first;
-                double refV = lastV / pyramidScale + neighbours[i].second;
-                double refValue = getSubpixImageValue(refU, refV, lastImage->image);
-                refPatch.push_back(refValue);
-
-                // Projecting (x,y) from image A into image B with  H
-                Eigen::Vector3d pInA(refU * pyramidScale, refV * pyramidScale, 1);
-                Eigen::Vector3d pInB = H * pInA;
-                pInB = pInB / pInB(2);
-
-                // Getting the patch value in current frame
-                double obsU = pInB(0) / pyramidScale;
-                double obsV = pInB(1) / pyramidScale;
-                double obsValue = getSubpixImageValue(obsU, obsV, currentImage->image);
-                curPatch.push_back(obsValue);
-
-                // std::cout << "(" << refU << "," << refV <<") = " << refValue << "\t (" << obsU << "," << obsV<<") = " << obsValue << std::endl;
-
-                // Either of values is outside of the image
-                if (refValue < 0 || obsValue < 0) {
-                    success = false;
-                    break;
-                }
-            }
-
-            if (success) {
-                //double errorWithAffine = computePatchDiffAffine(refPatch, curPatch);
-                double errorAvg = computePatchDiffAvg(refPatch, curPatch);
-
-                // If RMSE is lower than threshold then we are successful
-                if (errorAvg < photoThreshold) {
-
-                    //std::cout << "[" << i << "] -> Matched: " << featureMatched << " | RMSE_Avg = " << errorAvg << std::endl;
-
-                    pMP->rescuedLast = true;
-                    pMP->rescuedAtLeastOnce = true;
-                    CurrentFrame.N++;
-                    CurrentFrame.mvpMapPoints.push_back(pMP);
-                    CurrentFrame.mvbOutlier.push_back(false);
-
-                    cv::KeyPoint kp = pKF->mvKeys[pKFIndex];
-                    kp.pt.x = currentU;
-                    kp.pt.y = currentV;
-                    CurrentFrame.mvKeys.push_back(kp);
-
-                    kp = pKF->mvKeysUn[pKFIndex];
-                    kp.pt.x = currentU;
-                    kp.pt.y = currentV;
-                    CurrentFrame.mvKeysUn.push_back(kp);
-
-
-                    CurrentFrame.mvuRight.push_back(-1);
-                    CurrentFrame.mvDepth.push_back(-1);
-
-                    // Empty descriptor
-                    cv::Mat emptyDescriptor = cv::Mat::zeros(1, CurrentFrame.mDescriptors.cols,
-                                                             CurrentFrame.mDescriptors.type());
-                    CurrentFrame.mDescriptors.push_back(emptyDescriptor);
-
-
-                    nmatches++;
-                }
-            }
         }
 
         return nmatches;
     }
 
+    bool PhotoTracker::trackMapPoint(MapPoint *pMP, Frame &CurrentFrame,
+            Eigen::Vector3d featureInLast, Eigen::Matrix4d Tba, Eigen::Matrix3d Ka,
+            g2o::imgStr *lastImage, cv::KeyPoint kp) {
+
+        // The patch normal in ref observation is assumed to be [0,0,-1] TODO: We could use estimated normal
+        Eigen::Vector3d n(0,0,-1);
+
+        // Computation of the distance to patch plane in image A
+        double d = getDistanceToPlane(featureInLast, n);
+
+        // Computation of the homography between A and B
+        Eigen::Matrix3d Kb = getCameraMatrix(CurrentFrame.fx, CurrentFrame.fy, CurrentFrame.cx, CurrentFrame.cy);
+        Eigen::Matrix3d H = computeHomography(Tba, n, d, Ka, Kb);
+
+        //        const int pyramidIndex = pMP->mnTrackScaleLevel; // TODO: Predicted instead of octave of detection?
+        int pyramidIndex = kp.octave;
+
+        // Getting the image pyramids
+        g2o::imgStr *currentImage = CurrentFrame.mpORBextractorLeft->photobaImagePyramid[pyramidIndex];
+
+        // Getting the scale of the selected lvl
+        const float pyramidScaleA = lastImage->imageScale;
+        const float pyramidScaleB = currentImage->imageScale;
+
+        // For all points that are considered neighbours (can be patch)
+        std::vector<double> refPatch, curPatch;
+        refPatch.reserve(neighbours.size());
+        curPatch.reserve(neighbours.size());
+
+        for (int i = 0; i < neighbours.size(); i++) {
+
+            // Getting the patch value in last frame
+            double refU = kp.pt.x / pyramidScaleA + neighbours[i].first;
+            double refV = kp.pt.y / pyramidScaleA + neighbours[i].second;
+            double refValue = getSubpixImageValue(refU, refV, lastImage->image);
+            refPatch.push_back(refValue);
+
+            // Projecting (x,y) from image A into image B with H
+            Eigen::Vector3d pInB = H * Eigen::Vector3d(refU * pyramidScaleA, refV * pyramidScaleA, 1);
+            pInB = pInB / pInB(2);
+
+            // Getting the patch value in current frame
+            double obsU = pInB(0) / pyramidScaleB;
+            double obsV = pInB(1) / pyramidScaleB;
+            double obsValue = getSubpixImageValue(obsU, obsV, currentImage->image);
+            curPatch.push_back(obsValue);
+
+            // Either of values is outside of the image
+            if (refValue < 0 || obsValue < 0) {
+                return false;
+            }
+        }
+
+        //double errorWithAffine = computePatchDiffAffine(refPatch, curPatch);
+        double errorAvg = computePatchDiffAvg(refPatch, curPatch);
+
+        // If RMSE is lower than threshold then we are successful
+        if (errorAvg < photoThreshold) {
+
+            //std::cout << "[" << i << "] -> Matched: " << featureMatched << " | RMSE_Avg = " << errorAvg << std::endl;
+
+            // Location in current frame
+            Eigen::Vector3d current = H * Eigen::Vector3d(kp.pt.x, kp.pt.y, 1);
+            current = current / current(2);
+
+            addTrackedMapPoint(CurrentFrame, pMP, kp, current(0), current(1));
+            return true;
+        }
+        return false;
+    }
+
+
+    void PhotoTracker::addTrackedMapPoint(Frame &CurrentFrame, MapPoint *pMP, cv::KeyPoint kp, double currentU, double currentV) {
+
+        // Informing about the state
+        pMP->rescuedLast = true;
+        pMP->rescuedAtLeastOnce = true;
+
+        // Artificially increasing the number of points detected in this case
+        CurrentFrame.N++;
+
+        // Adding map point in the end and saying it is an inlier
+        CurrentFrame.mvpMapPoints.push_back(pMP);
+        CurrentFrame.mvbOutlier.push_back(false);
+
+        // Simulating a new position of the keypoint in the image
+        kp.pt.x = currentU;
+        kp.pt.y = currentV;
+        CurrentFrame.mvKeys.push_back(kp);
+        CurrentFrame.mvKeysUn.push_back(kp);
+
+        CurrentFrame.mvuRight.push_back(-1);
+        CurrentFrame.mvDepth.push_back(-1);
+
+        // Empty descriptor
+        cv::Mat emptyDescriptor = cv::Mat::zeros(1, CurrentFrame.mDescriptors.cols, CurrentFrame.mDescriptors.type());
+        CurrentFrame.mDescriptors.push_back(emptyDescriptor);
+    }
 }
