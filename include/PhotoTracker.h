@@ -32,9 +32,6 @@ namespace ORB_SLAM2 {
         // Computes distance from point3D to plane defined by normal
         double getDistanceToPlane(const Eigen::Vector3d &point3D, const Eigen::Vector3d &normal);
 
-        // Computes the inverse pose
-        cv::Mat getInversePose(cv::Mat Tcw);
-
         // Creates camera matrix from (fx, y, cx, cy)
         Eigen::Matrix3d getCameraMatrix(float fx, float fy, float cx, float cy);
 

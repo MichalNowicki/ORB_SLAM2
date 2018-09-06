@@ -55,19 +55,6 @@ namespace ORB_SLAM2 {
         return cameraMatrix;
     }
 
-    cv::Mat PhotoTracker::getInversePose(cv::Mat Tcw) {
-        cv::Mat Rcw = Tcw.rowRange(0, 3).colRange(0, 3);
-        cv::Mat tcw = Tcw.rowRange(0, 3).col(3);
-        cv::Mat Rwc = Rcw.t();
-        cv::Mat Ow = -Rwc * tcw;
-
-        cv::Mat Twc = cv::Mat::eye(4, 4, Tcw.type());
-        Rwc.copyTo(Twc.rowRange(0, 3).colRange(0, 3));
-        Ow.copyTo(Twc.rowRange(0, 3).col(3));
-        return Twc;
-    }
-
-
     double PhotoTracker::getSubpixImageValue(double u, double v, std::vector<std::vector<float> > &image) {
 
         const double xInt = int(u), yInt = int(v);

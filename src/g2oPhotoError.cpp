@@ -78,10 +78,9 @@ namespace g2o {
 
         const float pyramidScale = imgAnchor[pyramidIndex]->imageScale;
 
-        Eigen::Vector3d aaa(lastU, lastV, 1);
-        Eigen::Vector3d bbb = H * aaa;
-        bbb = bbb / bbb(2);
-
+//        Eigen::Vector3d aaa(lastU, lastV, 1);
+//        Eigen::Vector3d bbb = H * aaa;
+//        bbb = bbb / bbb(2);
 //        std::cout << "pyramidScale = " << pyramidScale << " lastU = " << lastU << " lastV = " << lastV << " " << " vs " << bbb(0) << " " << bbb(1) << std::endl;
 
         Matrix<double, 9, 1, Eigen::ColMajor> computedError;
