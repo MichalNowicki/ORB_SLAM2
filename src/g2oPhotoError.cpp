@@ -8,7 +8,7 @@
 namespace g2o {
     using namespace std;
 
-    bool EdgeSE3PhotoOnlyPose::write(std::ostream &os) const {
+    bool EdgeSE3PhotoOnlyPoseAB::write(std::ostream &os) const {
         for (int i = 0; i < 13; i++) {
             os << measurement()[i] << " ";
         }
@@ -20,7 +20,7 @@ namespace g2o {
         return os.good();
     }
 
-    bool EdgeSE3PhotoOnlyPose::read(std::istream &is) {
+    bool EdgeSE3PhotoOnlyPoseAB::read(std::istream &is) {
 
         for (int i = 0; i < 13; i++) {
             is >> _measurement[i];
@@ -34,11 +34,11 @@ namespace g2o {
         return true;
     }
 
-    void EdgeSE3PhotoOnlyPose::computeError() {
+    void EdgeSE3PhotoOnlyPoseAB::computeError() {
 
-        const VertexSE3Expmap* v1 = static_cast<const VertexSE3Expmap*>(_vertices[0]);
-        g2o::SE3Quat v1Quat = v1->estimate();
-        Eigen::Matrix4d poseB = v1Quat.to_homogeneous_matrix();
+        const VertexSE3ExpmapAB* v1 = static_cast<const VertexSE3ExpmapAB*>(_vertices[0]);
+        g2o::SE3QuatAB v1Quat = v1->estimate();
+        Eigen::Matrix4d poseB = v1Quat.se3quat.to_homogeneous_matrix();
 
         Eigen::Matrix4d Tba = poseB * poseA.inverse();
 
@@ -91,7 +91,8 @@ namespace g2o {
             }
 //            std::cout << "refValue: " << refValue << " obsValue: " << obsValue << std::endl;
 
-            computedError(i,0) = refValue  - obsValue;
+            //computedError(i,0) = exp(v1Quat.aL) *refValue  - (obsValue - v1Quat.bL);
+            computedError(i,0) = refValue  - (obsValue - v1Quat.bL - v1Quat.aL);
 
             // Anchor left vs obs left
 //            if ( baseline < 0.0000001)

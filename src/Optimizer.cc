@@ -1249,11 +1249,17 @@ int Optimizer::OptimizeSim3(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint *> &
         g2o::SparseOptimizer optimizer;
 
         // TODO: If photometric
-        g2o::BlockSolver_6_3::LinearSolverType *linearSolver;
 
-        linearSolver = new g2o::LinearSolverDense<g2o::BlockSolver_6_3::PoseMatrixType>();
+        typedef g2o::BlockSolver< g2o::BlockSolverTraits<8, 3> > OurBlockSolver;
+        OurBlockSolver::LinearSolverType *linearSolver;
+        linearSolver = new g2o::LinearSolverEigen<OurBlockSolver::PoseMatrixType>();
+        OurBlockSolver *solver_ptr = new OurBlockSolver(linearSolver);
 
-        g2o::BlockSolver_6_3 *solver_ptr = new g2o::BlockSolver_6_3(linearSolver);
+//        g2o::BlockSolver_6_3::LinearSolverType *linearSolver;
+//
+//        linearSolver = new g2o::LinearSolverDense<g2o::BlockSolver_6_3::PoseMatrixType>();
+//
+//        g2o::BlockSolver_6_3 *solver_ptr = new g2o::BlockSolver_6_3(linearSolver);
 
         g2o::OptimizationAlgorithmLevenberg *solver = new g2o::OptimizationAlgorithmLevenberg(solver_ptr);
         optimizer.setAlgorithm(solver);
@@ -1261,8 +1267,12 @@ int Optimizer::OptimizeSim3(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint *> &
         int nInitialCorrespondences = 0;
 
         // Set Frame vertex
-        g2o::VertexSE3Expmap *vSE3 = new g2o::VertexSE3Expmap();
-        vSE3->setEstimate(Converter::toSE3Quat(pFrame->mTcw));
+        g2o::VertexSE3ExpmapAB *vSE3 = new g2o::VertexSE3ExpmapAB();
+        g2o::SE3QuatAB estimate;
+        estimate.se3quat = Converter::toSE3Quat(pFrame->mTcw);
+        estimate.aL = 0;
+        estimate.bL = 0;
+        vSE3->setEstimate(estimate);
         vSE3->setId(0);
         vSE3->setFixed(false);
         optimizer.addVertex(vSE3);
@@ -1270,12 +1280,12 @@ int Optimizer::OptimizeSim3(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint *> &
         // Set MapPoint vertices
         const int N = pFrame->N;
 
-        vector<g2o::EdgeSE3ProjectXYZOnlyPose *> vpEdgesMono;
+        vector<g2o::EdgeSE3ProjectXYZOnlyPoseAB *> vpEdgesMono;
         vector<size_t> vnIndexEdgeMono;
         vpEdgesMono.reserve(N);
         vnIndexEdgeMono.reserve(N);
 
-        vector<g2o::EdgeSE3PhotoOnlyPose *> vpEdgesMonoPhoto;
+        vector<g2o::EdgeSE3PhotoOnlyPoseAB *> vpEdgesMonoPhoto;
         vector<size_t> vnIndexEdgeMonoPhoto;
         vpEdgesMonoPhoto.reserve(N);
         vnIndexEdgeMonoPhoto.reserve(N);
@@ -1308,7 +1318,7 @@ int Optimizer::OptimizeSim3(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint *> &
                             const cv::KeyPoint &kpUn = pFrame->mvKeysUn[i];
                             obs << kpUn.pt.x, kpUn.pt.y;
 
-                            g2o::EdgeSE3ProjectXYZOnlyPose *e = new g2o::EdgeSE3ProjectXYZOnlyPose();
+                            g2o::EdgeSE3ProjectXYZOnlyPoseAB *e = new g2o::EdgeSE3ProjectXYZOnlyPoseAB();
 
                             e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(0)));
                             e->setMeasurement(obs);
@@ -1338,7 +1348,7 @@ int Optimizer::OptimizeSim3(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint *> &
 
                             // Lets add photometric constraint
                             double invPhotoSigma2 = (1.0 / 20.0) * (1.0 / 20.0);
-                            g2o::EdgeSE3PhotoOnlyPose *e2 = new g2o::EdgeSE3PhotoOnlyPose();
+                            g2o::EdgeSE3PhotoOnlyPoseAB *e2 = new g2o::EdgeSE3PhotoOnlyPoseAB();
                             e2->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(0)));
 
                             Eigen::Matrix<double, 13, 1> obs2 = Eigen::Matrix<double, 13, 1>::Zero();
@@ -1460,13 +1470,17 @@ int Optimizer::OptimizeSim3(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint *> &
         int nBad = 0;
         for (size_t it = 0; it < 4; it++) {
 
-            vSE3->setEstimate(Converter::toSE3Quat(pFrame->mTcw));
+            g2o::SE3QuatAB estimate;
+            estimate.se3quat = Converter::toSE3Quat(pFrame->mTcw);
+            estimate.aL = 0;
+            estimate.bL = 0;
+            vSE3->setEstimate(estimate);
             optimizer.initializeOptimization(0);
             optimizer.optimize(its[it]);
 
             nBad = 0;
             for (size_t i = 0, iend = vpEdgesMono.size(); i < iend; i++) {
-                g2o::EdgeSE3ProjectXYZOnlyPose *e = vpEdgesMono[i];
+                g2o::EdgeSE3ProjectXYZOnlyPoseAB *e = vpEdgesMono[i];
 
                 const size_t idx = vnIndexEdgeMono[i];
 
@@ -1491,7 +1505,7 @@ int Optimizer::OptimizeSim3(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint *> &
             }
 
             for (size_t i = 0, iend = vpEdgesMonoPhoto.size(); i < iend; i++) {
-                g2o::EdgeSE3PhotoOnlyPose *ePhoto = vpEdgesMonoPhoto[i];
+                g2o::EdgeSE3PhotoOnlyPoseAB *ePhoto = vpEdgesMonoPhoto[i];
 
                 const size_t idx = vnIndexEdgeMonoPhoto[i];
 
@@ -1546,7 +1560,7 @@ int Optimizer::OptimizeSim3(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint *> &
         int numberOfInliersReproj = 0, numberOfInliersPhoto = 0;
         double avgReproj = 0, avgPhoto = 0;
         for (size_t i = 0, iend = vpEdgesMono.size(); i < iend; i++) {
-            g2o::EdgeSE3ProjectXYZOnlyPose *e = vpEdgesMono[i];
+            g2o::EdgeSE3ProjectXYZOnlyPoseAB *e = vpEdgesMono[i];
             e->computeError();
 
 
@@ -1557,7 +1571,7 @@ int Optimizer::OptimizeSim3(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint *> &
         }
 
         for (size_t i = 0, iend = vpEdgesMonoPhoto.size(); i < iend; i++) {
-            g2o::EdgeSE3PhotoOnlyPose *ePhoto = vpEdgesMonoPhoto[i];
+            g2o::EdgeSE3PhotoOnlyPoseAB *ePhoto = vpEdgesMonoPhoto[i];
             const size_t idx = vnIndexEdgeMonoPhoto[i];
 
             ePhoto->computeError();
@@ -1582,11 +1596,12 @@ int Optimizer::OptimizeSim3(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint *> &
         std::cout << "\tAVERAGE reproj " << avgReproj / numberOfInliersReproj << " vs photo = " << avgPhoto / numberOfInliersPhoto << std::endl;
 
         // Recover optimized pose and return number of inliers
-        g2o::VertexSE3Expmap *vSE3_recov = static_cast<g2o::VertexSE3Expmap *>(optimizer.vertex(0));
-        g2o::SE3Quat SE3quat_recov = vSE3_recov->estimate();
+        g2o::VertexSE3ExpmapAB *vSE3_recov = static_cast<g2o::VertexSE3ExpmapAB *>(optimizer.vertex(0));
+        g2o::SE3Quat SE3quat_recov = vSE3_recov->estimate().se3quat;
         cv::Mat pose = Converter::toCvMat(SE3quat_recov);
         pFrame->SetPose(pose);
 
+        std::cout << "\taL = " << vSE3_recov->estimate().aL << " bL = " << vSE3_recov->estimate().bL << std::endl;
 
         return nInitialCorrespondences - nBad;
     }
