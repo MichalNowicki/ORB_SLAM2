@@ -1245,7 +1245,7 @@ int Optimizer::OptimizeSim3(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint *> &
     return nIn;
 }
 
-    int Optimizer::PoseOptimizationWithPhotometric(Frame *lastFrame, Frame *pFrame, int pyramidIndex) {
+    int Optimizer::PoseOptimizationWithPhotometric(Frame *lastFrame, Frame *pFrame, int pyramidIndex, bool photoForMatched) {
         g2o::SparseOptimizer optimizer;
 
         // TODO: If photometric
@@ -1287,7 +1287,7 @@ int Optimizer::OptimizeSim3(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint *> &
 
         const float deltaMono = sqrt(5.991);
 //        const float deltaStereo = sqrt(7.815);
-        const float deltaMonoPhoto = sqrt(16.919); // IF error has 9 dof
+        const float deltaMonoPhoto = sqrt(22.36); // IF error has 13 dof
 
 
         {
@@ -1333,16 +1333,17 @@ int Optimizer::OptimizeSim3(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint *> &
                             vpEdgesMono.push_back(e);
                             vnIndexEdgeMono.push_back(i);
                         }
-                        else {
+
+                        if ((photoForMatched && lastFrame) || pMP->rescuedLast){
 
                             // Lets add photometric constraint
-                            double invPhotoSigma2 = (1.0 / 50.0) * (1.0 / 50.0);
+                            double invPhotoSigma2 = (1.0 / 20.0) * (1.0 / 20.0);
                             g2o::EdgeSE3PhotoOnlyPose *e2 = new g2o::EdgeSE3PhotoOnlyPose();
                             e2->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(0)));
 
-                            Eigen::Matrix<double, 9, 1> obs2 = Eigen::Matrix<double, 9, 1>::Zero();
+                            Eigen::Matrix<double, 13, 1> obs2 = Eigen::Matrix<double, 13, 1>::Zero();
                             e2->setMeasurement(obs2);
-                            e2->setInformation(Eigen::Matrix<double, 9, 9>::Identity() * invPhotoSigma2);
+                            e2->setInformation(Eigen::Matrix<double, 13, 13>::Identity() * invPhotoSigma2);
 
                             g2o::RobustKernelHuber *rk2 = new g2o::RobustKernelHuber;
                             e2->setRobustKernel(rk2);
@@ -1384,12 +1385,6 @@ int Optimizer::OptimizeSim3(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint *> &
                             // Frame2Map
                             else {
                                 KeyFrame* pKF = pMP->kfForRescue;
-                                if (!pKF) {
-                                    std::cout << "????" << std::endl;
-                                    continue;
-                                }
-                                //std::cout << "ok" << std::endl;
-
                                 int pKFIndex = pMP->featureIndexForRescue;
 
                                 e2->imgAnchor = pKF->imagePyramidLeft;
@@ -1506,7 +1501,7 @@ int Optimizer::OptimizeSim3(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint *> &
 
                 const float ePhotochi2 = ePhoto->chi2();
 
-                if (ePhotochi2 > deltaMonoPhoto ) {
+                if (ePhotochi2 > deltaMonoPhoto*deltaMonoPhoto ) {
                     pFrame->mvbOutlier[idx] = true;
                     ePhoto->setLevel(1);
                     nBad++;
@@ -1567,11 +1562,12 @@ int Optimizer::OptimizeSim3(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint *> &
 
             ePhoto->computeError();
 
-            if (ePhoto->chi2() < deltaMonoPhoto) {
+//            std::cout << "ERR: " << sqrt(ePhoto->chi2()) << std::endl;
+            if (ePhoto->chi2() < deltaMonoPhoto*deltaMonoPhoto) {
                 numberOfInliersPhoto++;
                 avgPhoto += sqrt(ePhoto->chi2());
 
-//                std::cout << "PREV: " << pFrame->mvKeysUn[idx].pt.x << "," << pFrame->mvKeysUn[idx].pt.y <<
+//                std::cout << "ERR: " << sqrt(ePhoto->chi2()) << " Locations: " << pFrame->mvKeysUn[idx].pt.x << "," << pFrame->mvKeysUn[idx].pt.y <<
 //                          " vs " <<  ePhoto->currentU << "," << ePhoto->currentV << std::endl;
 
                 // Retrieve new (u,v)

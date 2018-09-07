@@ -17,49 +17,44 @@
 #include <Eigen/Geometry>
 #include <Eigen/Core>
 
+#include "photometricErrorFunctions.h"
+
 namespace g2o {
     using namespace std;
 
-    typedef Eigen::Matrix<double,9,1,Eigen::ColMajor> Vector9D;
+    typedef Eigen::Matrix<double,13,1,Eigen::ColMajor> Vector13D;
 
-    struct imgStr {
-        float imageScale;
-        std::vector< std::vector< float> > image;
-        std::vector< std::vector< Eigen::Vector2f > > gradient;
-    };
 
-    class EdgeSE3PhotoOnlyPose: public BaseUnaryEdge<9, Vector9D, VertexSE3Expmap> {
+
+    class EdgeSE3PhotoOnlyPose: public BaseUnaryEdge<13, Vector13D, VertexSE3Expmap> {
     public:
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
         EdgeSE3PhotoOnlyPose()  {
+
             //   x
-            //  x x
-            // x x x - neighbours used in optimization
-            //  x x
+            //  xxx
+            // xxxxx - neighbours used in photo check
+            //  xxx
             //   x
-            neighbours.push_back(make_pair(0,0));
-            neighbours.push_back(make_pair(0,2));
-            neighbours.push_back(make_pair(1,1));
-            neighbours.push_back(make_pair(2,0));
-            neighbours.push_back(make_pair(1,-1));
-            neighbours.push_back(make_pair(0,-2));
-            neighbours.push_back(make_pair(-1,-1));
-            neighbours.push_back(make_pair(-2,0));
-            neighbours.push_back(make_pair(-1,1));
-        }
+            neighbours.push_back(make_pair(0, -2));
 
-        void setAdditionalData(std::vector< imgStr *> &imageAnchor,
-                               std::vector< imgStr *> &imageObs,
-                               double _baseline) {
-            imgAnchor = imageAnchor;
-            imgObs = imageObs;
-        }
+            neighbours.push_back(make_pair(-1, -1));
+            neighbours.push_back(make_pair(0, -1));
+            neighbours.push_back(make_pair(1, -1));
 
-        void selectPyramidIndex(int _pyramidIndex) {
-            pyramidIndex = _pyramidIndex;
-        }
+            neighbours.push_back(make_pair(-2, 0));
+            neighbours.push_back(make_pair(-1, 0));
+            neighbours.push_back(make_pair(0, 0));
+            neighbours.push_back(make_pair(1, 0));
+            neighbours.push_back(make_pair(2, 0));
 
+            neighbours.push_back(make_pair(-1, 1));
+            neighbours.push_back(make_pair(0, 1));
+            neighbours.push_back(make_pair(1, 1));
+
+            neighbours.push_back(make_pair(0, 2));
+        }
 
         virtual bool read  (std::istream& is);
         virtual bool write (std::ostream& os) const;
@@ -73,10 +68,13 @@ namespace g2o {
 
 //        bool isDepthPositive();
 
+
+        int errorSize;
+
         // Variables to set!
         int pyramidIndex;
-        std::vector< imgStr *> imgAnchor;
-        std::vector< imgStr *> imgObs;
+        std::vector< photo::imgStr *> imgAnchor;
+        std::vector< photo::imgStr *> imgObs;
         Eigen::Vector3d featureInWorld;
         Eigen::Matrix4d poseA;
         double lastU, lastV, currentU, currentV;
@@ -95,33 +93,6 @@ namespace g2o {
             return res;
         }
 
-        inline double getSubpixImageValue(double u, double v, std::vector< std::vector< float> > &image);
-
-        double getDistanceToPlane(const Eigen::Vector3d &point3D, const Eigen::Vector3d &normal) {
-            return -normal.transpose() * point3D;
-        }
-
-        Eigen::Matrix3d computeHomography(Eigen::Matrix4d Tba, Eigen::Vector3d n, double d, Eigen::Matrix3d Ka, Eigen::Matrix3d Kb) {
-            // Getting R,t
-            Eigen::Matrix3d R21 = Tba.block<3,3>(0,0);
-            Eigen::Vector3d t21 = Tba.block<3,1>(3,0);
-
-            Eigen::Matrix3d H = Ka * (R21 - t21 * n.transpose() / d) * Kb.inverse();
-
-            // Homography
-            return H;
-        }
-
-        Eigen::Matrix3d getCameraMatrix(float fx, float fy, float cx, float cy) {
-            Eigen::Matrix3d cameraMatrix = Eigen::Matrix3d::Identity();
-            cameraMatrix(0,0) = fx;
-            cameraMatrix(0,2) = cx;
-            cameraMatrix(1,1) = fy;
-            cameraMatrix(1,2) = cy;
-            cameraMatrix(1,2) = cy;
-
-            return cameraMatrix;
-        }
 
         std::vector< std::pair<double, double> > neighbours;
     };

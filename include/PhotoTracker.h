@@ -10,7 +10,8 @@
 #include"KeyFrame.h"
 #include"Frame.h"
 
-#include "Thirdparty/g2o/g2o/types/types_six_dof_photo.h"
+#include "photometricErrorFunctions.h"
+#include "g2oPhotoError.h"
 #include <opencv2/core/eigen.hpp>
 
 namespace ORB_SLAM2 {
@@ -29,31 +30,13 @@ namespace ORB_SLAM2 {
 
     private:
 
-        // Computes distance from point3D to plane defined by normal
-        double getDistanceToPlane(const Eigen::Vector3d &point3D, const Eigen::Vector3d &normal);
-
-        // Creates camera matrix from (fx, y, cx, cy)
-        Eigen::Matrix3d getCameraMatrix(float fx, float fy, float cx, float cy);
-
-        // Computes homography
-        Eigen::Matrix3d computeHomography(Eigen::Matrix4d Tba, Eigen::Vector3d n, double d, Eigen::Matrix3d Ka, Eigen::Matrix3d Kb);
-
-        // Gets the subpixel value using bilinear interpolation
-        double getSubpixImageValue(double u, double v, std::vector< std::vector< float> > &image);
-
-        // Computes the difference between patches with affine parameters (a,b) esitmation with (a*ref + b = cur)
-        double computePatchDiffAffine(const std::vector< double> &refPatch,  const std::vector< double> &curPatch);
-
-        // Computes the difference between patches with mean subtraction
-        double computePatchDiffAvg(const std::vector< double> &refPatch,  const std::vector< double> &curPatch);
-
         // Add tracked map point to currently observed
         //      It simulates the correct matching be placing the keypoint in the projected location
         void addTrackedMapPoint(Frame &CurrentFrame, MapPoint *pMP, cv::KeyPoint kp, double currentU, double currentV);
 
         bool trackMapPoint(MapPoint *pMP, Frame &CurrentFrame,
                 Eigen::Vector3d featureInLast, Eigen::Matrix4d Tba, Eigen::Matrix3d Ka,
-                g2o::imgStr *lastImage, cv::KeyPoint kp);
+                photo::imgStr *lastImage, cv::KeyPoint kp);
 
         /// Variables
 

@@ -24,8 +24,7 @@
 #include <vector>
 #include <list>
 #include <opencv/cv.h>
-//#include "Thirdparty/g2o/g2o/types/types_six_dof_photo.h"
-#include "g2oPhotoError.h"
+#include "photometricErrorFunctions.h"
 
 namespace ORB_SLAM2
 {
@@ -84,7 +83,7 @@ public:
     }
 
     std::vector<cv::Mat> mvImagePyramid;
-    std::vector<g2o::imgStr*> photobaImagePyramid;
+    std::vector<photo::imgStr*> photobaImagePyramid;
 
 protected:
 

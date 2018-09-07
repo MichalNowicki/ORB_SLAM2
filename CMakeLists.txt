@@ -55,6 +55,7 @@ src/LocalMapping.cc
 src/LoopClosing.cc
 src/ORBextractor.cc
 src/ORBmatcher.cc
+src/photometricErrorFunctions.cc
 src/PhotoTracker.cc
 src/FrameDrawer.cc
 src/Converter.cc

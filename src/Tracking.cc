@@ -922,7 +922,7 @@ bool Tracking::TrackWithMotionModel()
 
     // Optimize frame pose with all matches
 //    Optimizer::PoseOptimization(&mCurrentFrame);
-    Optimizer::PoseOptimizationWithPhotometric(&mLastFrame, &mCurrentFrame, 0);
+    Optimizer::PoseOptimizationWithPhotometric(&mLastFrame, &mCurrentFrame, 4, false);
 
     // Discard outliers
     int nmatchesMap = 0;
@@ -984,7 +984,7 @@ bool Tracking::TrackLocalMap()
 
     // Optimize Pose
 //    Optimizer::PoseOptimization(&mCurrentFrame);
-    Optimizer::PoseOptimizationWithPhotometric(static_cast<Frame*>(NULL), &mCurrentFrame, 0);
+    Optimizer::PoseOptimizationWithPhotometric(static_cast<Frame*>(NULL), &mCurrentFrame, 0, false);
     mnMatchesInliers = 0;
 
     int rescuedLastCount = 0, rescuedAtLeastOnceCount = 0;

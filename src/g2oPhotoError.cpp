@@ -2,18 +2,19 @@
 // Author: Michal Nowicki
 //
 
+#include "photometricErrorFunctions.h"
 #include "g2oPhotoError.h"
 
 namespace g2o {
     using namespace std;
 
     bool EdgeSE3PhotoOnlyPose::write(std::ostream &os) const {
-        for (int i = 0; i < 9; i++) {
+        for (int i = 0; i < 13; i++) {
             os << measurement()[i] << " ";
         }
 
-        for (int i = 0; i < 9; i++)
-            for (int j = i; j < 9; j++) {
+        for (int i = 0; i < 13; i++)
+            for (int j = i; j < 13; j++) {
                 os << " " << information()(i, j);
             }
         return os.good();
@@ -21,38 +22,16 @@ namespace g2o {
 
     bool EdgeSE3PhotoOnlyPose::read(std::istream &is) {
 
-        for (int i = 0; i < 9; i++) {
+        for (int i = 0; i < 13; i++) {
             is >> _measurement[i];
         }
-        for (int i = 0; i < 9; i++)
-            for (int j = i; j < 9; j++) {
+        for (int i = 0; i < 13; i++)
+            for (int j = i; j < 13; j++) {
                 is >> information()(i, j);
                 if (i != j)
                     information()(j, i) = information()(i, j);
             }
         return true;
-    }
-
-    double EdgeSE3PhotoOnlyPose::getSubpixImageValue(double u, double v, std::vector< std::vector< float> > &image) {
-
-        const double xInt = int(u), yInt = int(v);
-        const double xSub = u - xInt, ySub = v - yInt;
-
-        const double topLeft = (1.0 - xSub) * (1.0 - ySub);
-        const double topRight = xSub * (1.0 - ySub);
-        const double bottomLeft = (1.0 - xSub) * ySub;
-        const double bottomRight = xSub * ySub;
-
-
-        if (yInt < 0 || xInt < 0 || yInt + 1 >= image.size() || xInt + 1 >= image[0].size() )
-        {
-            return -1;
-        }
-
-        return topLeft * image[yInt][xInt] +
-               topRight * image[yInt][xInt + 1] +
-               bottomLeft * image[yInt + 1][xInt] +
-               bottomRight * image[yInt + 1][xInt + 1];
     }
 
     void EdgeSE3PhotoOnlyPose::computeError() {
@@ -68,11 +47,11 @@ namespace g2o {
 
         // Computation of the distance to patch plane in image A
         Eigen::Vector3d featureInA = poseA.block<3,3>(0,0) * featureInWorld + poseA.block<3,1>(0,3);
-        double d = getDistanceToPlane(featureInA , n);
+        double d = photo::getDistanceToPlane(featureInA , n);
 
         // Computation of the homography between A and B
-        Eigen::Matrix3d K = getCameraMatrix(fx, fy, cx, cy);
-        Eigen::Matrix3d H = computeHomography(Tba, n, d, K, K);
+        Eigen::Matrix3d K = photo::getCameraMatrix(fx, fy, cx, cy);
+        Eigen::Matrix3d H = photo::computeHomography(Tba, n, d, K, K);
 
 //        std::cout << "g2o: H: " << std::endl << H << std::endl;
 
@@ -83,13 +62,13 @@ namespace g2o {
 //        bbb = bbb / bbb(2);
 //        std::cout << "pyramidScale = " << pyramidScale << " lastU = " << lastU << " lastV = " << lastV << " " << " vs " << bbb(0) << " " << bbb(1) << std::endl;
 
-        Matrix<double, 9, 1, Eigen::ColMajor> computedError;
+        Matrix<double, 13, 1, Eigen::ColMajor> computedError;
         for (int i=0;i<neighbours.size();i++)
         {
             // Getting the patch value in anchor
             double refU = lastU / pyramidScale + neighbours[i].first ;
             double refV = lastV / pyramidScale + neighbours[i].second ;
-            double refValue = getSubpixImageValue(refU, refV, imgAnchor[pyramidIndex]->image);
+            double refValue = photo::getSubpixImageValue(refU, refV, imgAnchor[pyramidIndex]->image);
 
             // Projecting (x,y) from image A into image B with  H
             Eigen::Vector3d pInA(refU * pyramidScale, refV * pyramidScale, 1);
@@ -102,11 +81,11 @@ namespace g2o {
             // Getting the patch value in current frame
             double obsU = currentU / pyramidScale;
             double obsV = currentV / pyramidScale;
-            double obsValue = getSubpixImageValue(obsU, obsV, imgObs[pyramidIndex]->image);
+            double obsValue = photo::getSubpixImageValue(obsU, obsV, imgObs[pyramidIndex]->image);
 
             // Either of values is outside of the image
             if (refValue < 0 || obsValue < 0) {
-                for (int j=0;j<9;j++)
+                for (int j=0;j<13;j++)
                     computedError(j,0) = 255;
                 break;
             }

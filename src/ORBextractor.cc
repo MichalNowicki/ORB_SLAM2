@@ -1160,9 +1160,9 @@ void ORBextractor::ComputePyramid(cv::Mat image)
             }
         }
 
-        photobaImagePyramid = std::vector<g2o::imgStr *>(nlevels);
+        photobaImagePyramid = std::vector<photo::imgStr *>(nlevels);
         for (int level = 0; level < nlevels; ++level) {
-            photobaImagePyramid[level] = new g2o::imgStr;
+            photobaImagePyramid[level] = new photo::imgStr;
 
             int rows = floatPyramid[level].rows;
             int cols = floatPyramid[level].cols;
