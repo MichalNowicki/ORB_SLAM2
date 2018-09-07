@@ -116,6 +116,9 @@ public:
 
     // Flag indicating that it was photometrically tracked at least once (not matched with descriptor)
     bool rescuedAtLeastOnce, rescuedLast;
+    KeyFrame *kfForRescue;
+    Frame *fForRescue;
+    int featureIndexForRescue;
     int timesMatchedAfterRescue;
 
 protected:    

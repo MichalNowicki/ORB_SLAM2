@@ -111,7 +111,7 @@ namespace ORB_SLAM2 {
     }
 
 
-    int PhotoTracker::SearchByPhoto(Frame &CurrentFrame, const Frame &LastFrame) {
+    int PhotoTracker::SearchByPhoto(Frame &CurrentFrame, Frame &LastFrame) {
         // Number of tracked features
         int nmatches = 0;
 
@@ -160,8 +160,13 @@ namespace ORB_SLAM2 {
                     g2o::imgStr *lastImage = LastFrame.mpORBextractorLeft->photobaImagePyramid[pyramidIndex];
 
                     // Perform tracking
-                    if ( trackMapPoint(pMP, CurrentFrame, featureInLast, Tba, Ka, lastImage, kp) )
+                    if ( trackMapPoint(pMP, CurrentFrame, featureInLast, Tba, Ka, lastImage, kp) ) {
                         nmatches++;
+
+                        pMP->fForRescue = &LastFrame;
+                        pMP->featureIndexForRescue = i;
+
+                    }
                 }
             }
         }
@@ -176,7 +181,7 @@ namespace ORB_SLAM2 {
         int nmatches=0;
 
         // Current frame position
-        Eigen::Matrix4d Tbw = CurrentFrame.getPose();
+        Eigen::Matrix4d Taw, Tbw = CurrentFrame.getPose();
 
         // For all neighbouring features
         for(size_t iMP=0; iMP<vpMapPoints.size(); iMP++) {
@@ -201,38 +206,59 @@ namespace ORB_SLAM2 {
                 continue;
             }
 
-            // Selecting the frame for tracking
-            // TODO: We probably should select the KF with the closest viewing angle that still contains necessary image for optimization
-            std::map<KeyFrame*,size_t> observations = pMP->GetObservations();
-
-            KeyFrame* pKF;
-            int pKFIndex = 0;
-            for(map<KeyFrame*,size_t>::iterator mit=observations.begin(), mend=observations.end(); mit!=mend; mit++)
-            {
-                pKF = mit->first;
-                pKFIndex = mit->second;
-                break;
-            }
-
-            // Last frame position
-            Eigen::Matrix4d Taw = pKF->GetPoseEigen();
-
-            // Relative transformation between poses
-            Eigen::Matrix4d Tba = Tbw * Taw.inverse();
 
             // Project it onto current and last frame to check if depth is positive
             Eigen::Vector3d featureInGlobal = pMP->GetWorldPosEigen();
-            Eigen::Vector3d featureInLast = Taw.block<3,3>(0,0) * featureInGlobal + Taw.block<3,1>(0,3);
-            Eigen::Vector3d featureInCurrent = Tbw.block<3,3>(0,0) * featureInGlobal + Tbw.block<3,1>(0,3);
-            if (featureInCurrent(3) < 0 || featureInLast(3) < 0)
+            Eigen::Vector3d featureInLast, featureInCurrent = Tbw.block<3,3>(0,0) * featureInGlobal + Tbw.block<3,1>(0,3);
+            if (featureInCurrent(3) < 0)
+                 continue;
+
+            // Selecting the frame for tracking - one with the closest viewing angle that still contains image pyramid
+            std::map<KeyFrame*,size_t> observations = pMP->GetObservations();
+
+            KeyFrame* pKF;
+            int pointInKFIndex = 0;
+            double bestAngle = 2;
+            for(map<KeyFrame*,size_t>::iterator mit=observations.begin(), mend=observations.end(); mit!=mend; mit++)
+            {
+                KeyFrame* tmpKF = mit->first;
+
+                if (tmpKF->imagePyramidLeft.size() > 0)
+                {
+                    // Last frame position
+                    Taw = tmpKF->GetPoseEigen();
+
+                    // Feature in last frame
+                    featureInLast = Taw.block<3,3>(0,0) * featureInGlobal + Taw.block<3,1>(0,3);
+
+                    // Is depth positive
+                    if (featureInLast(3) < 0)
+                        continue;
+
+                    // Computing the difference between observation angles
+                    double diffCos = 1 - featureInLast.dot(featureInCurrent) / featureInLast.norm() / featureInCurrent.norm();
+
+                    // We found a better KF for photo tracking
+                    if (bestAngle > diffCos)
+                    {
+                        bestAngle = diffCos;
+                        pKF = tmpKF;
+                        pointInKFIndex = mit->second;
+                    }
+                }
+            }
+            if (!pKF)
                 continue;
+
+            // Relative transformation between poses
+            Eigen::Matrix4d Tba = Tbw * Taw.inverse();
 
             /// Information about last frame needed for tracking
             // Camera matrix
             Eigen::Matrix3d Ka = getCameraMatrix(pKF->fx, pKF->fy, pKF->cx, pKF->cy);
 
             // Point to track
-            cv::KeyPoint kp = pKF->mvKeysUn[pKFIndex];
+            cv::KeyPoint kp = pKF->mvKeysUn[pointInKFIndex];
 
             // Getting the octave in last frame
             int pyramidIndex = kp.octave;
@@ -241,8 +267,11 @@ namespace ORB_SLAM2 {
             g2o::imgStr *lastImage = pKF->imagePyramidLeft[pyramidIndex];
 
             // Perform tracking
-            if ( trackMapPoint(pMP, CurrentFrame, featureInLast, Tba, Ka, lastImage, kp) )
+            if ( trackMapPoint(pMP, CurrentFrame, featureInLast, Tba, Ka, lastImage, kp) ) {
                 nmatches++;
+                pMP->kfForRescue = pKF;
+                pMP->featureIndexForRescue = pointInKFIndex;
+            }
 
         }
 

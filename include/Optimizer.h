@@ -59,7 +59,7 @@ public:
 
 
     // PoseOptimizationWithPhotometric
-    int static PoseOptimizationWithPhotometric(Frame *lastFrame, Frame* pFrame);
+    int static PoseOptimizationWithPhotometric(Frame *lastFrame, Frame* pFrame, int pyramidIndex = 0);
 };
 
 } //namespace ORB_SLAM

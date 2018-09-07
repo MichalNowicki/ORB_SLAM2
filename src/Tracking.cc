@@ -442,12 +442,15 @@ void Tracking::Track()
             for(int i=0; i<mCurrentFrame.N; i++)
             {
                 MapPoint* pMP = mCurrentFrame.mvpMapPoints[i];
-                if(pMP)
-                    if(pMP->Observations()<1)
-                    {
+                if(pMP) {
+                    pMP->rescuedLast = false;
+                    pMP->fForRescue = static_cast<Frame*>(NULL);
+                    pMP->kfForRescue = static_cast<KeyFrame*>(NULL);
+                    if (pMP->Observations() < 1) {
                         mCurrentFrame.mvbOutlier[i] = false;
-                        mCurrentFrame.mvpMapPoints[i]=static_cast<MapPoint*>(NULL);
+                        mCurrentFrame.mvpMapPoints[i] = static_cast<MapPoint *>(NULL);
                     }
+                }
             }
 
             // Delete temporal MapPoints
@@ -888,21 +891,6 @@ bool Tracking::TrackWithMotionModel()
     // Create "visual odometry" points if in Localization Mode
     UpdateLastFrame();
 
-
-    int wtf=0;
-    for(int i=0; i<mLastFrame.N; i++)
-    {
-        MapPoint* pMP = mLastFrame.mvpMapPoints[i];
-
-        if(pMP) {
-            if (!mLastFrame.mvbOutlier[i]) {
-                if (pMP->rescuedLast)
-                    wtf++;
-            }
-        }
-    }
-    std::cout << "WTF = " << wtf << std::endl;
-
     mCurrentFrame.SetPose(mVelocity*mLastFrame.mTcw);
 
     fill(mCurrentFrame.mvpMapPoints.begin(),mCurrentFrame.mvpMapPoints.end(),static_cast<MapPoint*>(NULL));
@@ -934,7 +922,7 @@ bool Tracking::TrackWithMotionModel()
 
     // Optimize frame pose with all matches
 //    Optimizer::PoseOptimization(&mCurrentFrame);
-    Optimizer::PoseOptimizationWithPhotometric(&mLastFrame, &mCurrentFrame);
+    Optimizer::PoseOptimizationWithPhotometric(&mLastFrame, &mCurrentFrame, 0);
 
     // Discard outliers
     int nmatchesMap = 0;
@@ -978,21 +966,25 @@ bool Tracking::TrackLocalMap()
     SearchLocalPoints();
 
     int featuresMatched = 0, featuresTracked = 0;
+    int WTF = 0;
     for(int i=0; i<mCurrentFrame.N; i++) {
         if (mCurrentFrame.mvpMapPoints[i]) {
             if (!mCurrentFrame.mvbOutlier[i]) {
-                if (mCurrentFrame.mvpMapPoints[i]->rescuedLast)
+                if (mCurrentFrame.mvpMapPoints[i]->rescuedLast) {
                     featuresTracked++;
+                    if (mCurrentFrame.mvpMapPoints[i]->kfForRescue || mCurrentFrame.mvpMapPoints[i]->fForRescue)
+                        WTF++;
+                }
                 else
                     featuresMatched++;
             }
         }
     }
-    std::cout<<"PoseOptimization (trackLocalMap) --- " << std::endl << "\tmatched: " << featuresMatched << ", tracked: " << featuresTracked << std::endl;
+    std::cout<<"PoseOptimization (trackLocalMap) --- " << std::endl << "\tmatched: " << featuresMatched << ", tracked: " << featuresTracked << " " << WTF << std::endl;
 
     // Optimize Pose
 //    Optimizer::PoseOptimization(&mCurrentFrame);
-    Optimizer::PoseOptimizationWithPhotometric(static_cast<Frame*>(NULL), &mCurrentFrame);
+    Optimizer::PoseOptimizationWithPhotometric(static_cast<Frame*>(NULL), &mCurrentFrame, 0);
     mnMatchesInliers = 0;
 
     int rescuedLastCount = 0, rescuedAtLeastOnceCount = 0;
@@ -1037,6 +1029,7 @@ bool Tracking::TrackLocalMap()
     std::cout<<"\tinliers: " << mnMatchesInliers <<
              " [rescuedLastCount="<<rescuedLastCount<<", rescuedAtLeastOnceCount=" << rescuedAtLeastOnceCount<<"]" << std::endl;
     std::cout <<"\tlongestMatchAfterRescue = " << longestMatchAfterRescue <<std::endl;
+
 
     int abc;
     std::cin >> abc;

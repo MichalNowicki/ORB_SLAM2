@@ -41,7 +41,7 @@ cv::Mat FrameDrawer::DrawFrame()
     vector<cv::KeyPoint> vIniKeys; // Initialization: KeyPoints in reference frame
     vector<int> vMatches; // Initialization: correspondeces with reference keypoints
     vector<cv::KeyPoint> vCurrentKeys; // KeyPoints in current frame
-    vector<bool> vbVO, vbMap, vbRes; // Tracked MapPoints in current frame
+    vector<bool> vbVO, vbMap, vbResuedLast, vbResuedOnce; // Tracked MapPoints in current frame
     int state; // Tracking state
 
     //Copy variables within scoped mutex
@@ -64,7 +64,8 @@ cv::Mat FrameDrawer::DrawFrame()
             vCurrentKeys = mvCurrentKeys;
             vbVO = mvbVO;
             vbMap = mvbMap;
-            vbRes = mvbRes;
+            vbResuedLast = mvbResuedLast;
+            vbResuedOnce = mvbResuedOnce;
         }
         else if(mState==Tracking::LOST)
         {
@@ -91,12 +92,13 @@ cv::Mat FrameDrawer::DrawFrame()
     {
         mnTracked=0;
         mnTrackedVO=0;
-        mnRescued = 0;
+        mnRescuedLast = 0;
+        mnRescuedOnce = 0;
         const float r = 5;
         const int n = vCurrentKeys.size();
         for(int i=0;i<n;i++)
         {
-            if(vbVO[i] || vbMap[i] || vbRes[i])
+            if(vbVO[i] || vbMap[i])
             {
                 cv::Point2f pt1,pt2;
                 pt1.x=vCurrentKeys[i].pt.x-r;
@@ -108,11 +110,17 @@ cv::Mat FrameDrawer::DrawFrame()
                 if(vbMap[i])
                 {
                     // Feature was at least once rescued
-                    if(vbRes[i])
+                    if(vbResuedLast[i])
                     {
-                        cv::rectangle(im,pt1,pt2,cv::Scalar(0,0,255));
-                        cv::circle(im,vCurrentKeys[i].pt,2,cv::Scalar(0,0,255),-1);
-                        mnRescued++;
+                        cv::rectangle(im,pt1,pt2,cv::Scalar(0,165,255));
+                        cv::circle(im,vCurrentKeys[i].pt,2,cv::Scalar(0,165,255),-1);
+                        mnRescuedLast++;
+                    }
+                    else if (vbResuedOnce[i])
+                    {
+                        cv::rectangle(im, pt1, pt2, cv::Scalar(0, 0, 255));
+                        cv::circle(im, vCurrentKeys[i].pt, 2, cv::Scalar(0, 0, 255), -1);
+                        mnRescuedOnce++;
                     }
                     else
                     {
@@ -156,7 +164,7 @@ void FrameDrawer::DrawTextInfo(cv::Mat &im, int nState, cv::Mat &imText)
         s << "KFs: " << nKFs << ", MPs: " << nMPs << ", Matches: " << mnTracked;
         if(mnTrackedVO>0)
             s << ", + VO matches: " << mnTrackedVO;
-        s << ", Rescued: " <<mnRescued;
+        s << "| R.Once: " <<mnRescuedOnce << " + R.Last: " << mnRescuedLast;
     }
     else if(nState==Tracking::LOST)
     {
@@ -185,7 +193,8 @@ void FrameDrawer::Update(Tracking *pTracker)
     N = mvCurrentKeys.size();
     mvbVO = vector<bool>(N,false);
     mvbMap = vector<bool>(N,false);
-    mvbRes = vector<bool>(N,false);
+    mvbResuedLast = vector<bool>(N,false);
+    mvbResuedOnce = vector<bool>(N,false);
     mbOnlyTracking = pTracker->mbOnlyTracking;
 
 
@@ -203,8 +212,10 @@ void FrameDrawer::Update(Tracking *pTracker)
             {
                 if(!pTracker->mCurrentFrame.mvbOutlier[i])
                 {
+                    if(pMP->rescuedLast)
+                        mvbResuedLast[i] = true;
                     if(pMP->rescuedAtLeastOnce)
-                        mvbRes[i] = true;
+                        mvbResuedOnce[i] = true;
                     if(pMP->Observations()>0)
                         mvbMap[i]=true;
                     else

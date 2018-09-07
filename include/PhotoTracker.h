@@ -22,7 +22,7 @@ namespace ORB_SLAM2 {
         PhotoTracker(double photoThreshold = 20);
 
         // Performs tracking of feature motion
-        int SearchByPhoto(Frame &CurrentFrame, const Frame &LastFrame);
+        int SearchByPhoto(Frame &CurrentFrame, Frame &LastFrame);
 
         // Performs tracking of mappoint found in neighbouring KFs
         int SearchByPhoto(Frame &CurrentFrame, const vector<MapPoint*> &vpMapPoints);

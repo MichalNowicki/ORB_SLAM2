@@ -1245,7 +1245,7 @@ int Optimizer::OptimizeSim3(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint *> &
     return nIn;
 }
 
-    int Optimizer::PoseOptimizationWithPhotometric(Frame *lastFrame, Frame *pFrame) {
+    int Optimizer::PoseOptimizationWithPhotometric(Frame *lastFrame, Frame *pFrame, int pyramidIndex) {
         g2o::SparseOptimizer optimizer;
 
         // TODO: If photometric
@@ -1358,8 +1358,12 @@ int Optimizer::OptimizeSim3(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint *> &
                             e2->featureInWorld[2] = Xw.at<float>(2);
 
                             //e2->pyramidIndex = pFrame->mvKeys[i].octave;
-                            e2->pyramidIndex = 0;
+                            e2->pyramidIndex = pyramidIndex;
                             e2->imgObs = pFrame->mpORBextractorLeft->photobaImagePyramid;
+
+
+                            if(pMP->fForRescue)
+                                lastFrame = pMP->fForRescue;
 
                             // Frame2Frame
                             if(lastFrame) {
@@ -1379,16 +1383,14 @@ int Optimizer::OptimizeSim3(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint *> &
                             }
                             // Frame2Map
                             else {
-                                std::map<KeyFrame*,size_t> observations = pMP->GetObservations();
-
-                                KeyFrame* pKF;
-                                int pKFIndex = 0;
-                                for(map<KeyFrame*,size_t>::iterator mit=observations.begin(), mend=observations.end(); mit!=mend; mit++)
-                                {
-                                    pKF = mit->first;
-                                    pKFIndex = mit->second;
-                                    break;
+                                KeyFrame* pKF = pMP->kfForRescue;
+                                if (!pKF) {
+                                    std::cout << "????" << std::endl;
+                                    continue;
                                 }
+                                //std::cout << "ok" << std::endl;
+
+                                int pKFIndex = pMP->featureIndexForRescue;
 
                                 e2->imgAnchor = pKF->imagePyramidLeft;
 
