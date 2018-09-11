@@ -45,18 +45,6 @@ namespace ORB_SLAM2 {
             if (pMP) {
                 if (!LastFrame.mvbOutlier[i]) {
 
-                    // Lets check if this feature was matched using desciptors
-                    bool featureMatched = false;
-                    for (int j=0;j<CurrentFrame.N;j++) {
-                        MapPoint *pMP2 = CurrentFrame.mvpMapPoints[j];
-                        if (pMP == pMP2) {
-                            featureMatched = true;
-                            break;
-                        }
-                    }
-                    if(featureMatched)
-                        continue;
-
                     // Project it onto current and last frame to check if depth is positive
                     Eigen::Vector3d featureInGlobal = pMP->GetWorldPosEigen();
                     Eigen::Vector3d featureInLast = Taw.block<3,3>(0,0) * featureInGlobal + Taw.block<3,1>(0,3);
@@ -82,6 +70,7 @@ namespace ORB_SLAM2 {
                         nmatches++;
 
                         pMP->fForRescue = &LastFrame;
+                        pMP->kfForRescue = static_cast<KeyFrame*>(NULL);
                         pMP->featureIndexForRescue = i;
 
                     }
@@ -112,18 +101,9 @@ namespace ORB_SLAM2 {
             if (pMP->isBad())
                 continue;
 
-            // Let's not consider already matched or tracked features in previous VO step
-            bool found = false;
-            for (int j = 0; j < CurrentFrame.N; j++) {
-                if (CurrentFrame.mvpMapPoints[j] == pMP) {
-                    found = true;
-                    break;
-                }
-            }
-            if (found) {
-                continue;
-            }
-
+            // Let's not consider already matched & tracked features in previous VO step
+//            if (pMP->matchedLast || pMP->rescuedLast)
+//                break;
 
             // Project it onto current and last frame to check if depth is positive
             Eigen::Vector3d featureInGlobal = pMP->GetWorldPosEigen();
@@ -134,7 +114,7 @@ namespace ORB_SLAM2 {
             // Selecting the frame for tracking - one with the closest viewing angle that still contains image pyramid
             std::map<KeyFrame*,size_t> observations = pMP->GetObservations();
 
-            KeyFrame* pKF;
+            KeyFrame* pKF = static_cast<KeyFrame*>(NULL);
             int pointInKFIndex = 0;
             double bestAngle = 2;
             for(map<KeyFrame*,size_t>::iterator mit=observations.begin(), mend=observations.end(); mit!=mend; mit++)
@@ -187,6 +167,7 @@ namespace ORB_SLAM2 {
             // Perform tracking
             if ( trackMapPoint(pMP, CurrentFrame, featureInLast, Tba, Ka, lastImage, kp) ) {
                 nmatches++;
+                pMP->fForRescue = static_cast<Frame*>(NULL);
                 pMP->kfForRescue = pKF;
                 pMP->featureIndexForRescue = pointInKFIndex;
             }
@@ -261,7 +242,14 @@ namespace ORB_SLAM2 {
             Eigen::Vector3d current = H * Eigen::Vector3d(kp.pt.x, kp.pt.y, 1);
             current = current / current(2);
 
-            addTrackedMapPoint(CurrentFrame, pMP, kp, current(0), current(1));
+            // Informing about the state
+            pMP->rescuedLast = true;
+            pMP->rescuedAtLeastOnce = true;
+
+            // Add artificial feature if it was not matched with descriptors
+            if (!pMP->matchedLast)
+                addTrackedMapPoint(CurrentFrame, pMP, kp, current(0), current(1));
+
             return true;
         }
         return false;
@@ -269,11 +257,6 @@ namespace ORB_SLAM2 {
 
 
     void PhotoTracker::addTrackedMapPoint(Frame &CurrentFrame, MapPoint *pMP, cv::KeyPoint kp, double currentU, double currentV) {
-
-        // Informing about the state
-        pMP->rescuedLast = true;
-        pMP->rescuedAtLeastOnce = true;
-
         // Artificially increasing the number of points detected in this case
         CurrentFrame.N++;
 

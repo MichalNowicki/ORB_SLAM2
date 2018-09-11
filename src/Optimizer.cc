@@ -286,7 +286,7 @@ int Optimizer::PoseOptimization(Frame *pFrame)
         if(pMP)
         {
             // Monocular observation
-            if(pFrame->mvuRight[i]<0 && !pMP->rescuedLast)
+            if(pFrame->mvuRight[i]<0)
             {
                 nInitialCorrespondences++;
                 pFrame->mvbOutlier[i] = false;
@@ -1245,7 +1245,7 @@ int Optimizer::OptimizeSim3(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint *> &
     return nIn;
 }
 
-    int Optimizer::PoseOptimizationWithPhotometric(Frame *lastFrame, Frame *pFrame, int pyramidIndex, bool photoForMatched) {
+    int Optimizer::PoseOptimizationWithPhotometric(Frame *lastFrame, Frame *pFrame) {
         g2o::SparseOptimizer optimizer;
 
         // TODO: If photometric
@@ -1299,6 +1299,7 @@ int Optimizer::OptimizeSim3(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint *> &
 //        const float deltaStereo = sqrt(7.815);
         const float deltaMonoPhoto = sqrt(22.36); // IF error has 13 dof
 
+        std::vector<bool> reprojOutlier(N, false), photoOutlier(N, false);
 
         {
             unique_lock<mutex> lock(MapPoint::mGlobalMutex);
@@ -1310,7 +1311,7 @@ int Optimizer::OptimizeSim3(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint *> &
                     // Monocular observation
                     if (pFrame->mvuRight[i] < 0) {
 
-                        if (!pMP->rescuedLast) {
+                        if (pMP->matchedLast) {
                             nInitialCorrespondences++;
                             pFrame->mvbOutlier[i] = false;
 
@@ -1344,7 +1345,8 @@ int Optimizer::OptimizeSim3(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint *> &
                             vnIndexEdgeMono.push_back(i);
                         }
 
-                        if ((photoForMatched && lastFrame) || pMP->rescuedLast){
+                        if (pMP->rescuedLast){
+                            pFrame->mvbOutlier[i] = false;
 
                             // Lets add photometric constraint
                             double invPhotoSigma2 = (1.0 / 20.0) * (1.0 / 20.0);
@@ -1369,27 +1371,42 @@ int Optimizer::OptimizeSim3(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint *> &
                             e2->featureInWorld[2] = Xw.at<float>(2);
 
                             //e2->pyramidIndex = pFrame->mvKeys[i].octave;
-                            e2->pyramidIndex = pyramidIndex;
+                            e2->pyramidIndex = 3;
                             e2->imgObs = pFrame->mpORBextractorLeft->photobaImagePyramid;
 
 
+                            Frame *frameToUse = static_cast<Frame*>(NULL);
+                            if(lastFrame)
+                                frameToUse = lastFrame;
+
                             if(pMP->fForRescue)
-                                lastFrame = pMP->fForRescue;
+                                frameToUse = pMP->fForRescue;
 
                             // Frame2Frame
-                            if(lastFrame) {
-                                e2->imgAnchor = lastFrame->mpORBextractorLeft->photobaImagePyramid;
+                            if(frameToUse) {
+                                e2->imgAnchor = frameToUse->mpORBextractorLeft->photobaImagePyramid;
 
                                 Eigen::Matrix4d poseA;
-                                cv::cv2eigen(lastFrame->mTcw, poseA);
+                                cv::cv2eigen(frameToUse->mTcw, poseA);
                                 e2->poseA = poseA;
 
-                                for (int j = 0; j < lastFrame->N; j++) {
-                                    MapPoint *pMP2 = lastFrame->mvpMapPoints[j];
+                                bool found = false;
+                                for (int j = 0; j < frameToUse->N; j++) {
+                                    MapPoint *pMP2 = frameToUse->mvpMapPoints[j];
                                     if (pMP == pMP2) {
-                                        e2->lastU = lastFrame->mvKeysUn[j].pt.x;
-                                        e2->lastV = lastFrame->mvKeysUn[j].pt.y;
+                                        e2->lastU = frameToUse->mvKeysUn[j].pt.x;
+                                        e2->lastV = frameToUse->mvKeysUn[j].pt.y;
+                                        found = true;
+                                        break;
                                     }
+                                }
+                                if(!found)
+                                {
+                                    std::cout<<"Houston! We lack the lastU and lastV! " << std::endl;
+                                    std::cout << frameToUse->N << " "<< pMP->featureIndexForRescue
+                                        << " " << pMP->matchedLast << " " << pMP->rescuedLast << std::endl;
+                                    if (pMP->kfForRescue)
+                                        std::cout <<"KF also exists!" << std::endl;
                                 }
                             }
                             // Frame2Map
@@ -1466,6 +1483,7 @@ int Optimizer::OptimizeSim3(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint *> &
         const float chi2Mono[4] = {5.991, 5.991, 5.991, 5.991};
 //        const float chi2Stereo[4] = {7.815, 7.815, 7.815, 7.815};
         const int its[4] = {10, 10, 10, 10};
+        const float photoOptimizationLvl[4] = {2, 1, 0};
 
         int nBad = 0;
         for (size_t it = 0; it < 4; it++) {
@@ -1484,18 +1502,21 @@ int Optimizer::OptimizeSim3(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint *> &
 
                 const size_t idx = vnIndexEdgeMono[i];
 
-                if (pFrame->mvbOutlier[idx]) {
+//                if (pFrame->mvbOutlier[idx]) {
+                if(reprojOutlier[idx]) {
                     e->computeError();
                 }
 
                 const float chi2 = e->chi2();
 
                 if (chi2 > chi2Mono[it]) {
-                    pFrame->mvbOutlier[idx] = true;
+//                    pFrame->mvbOutlier[idx] = true;
+                    reprojOutlier[idx] = true;
                     e->setLevel(1);
                     nBad++;
                 } else {
-                    pFrame->mvbOutlier[idx] = false;
+//                    pFrame->mvbOutlier[idx] = false;
+                    reprojOutlier[idx] = false;
                     e->setLevel(0);
                 }
 
@@ -1509,20 +1530,25 @@ int Optimizer::OptimizeSim3(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint *> &
 
                 const size_t idx = vnIndexEdgeMonoPhoto[i];
 
-                if (pFrame->mvbOutlier[idx]) {
+//                if (pFrame->mvbOutlier[idx]) {
+                if (photoOutlier[idx]) {
                     ePhoto->computeError();
                 }
 
                 const float ePhotochi2 = ePhoto->chi2();
 
                 if (ePhotochi2 > deltaMonoPhoto*deltaMonoPhoto ) {
-                    pFrame->mvbOutlier[idx] = true;
+//                    pFrame->mvbOutlier[idx] = true;
+                    photoOutlier[idx] = true;
                     ePhoto->setLevel(1);
                     nBad++;
                 } else {
-                    pFrame->mvbOutlier[idx] = false;
+//                    pFrame->mvbOutlier[idx] = false;
+                    photoOutlier[idx] = false;
                     ePhoto->setLevel(0);
                 }
+
+                ePhoto->pyramidIndex = photoOptimizationLvl[it];
 
                 if (it == 2) {
                     ePhoto->setRobustKernel(0);
@@ -1561,13 +1587,29 @@ int Optimizer::OptimizeSim3(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint *> &
         double avgReproj = 0, avgPhoto = 0;
         for (size_t i = 0, iend = vpEdgesMono.size(); i < iend; i++) {
             g2o::EdgeSE3ProjectXYZOnlyPoseAB *e = vpEdgesMono[i];
+
+            const size_t idx = vnIndexEdgeMono[i];
             e->computeError();
 
 
             if (e->chi2() < 5.991) {
                 numberOfInliersReproj++;
                 avgReproj += sqrt(e->chi2());
-               }
+
+                // Let's find the photometric edge and its error
+                for (size_t j = 0; j < vpEdgesMonoPhoto.size(); j++) {
+                    g2o::EdgeSE3PhotoOnlyPoseAB *ePhoto = vpEdgesMonoPhoto[j];
+                    const size_t idx2 = vnIndexEdgeMonoPhoto[j];
+                    if (idx == idx2)
+                    {
+                        ePhoto->computeError();
+//                        std::cout << "Reproj: " << sqrt(e->chi2()) << " Photo: " << sqrt(ePhoto->chi2()) << std::endl;
+                        break;
+                    }
+                }
+            }
+            else
+                pFrame->mvbOutlier[idx] = true;
         }
 
         for (size_t i = 0, iend = vpEdgesMonoPhoto.size(); i < iend; i++) {
@@ -1589,7 +1631,14 @@ int Optimizer::OptimizeSim3(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint *> &
                 pFrame->mvKeysUn[idx].pt.y = ePhoto->currentV;
                 pFrame->mvKeys[idx].pt.x = ePhoto->currentU;
                 pFrame->mvKeys[idx].pt.y = ePhoto->currentV;
+
+                // It is a reprojection outlier but photometric inlier
+                pFrame->mvbOutlier[idx] = false;
             }
+//            else
+
+
+
         }
 
         std::cout << "\tnumberOfInliersReproj: " << numberOfInliersReproj << " numberOfInliersPhoto: " << numberOfInliersPhoto << std::endl;
@@ -1603,7 +1652,16 @@ int Optimizer::OptimizeSim3(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint *> &
 
         std::cout << "\taL = " << vSE3_recov->estimate().aL << " bL = " << vSE3_recov->estimate().bL << std::endl;
 
-        return nInitialCorrespondences - nBad;
+        int numberOfInliers = 0;
+        for (int i = 0; i < N; i++) {
+            MapPoint *pMP = pFrame->mvpMapPoints[i];
+
+            if (pMP) {
+                if (pFrame->mvbOutlier[i] == false)
+                    numberOfInliers++;
+            }
+        }
+        return numberOfInliers;
     }
 
 

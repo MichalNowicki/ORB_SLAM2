@@ -120,7 +120,15 @@ int ORBmatcher::SearchByProjection(Frame &F, const vector<MapPoint*> &vpMapPoint
             if(bestLevel==bestLevel2 && bestDist>mfNNratio*bestDist2)
                 continue;
 
-            F.mvpMapPoints[bestIdx]=pMP;
+            // Feature was not matched (only tracked) and now match to local map was found
+            // TODO: Maybe it should be done better
+            if (pMP->rescuedLast) {
+                pMP->rescuedLast = false;
+                pMP->fForRescue = static_cast<Frame*>(NULL);
+            }
+
+            F.mvpMapPoints[bestIdx] = pMP;
+            pMP->matchedLast = true;
             nmatches++;
         }
     }
@@ -1360,7 +1368,7 @@ int ORBmatcher::SearchByProjection(Frame &CurrentFrame, const Frame &LastFrame, 
             {
                 if(pMP->rescuedLast)
                     tracked++;
-                else
+                else if (pMP->matchedLast)
                     matched++;
 
                 // Project
@@ -1433,6 +1441,7 @@ int ORBmatcher::SearchByProjection(Frame &CurrentFrame, const Frame &LastFrame, 
                 if(bestDist<=TH_HIGH)
                 {
                     CurrentFrame.mvpMapPoints[bestIdx2]=pMP;
+                    pMP->matchedLast = true;
                     nmatches++;
 
                     if(mbCheckOrientation)
@@ -1466,6 +1475,7 @@ int ORBmatcher::SearchByProjection(Frame &CurrentFrame, const Frame &LastFrame, 
             {
                 for(size_t j=0, jend=rotHist[i].size(); j<jend; j++)
                 {
+                    CurrentFrame.mvpMapPoints[rotHist[i][j]]->matchedLast = false;
                     CurrentFrame.mvpMapPoints[rotHist[i][j]]=static_cast<MapPoint*>(NULL);
                     nmatches--;
                 }

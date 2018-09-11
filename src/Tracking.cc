@@ -444,6 +444,7 @@ void Tracking::Track()
                 MapPoint* pMP = mCurrentFrame.mvpMapPoints[i];
                 if(pMP) {
                     pMP->rescuedLast = false;
+                    pMP->matchedLast = false;
                     pMP->fForRescue = static_cast<Frame*>(NULL);
                     pMP->kfForRescue = static_cast<KeyFrame*>(NULL);
                     if (pMP->Observations() < 1) {
@@ -489,6 +490,14 @@ void Tracking::Track()
 
         if(!mCurrentFrame.mpReferenceKF)
             mCurrentFrame.mpReferenceKF = mpReferenceKF;
+
+
+        // We need to clear the memory
+//        for (int i = 0; i < mLastFrame.mpORBextractorLeft->photobaImagePyramid.size(); i++) {
+//            delete mLastFrame.mpORBextractorLeft->photobaImagePyramid[i];
+////            delete mCurrentFrame.mpORBextractorRight->photobaImagePyramid[i];
+//        }
+//        mLastFrame.mpORBextractorLeft->photobaImagePyramid.clear();
 
         mLastFrame = Frame(mCurrentFrame);
     }
@@ -788,20 +797,21 @@ bool Tracking::TrackReferenceKeyFrame()
     int nmatchesMap = 0;
     for(int i =0; i<mCurrentFrame.N; i++)
     {
-        if(mCurrentFrame.mvpMapPoints[i])
-        {
-            if(mCurrentFrame.mvbOutlier[i])
-            {
-                MapPoint* pMP = mCurrentFrame.mvpMapPoints[i];
+        if(mCurrentFrame.mvpMapPoints[i]) {
+            if (mCurrentFrame.mvbOutlier[i]) {
+                MapPoint *pMP = mCurrentFrame.mvpMapPoints[i];
 
-                mCurrentFrame.mvpMapPoints[i]=static_cast<MapPoint*>(NULL);
-                mCurrentFrame.mvbOutlier[i]=false;
+                mCurrentFrame.mvpMapPoints[i] = static_cast<MapPoint *>(NULL);
+                mCurrentFrame.mvbOutlier[i] = false;
                 pMP->mbTrackInView = false;
                 pMP->mnLastFrameSeen = mCurrentFrame.mnId;
                 nmatches--;
-            }
-            else if(mCurrentFrame.mvpMapPoints[i]->Observations()>0)
+            } else if (mCurrentFrame.mvpMapPoints[i]->Observations() > 0) {
                 nmatchesMap++;
+                mCurrentFrame.mvpMapPoints[i]->matchedLast = true;
+            }
+            else
+                mCurrentFrame.mvpMapPoints[i]->matchedLast = true;
         }
     }
 
@@ -819,8 +829,10 @@ void Tracking::UpdateLastFrame()
     for(int i=0;i<mLastFrame.N;i++)
     {
         MapPoint* pMP = mLastFrame.mvpMapPoints[i];
-        if (pMP)
+        if (pMP) {
             pMP->rescuedLast = false;
+            pMP->matchedLast = false;
+        }
     }
 
     if(mnLastKeyFrameId==mLastFrame.mnId || mSensor==System::MONOCULAR || !mbOnlyTracking)
@@ -914,18 +926,17 @@ bool Tracking::TrackWithMotionModel()
         return false;
 
     // TODO: Experimental
-    PhotoTracker tracker;
+    PhotoTracker tracker(10);
     int photoMatches = tracker.SearchByPhoto(mCurrentFrame, mLastFrame);
 
     std::cout<<"PoseOptimization (TrackWithMotionModel): " << std::endl << "\tmatched: " << nmatches << ", tracked: " << photoMatches << std::endl;
-    int totalMatches = nmatches + photoMatches;
 
     // Optimize frame pose with all matches
-//    Optimizer::PoseOptimization(&mCurrentFrame);
-    Optimizer::PoseOptimizationWithPhotometric(&mLastFrame, &mCurrentFrame, 4, false);
+    Optimizer::PoseOptimization(&mCurrentFrame);
+    Optimizer::PoseOptimizationWithPhotometric(&mLastFrame, &mCurrentFrame);
 
     // Discard outliers
-    int nmatchesMap = 0;
+    int nmatchesMap = 0, totalMatches = 0;
     for(int i =0; i<mCurrentFrame.N; i++)
     {
         if(mCurrentFrame.mvpMapPoints[i])
@@ -938,10 +949,13 @@ bool Tracking::TrackWithMotionModel()
                 mCurrentFrame.mvbOutlier[i]=false;
                 pMP->mbTrackInView = false;
                 pMP->mnLastFrameSeen = mCurrentFrame.mnId;
-                totalMatches--;
             }
-            else if(mCurrentFrame.mvpMapPoints[i]->Observations()>0)
+            else if(mCurrentFrame.mvpMapPoints[i]->Observations()>0) {
                 nmatchesMap++;
+                totalMatches++;
+            }
+            else
+                totalMatches++;
         }
     }
 
@@ -956,13 +970,12 @@ bool Tracking::TrackWithMotionModel()
     return nmatchesMap>=10;
 }
 
-bool Tracking::TrackLocalMap()
+bool Tracking:: TrackLocalMap()
 {
     // We have an estimation of the camera pose and some map points tracked in the frame.
     // We retrieve the local map and try to find matches to points in the local map.
 
     UpdateLocalMap();
-
     SearchLocalPoints();
 
     int featuresMatched = 0, featuresTracked = 0;
@@ -975,16 +988,17 @@ bool Tracking::TrackLocalMap()
                     if (mCurrentFrame.mvpMapPoints[i]->kfForRescue || mCurrentFrame.mvpMapPoints[i]->fForRescue)
                         WTF++;
                 }
-                else
+                if (mCurrentFrame.mvpMapPoints[i]->matchedLast)
                     featuresMatched++;
             }
         }
     }
-    std::cout<<"PoseOptimization (trackLocalMap) --- " << std::endl << "\tmatched: " << featuresMatched << ", tracked: " << featuresTracked << " " << WTF << std::endl;
+    std::cout<<"PoseOptimization (trackLocalMap) --- " << std::endl << "\tmatched: " << featuresMatched << ", tracked: "
+        << featuresTracked << " (" << WTF <<")"<< std::endl;
 
     // Optimize Pose
 //    Optimizer::PoseOptimization(&mCurrentFrame);
-    Optimizer::PoseOptimizationWithPhotometric(static_cast<Frame*>(NULL), &mCurrentFrame, 0, false);
+    Optimizer::PoseOptimizationWithPhotometric(static_cast<Frame*>(NULL), &mCurrentFrame);
     mnMatchesInliers = 0;
 
     int rescuedLastCount = 0, rescuedAtLeastOnceCount = 0;
@@ -1004,7 +1018,7 @@ bool Tracking::TrackLocalMap()
                         rescuedLastCount++;
                         mCurrentFrame.mvpMapPoints[i]->timesMatchedAfterRescue=0;
                     }
-                    else
+                    else if (mCurrentFrame.mvpMapPoints[i]->matchedLast)
                         mCurrentFrame.mvpMapPoints[i]->timesMatchedAfterRescue++;
 
                     if ( mCurrentFrame.mvpMapPoints[i]->timesMatchedAfterRescue > longestMatchAfterRescue)
@@ -1279,7 +1293,7 @@ void Tracking::SearchLocalPoints()
 
         // TODO: Tracker
 
-        PhotoTracker tracker;
+        PhotoTracker tracker(15);
         int rescued = tracker.SearchByPhoto(mCurrentFrame, mvpLocalMapPoints);
         std::cout << "\trescued matches = " << rescued << std::endl;
     }

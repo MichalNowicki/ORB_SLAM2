@@ -87,6 +87,7 @@ namespace g2o {
             if (refValue < 0 || obsValue < 0) {
                 for (int j=0;j<13;j++)
                     computedError(j,0) = 255;
+//                std::cout << "Out of image! " << lastU << " " << lastV << " vs " << currentU << " " << currentV << std::endl;
                 break;
             }
 //            std::cout << "refValue: " << refValue << " obsValue: " << obsValue << std::endl;

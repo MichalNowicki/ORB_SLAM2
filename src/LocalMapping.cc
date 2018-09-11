@@ -165,6 +165,11 @@ void LocalMapping::ProcessNewKeyFrame()
 
     // Insert Keyframe in Map
     mpMap->AddKeyFrame(mpCurrentKeyFrame);
+
+
+    // Let's remove image pyramids for old KFs
+    // TODO
+
 }
 
 void LocalMapping::MapPointCulling()
