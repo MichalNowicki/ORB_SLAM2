@@ -47,7 +47,7 @@ Frame::Frame(const Frame &frame)
      mpReferenceKF(frame.mpReferenceKF), mnScaleLevels(frame.mnScaleLevels),
      mfScaleFactor(frame.mfScaleFactor), mfLogScaleFactor(frame.mfLogScaleFactor),
      mvScaleFactors(frame.mvScaleFactors), mvInvScaleFactors(frame.mvInvScaleFactors),
-     mvLevelSigma2(frame.mvLevelSigma2), mvInvLevelSigma2(frame.mvInvLevelSigma2)
+     mvLevelSigma2(frame.mvLevelSigma2), mvInvLevelSigma2(frame.mvInvLevelSigma2), imagePyramidLeft(frame.imagePyramidLeft)
 {
     for(int i=0;i<FRAME_GRID_COLS;i++)
         for(int j=0; j<FRAME_GRID_ROWS; j++)
@@ -79,6 +79,8 @@ Frame::Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeSt
     thread threadRight(&Frame::ExtractORB,this,1,imRight);
     threadLeft.join();
     threadRight.join();
+
+    imagePyramidLeft = mpORBextractorLeft->photobaImagePyramid;
 
     N = mvKeys.size();
 
@@ -135,6 +137,8 @@ Frame::Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeSt
     // ORB extraction
     ExtractORB(0,imGray);
 
+    imagePyramidLeft = mpORBextractorLeft->photobaImagePyramid;
+
     N = mvKeys.size();
 
     if(mvKeys.empty())
@@ -189,6 +193,8 @@ Frame::Frame(const cv::Mat &imGray, const double &timeStamp, ORBextractor* extra
 
     // ORB extraction
     ExtractORB(0,imGray);
+
+    imagePyramidLeft = mpORBextractorLeft->photobaImagePyramid;
 
     N = mvKeys.size();
 

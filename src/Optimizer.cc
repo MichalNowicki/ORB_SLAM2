@@ -1349,7 +1349,7 @@ int Optimizer::OptimizeSim3(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint *> &
                             pFrame->mvbOutlier[i] = false;
 
                             // Lets add photometric constraint
-                            double invPhotoSigma2 = (1.0 / 20.0) * (1.0 / 20.0);
+                            double invPhotoSigma2 = (1.0 / 15.0) * (1.0 / 15.0);
                             g2o::EdgeSE3PhotoOnlyPoseAB *e2 = new g2o::EdgeSE3PhotoOnlyPoseAB();
                             e2->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(0)));
 
@@ -1372,7 +1372,7 @@ int Optimizer::OptimizeSim3(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint *> &
 
                             //e2->pyramidIndex = pFrame->mvKeys[i].octave;
                             e2->pyramidIndex = 3;
-                            e2->imgObs = pFrame->mpORBextractorLeft->photobaImagePyramid;
+                            e2->imgObs = pFrame->imagePyramidLeft;
 
 
                             Frame *frameToUse = static_cast<Frame*>(NULL);
@@ -1384,7 +1384,7 @@ int Optimizer::OptimizeSim3(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint *> &
 
                             // Frame2Frame
                             if(frameToUse) {
-                                e2->imgAnchor = frameToUse->mpORBextractorLeft->photobaImagePyramid;
+                                e2->imgAnchor = frameToUse->imagePyramidLeft;
 
                                 Eigen::Matrix4d poseA;
                                 cv::cv2eigen(frameToUse->mTcw, poseA);
@@ -1626,14 +1626,17 @@ int Optimizer::OptimizeSim3(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint *> &
 //                std::cout << "ERR: " << sqrt(ePhoto->chi2()) << " Locations: " << pFrame->mvKeysUn[idx].pt.x << "," << pFrame->mvKeysUn[idx].pt.y <<
 //                          " vs " <<  ePhoto->currentU << "," << ePhoto->currentV << std::endl;
 
-                // Retrieve new (u,v)
-                pFrame->mvKeysUn[idx].pt.x = ePhoto->currentU;
-                pFrame->mvKeysUn[idx].pt.y = ePhoto->currentV;
-                pFrame->mvKeys[idx].pt.x = ePhoto->currentU;
-                pFrame->mvKeys[idx].pt.y = ePhoto->currentV;
-
                 // It is a reprojection outlier but photometric inlier
-                pFrame->mvbOutlier[idx] = false;
+                if( pFrame->mvbOutlier[idx] ) {
+                    // Retrieve new (u,v)
+                    pFrame->mvKeysUn[idx].pt.x = ePhoto->currentU;
+                    pFrame->mvKeysUn[idx].pt.y = ePhoto->currentV;
+                    pFrame->mvKeys[idx].pt.x = ePhoto->currentU;
+                    pFrame->mvKeys[idx].pt.y = ePhoto->currentV;
+
+
+                    pFrame->mvbOutlier[idx] = false;
+                }
             }
 //            else
 

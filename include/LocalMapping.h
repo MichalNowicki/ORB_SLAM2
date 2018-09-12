@@ -27,6 +27,8 @@
 #include "Tracking.h"
 #include "KeyFrameDatabase.h"
 
+#include <queue>
+
 #include <mutex>
 
 
@@ -121,6 +123,9 @@ protected:
 
     bool mbAcceptKeyFrames;
     std::mutex mMutexAccept;
+
+
+    std::queue<KeyFrame*> lastKFs;
 };
 
 } //namespace ORB_SLAM

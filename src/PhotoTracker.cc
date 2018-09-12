@@ -63,7 +63,7 @@ namespace ORB_SLAM2 {
                     int pyramidIndex = kp.octave;
 
                     // Getting the image pyramid for tracking
-                    photo::imgStr *lastImage = LastFrame.mpORBextractorLeft->photobaImagePyramid[pyramidIndex];
+                    photo::imgStr *lastImage = LastFrame.imagePyramidLeft[pyramidIndex];
 
                     // Perform tracking
                     if ( trackMapPoint(pMP, CurrentFrame, featureInLast, Tba, Ka, lastImage, kp) ) {

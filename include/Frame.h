@@ -195,7 +195,9 @@ public:
 
     static bool mbInitialComputations;
 
-
+    // Image pyramids for photometric optimization
+    std::vector< photo::imgStr* > imagePyramidLeft;
+    std::vector< photo::imgStr* > imagePyramidRight;
 private:
 
     // Undistort keypoints given OpenCV distortion parameters.

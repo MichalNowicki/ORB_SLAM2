@@ -168,7 +168,19 @@ void LocalMapping::ProcessNewKeyFrame()
 
 
     // Let's remove image pyramids for old KFs
-    // TODO
+    lastKFs.push(mpCurrentKeyFrame);
+    if(lastKFs.size() > 4) {
+
+        KeyFrame *selectedKF = lastKFs.front();
+        for (int i = 0; i < selectedKF->imagePyramidLeft.size(); i++) {
+            if(selectedKF->imagePyramidLeft[i]) {
+                delete selectedKF->imagePyramidLeft[i];
+            }
+        }
+
+        selectedKF->imagePyramidLeft.clear();
+        lastKFs.pop();
+    }
 
 }
 

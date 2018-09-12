@@ -491,13 +491,11 @@ void Tracking::Track()
         if(!mCurrentFrame.mpReferenceKF)
             mCurrentFrame.mpReferenceKF = mpReferenceKF;
 
-
-        // We need to clear the memory
-//        for (int i = 0; i < mLastFrame.mpORBextractorLeft->photobaImagePyramid.size(); i++) {
-//            delete mLastFrame.mpORBextractorLeft->photobaImagePyramid[i];
-////            delete mCurrentFrame.mpORBextractorRight->photobaImagePyramid[i];
+        // We need to clear the memory - TODO: Should be done better
+//        for (int i = 0; i < mLastFrame.imagePyramidLeft.size(); i++) {
+//            delete mLastFrame.imagePyramidLeft[i];
 //        }
-//        mLastFrame.mpORBextractorLeft->photobaImagePyramid.clear();
+//        mLastFrame.imagePyramidLeft.clear();
 
         mLastFrame = Frame(mCurrentFrame);
     }
@@ -926,7 +924,7 @@ bool Tracking::TrackWithMotionModel()
         return false;
 
     // TODO: Experimental
-    PhotoTracker tracker(10);
+    PhotoTracker tracker(15);
     int photoMatches = tracker.SearchByPhoto(mCurrentFrame, mLastFrame);
 
     std::cout<<"PoseOptimization (TrackWithMotionModel): " << std::endl << "\tmatched: " << nmatches << ", tracked: " << photoMatches << std::endl;
