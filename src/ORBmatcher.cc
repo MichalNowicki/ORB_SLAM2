@@ -1482,8 +1482,6 @@ int ORBmatcher::SearchByProjection(Frame &CurrentFrame, const Frame &LastFrame, 
             }
         }
     }
-
-    std::cout << "\tinliers: " << tracked+matched << " [matched=" << matched <<", tracked=" << tracked << "]" << std::endl;
     return nmatches;
 }
 

@@ -1371,7 +1371,7 @@ int Optimizer::OptimizeSim3(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint *> &
                             e2->featureInWorld[2] = Xw.at<float>(2);
 
                             //e2->pyramidIndex = pFrame->mvKeys[i].octave;
-                            e2->pyramidIndex = 3;
+                            e2->pyramidIndex = 6;
                             e2->imgObs = pFrame->imagePyramidLeft;
 
 
@@ -1483,7 +1483,7 @@ int Optimizer::OptimizeSim3(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint *> &
         const float chi2Mono[4] = {5.991, 5.991, 5.991, 5.991};
 //        const float chi2Stereo[4] = {7.815, 7.815, 7.815, 7.815};
         const int its[4] = {10, 10, 10, 10};
-        const float photoOptimizationLvl[4] = {2, 1, 0};
+        const float photoOptimizationLvl[4] = {4, 2, 0};
 
         int nBad = 0;
         for (size_t it = 0; it < 4; it++) {

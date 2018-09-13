@@ -59,8 +59,11 @@ namespace ORB_SLAM2 {
                     // Point to track
                     cv::KeyPoint kp = LastFrame.mvKeysUn[i];
 
+
+                    // TODO: What lvl should I use?
                     // Getting the octave in last frame
-                    int pyramidIndex = kp.octave;
+//                    int pyramidIndex = kp.octave;
+                    int pyramidIndex = 2;
 
                     // Getting the image pyramid for tracking
                     photo::imgStr *lastImage = LastFrame.imagePyramidLeft[pyramidIndex];
@@ -159,7 +162,9 @@ namespace ORB_SLAM2 {
             cv::KeyPoint kp = pKF->mvKeysUn[pointInKFIndex];
 
             // Getting the octave in last frame
-            int pyramidIndex = kp.octave;
+            // TODO: What lvl should I use?
+//            int pyramidIndex = kp.octave;
+            int pyramidIndex = 2;
 
             // Getting the image pyramid for tracking
             photo::imgStr *lastImage = pKF->imagePyramidLeft[pyramidIndex];
@@ -191,8 +196,10 @@ namespace ORB_SLAM2 {
         Eigen::Matrix3d Kb = photo::getCameraMatrix(CurrentFrame.fx, CurrentFrame.fy, CurrentFrame.cx, CurrentFrame.cy);
         Eigen::Matrix3d H = photo::computeHomography(Tba, n, d, Ka, Kb);
 
+        // TODO: What lvl should I use?
         //        const int pyramidIndex = pMP->mnTrackScaleLevel; // TODO: Predicted instead of octave of detection?
-        int pyramidIndex = kp.octave;
+//        int pyramidIndex = kp.octave;
+        int pyramidIndex = 2;
 
         // Getting the image pyramids
         photo::imgStr *currentImage = CurrentFrame.mpORBextractorLeft->photobaImagePyramid[pyramidIndex];

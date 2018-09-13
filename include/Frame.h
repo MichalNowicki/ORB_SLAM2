@@ -196,6 +196,7 @@ public:
     static bool mbInitialComputations;
 
     // Image pyramids for photometric optimization
+    bool itIsKF;
     std::vector< photo::imgStr* > imagePyramidLeft;
     std::vector< photo::imgStr* > imagePyramidRight;
 private:

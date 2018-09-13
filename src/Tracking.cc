@@ -463,9 +463,10 @@ void Tracking::Track()
             mlpTemporalPoints.clear();
 
             // Check if we need to insert a new keyframe
-            if(NeedNewKeyFrame())
+            if(NeedNewKeyFrame()) {
                 CreateNewKeyFrame();
-
+                mCurrentFrame.itIsKF = true;
+            }
             // We allow points with high innovation (considererd outliers by the Huber Function)
             // pass to the new keyframe, so that bundle adjustment will finally decide
             // if they are outliers or not. We don't want next frame to estimate its position
@@ -492,11 +493,12 @@ void Tracking::Track()
             mCurrentFrame.mpReferenceKF = mpReferenceKF;
 
         // We need to clear the memory - TODO: Should be done better
-//        for (int i = 0; i < mLastFrame.imagePyramidLeft.size(); i++) {
-//            delete mLastFrame.imagePyramidLeft[i];
-//        }
-//        mLastFrame.imagePyramidLeft.clear();
-
+        if( !mLastFrame.itIsKF ) {
+//            for (int i = 0; i < mLastFrame.imagePyramidLeft.size(); i++) {
+//                delete mLastFrame.imagePyramidLeft[i];
+//            }
+//            mLastFrame.imagePyramidLeft.clear();
+        }
         mLastFrame = Frame(mCurrentFrame);
     }
 
@@ -1284,16 +1286,15 @@ void Tracking::SearchLocalPoints()
             }
         }
 
-        std::cout << "Tracking::SearchLocalPoints()" << std::endl <<"\tcandidates (nToMatch) = " << nToMatch << " (already visible = " << alreadyVisible << ")" << std::endl;
+        std::cout << "Tracking::SearchLocalPoints()" << std::endl;
+        std::cout << "\tInliers from frame2frame: " << alreadyVisible << std::endl;
+        std::cout <<" \tMap match/track candidates = " << nToMatch << std::endl;
         int succesfulMatches = matcher.SearchByProjection(mCurrentFrame,mvpLocalMapPoints,th);
-        std::cout << "\tadditional matches (nToMatch) = " << succesfulMatches << " (" << int(succesfulMatches*100.0 / nToMatch) << "%)" <<std::endl;
+        std::cout << "\tMap matches = " << succesfulMatches << std::endl;
 
-
-        // TODO: Tracker
-
-        PhotoTracker tracker(15);
-        int rescued = tracker.SearchByPhoto(mCurrentFrame, mvpLocalMapPoints);
-        std::cout << "\trescued matches = " << rescued << std::endl;
+        PhotoTracker tracker(20);
+        int trackedNo = tracker.SearchByPhoto(mCurrentFrame, mvpLocalMapPoints);
+        std::cout << "\tMap tracks = " << trackedNo << std::endl;
     }
 }
 
