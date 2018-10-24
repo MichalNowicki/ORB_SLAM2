@@ -182,6 +182,231 @@ namespace ORB_SLAM2 {
         return nmatches;
     }
 
+    int PhotoTracker::SearchByKLT(Frame &CurrentFrame, Frame &LastFrame) {
+        // Number of tracked features
+        int nmatches = 0;
+
+        // Relative transformation between frames in Eigen
+        Eigen::Matrix4d Taw = LastFrame.getPose();
+        Eigen::Matrix4d Tbw = CurrentFrame.getPose();
+        Eigen::Matrix4d Tba = Tbw * Taw.inverse();
+
+        // For KLT
+        std::vector<int> indices;
+        std::vector<cv::Point2f> prevPts, nextPts;
+
+        // For all map points observed in last frame
+        for (int i = 0; i < LastFrame.N; i++) {
+            MapPoint *pMP = LastFrame.mvpMapPoints[i];
+
+            if (pMP) {
+                if (!LastFrame.mvbOutlier[i]) {
+
+                    // Project it onto current and last frame to check if depth is positive
+                    Eigen::Vector3d featureInGlobal = pMP->GetWorldPosEigen();
+                    Eigen::Vector3d featureInLast = Taw.block<3,3>(0,0) * featureInGlobal + Taw.block<3,1>(0,3);
+                    Eigen::Vector3d featureInCurrent = Tbw.block<3,3>(0,0) * featureInGlobal + Tbw.block<3,1>(0,3);
+                    if (featureInCurrent(3) < 0 || featureInLast(3) < 0)
+                        continue;
+
+                    /// Information about last frame needed for tracking
+                    // Camera matrix
+                    Eigen::Matrix3d Ka = photo::getCameraMatrix(LastFrame.fx, LastFrame.fy, LastFrame.cx, LastFrame.cy);
+
+                    Eigen::Vector3d projectedInCurrent = Ka * featureInCurrent;
+                    projectedInCurrent = projectedInCurrent / projectedInCurrent(2);
+
+                    // Projection onto the current image
+                    cv::Point2f point;
+                    point.x = projectedInCurrent(0);
+                    point.y = projectedInCurrent(1);
+
+                    if(point.x<CurrentFrame.mnMinX || point.x>CurrentFrame.mnMaxX)
+                        continue;
+                    if(point.y<CurrentFrame.mnMinY || point.y>CurrentFrame.mnMaxY)
+                        continue;
+
+                    // Point to track in previous and in current
+                    cv::KeyPoint kp = LastFrame.mvKeysUn[i];
+                    //std::cout << "Comparison : " << kp.pt.x << " " << kp.pt.y << " --- " << projectedInCurrent(0) << " " << projectedInCurrent(1) << std::endl;
+
+                    prevPts.push_back(kp.pt);
+                    nextPts.push_back(point);
+                    indices.push_back(i);
+                }
+            }
+        }
+
+        /*  KLT TRACKING
+         *      Size 	winSize = Size(21, 21),
+                int 	maxLevel = 3,
+                TermCriteria 	criteria = TermCriteria(TermCriteria::COUNT+TermCriteria::EPS, 30, 0.01),
+                int 	flags = 0,
+                double 	minEigThreshold = 1e-4
+         */
+        vector<uchar> status;
+        vector<float> err;
+//        cv::calcOpticalFlowPyrLK(LastFrame.origImg, CurrentFrame.origImg,
+//                 	prevPts, nextPts, status, err, cv::Size(9,9), 3,
+//                 	cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, 30, 0.01), cv::OPTFLOW_USE_INITIAL_FLOW);
+
+        cv::calcOpticalFlowPyrLK(LastFrame.origImgPyramid, CurrentFrame.origImgPyramid,
+                                 prevPts, nextPts, status, err, cv::Size(9,9), 3,
+                                 cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, 30, 0.01), cv::OPTFLOW_USE_INITIAL_FLOW);
+
+
+        int extra = 0;
+        for(int i=0;i<status.size();i++) {
+            if (status[i]) {
+
+                nmatches++;
+                int index = indices[i];
+
+                MapPoint *pMP = LastFrame.mvpMapPoints[index];
+
+                // Add artificial feature if it was not matched with descriptors
+                if (!pMP->matchedLast) {
+
+                    // Informing about the state
+                    pMP->rescuedLast = true;
+                    pMP->rescuedAtLeastOnce = true;
+
+                    pMP->fForRescue = &LastFrame;
+                    pMP->kfForRescue = static_cast<KeyFrame*>(NULL);
+                    pMP->featureIndexForRescue = index;
+
+                    cv::KeyPoint kp = LastFrame.mvKeysUn[index];
+                    addTrackedMapPoint(CurrentFrame, pMP, kp, nextPts[i].x, nextPts[i].y);
+
+                    // TODO: For now duplicating the last descriptor
+                    CurrentFrame.mDescriptors.row(CurrentFrame.mDescriptors.rows-1) = LastFrame.mDescriptors.row(index);
+
+                    extra++;
+                }
+            }
+
+
+        }
+
+        std::cout << "Tracked: " << nmatches << " out of " << status.size() << " | Extra: " << extra << std::endl;
+
+        return nmatches;
+    }
+
+    int PhotoTracker::SearchByKLT(Frame &CurrentFrame, const vector<MapPoint*> &vpMapPoints) {
+        // Number of tracked features
+        int nmatches=0;
+
+        // Current frame position
+        Eigen::Matrix4d Taw, Tbw = CurrentFrame.getPose();
+
+        // For all neighbouring features
+        for(size_t iMP=0; iMP<vpMapPoints.size(); iMP++) {
+            MapPoint *pMP = vpMapPoints[iMP];
+
+            // Feature was not projected onto current frame
+            if (!pMP->mbTrackInView)
+                continue;
+
+            if (pMP->isBad())
+                continue;
+
+            // Let's not consider already matched & tracked features in previous VO step
+//            if (pMP->matchedLast || pMP->rescuedLast)
+//                break;
+
+            // Project it onto current and last frame to check if depth is positive
+            Eigen::Vector3d featureInGlobal = pMP->GetWorldPosEigen();
+            Eigen::Vector3d featureInLast, featureInCurrent = Tbw.block<3,3>(0,0) * featureInGlobal + Tbw.block<3,1>(0,3);
+            if (featureInCurrent(3) < 0)
+                continue;
+
+            // Selecting the frame for tracking - one with the closest viewing angle that still contains image
+            std::map<KeyFrame*,size_t> observations = pMP->GetObservations();
+
+            KeyFrame* pKF = static_cast<KeyFrame*>(NULL);
+            int pointInKFIndex = 0;
+            double bestAngle = 2;
+            for(map<KeyFrame*,size_t>::iterator mit=observations.begin(), mend=observations.end(); mit!=mend; mit++)
+            {
+                KeyFrame* tmpKF = mit->first;
+
+                if (!tmpKF->origImg.empty())
+                {
+                    // Last frame position
+                    Taw = tmpKF->GetPoseEigen();
+
+                    // Feature in last frame
+                    featureInLast = Taw.block<3,3>(0,0) * featureInGlobal + Taw.block<3,1>(0,3);
+
+                    // Is depth positive
+                    if (featureInLast(3) < 0)
+                        continue;
+
+                    // Computing the difference between observation angles
+                    double diffCos = 1 - featureInLast.dot(featureInCurrent) / featureInLast.norm() / featureInCurrent.norm();
+
+                    // We found a better KF for photo tracking
+                    if (bestAngle > diffCos)
+                    {
+                        bestAngle = diffCos;
+                        pKF = tmpKF;
+                        pointInKFIndex = mit->second;
+                    }
+                }
+            }
+            if (!pKF)
+                continue;
+
+            /// Information about last frame needed for tracking
+            // Camera matrix
+            Eigen::Matrix3d Ka = photo::getCameraMatrix(CurrentFrame.fx, CurrentFrame.fy, CurrentFrame.cx, CurrentFrame.cy);
+
+            Eigen::Vector3d projectedInCurrent = Ka * featureInCurrent;
+            projectedInCurrent = projectedInCurrent / projectedInCurrent(2);
+
+            // Projection onto the current image
+            cv::Point2f point;
+            point.x = projectedInCurrent(0);
+            point.y = projectedInCurrent(1);
+
+            if(point.x<CurrentFrame.mnMinX || point.x>CurrentFrame.mnMaxX)
+                continue;
+            if(point.y<CurrentFrame.mnMinY || point.y>CurrentFrame.mnMaxY)
+                continue;
+
+
+            // Point to track
+            cv::KeyPoint kp = pKF->mvKeysUn[pointInKFIndex];
+
+
+            /*  KLT TRACKING
+                    Size 	winSize = Size(21, 21),
+                    int 	maxLevel = 3,
+                    TermCriteria 	criteria = TermCriteria(TermCriteria::COUNT+TermCriteria::EPS, 30, 0.01),
+                    int 	flags = 0,
+                    double 	minEigThreshold = 1e-4
+            */
+            vector<uchar> status;
+            vector<float> err;
+            vector<cv::Point2f> prevPts, nextPts;
+            prevPts.push_back(kp.pt);
+            nextPts.push_back(point);
+
+            cv::calcOpticalFlowPyrLK(pKF->origImg, CurrentFrame.origImg,
+                                     prevPts, nextPts, status, err, cv::Size(9,9), 3,
+                                     cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, 30, 0.01), cv::OPTFLOW_USE_INITIAL_FLOW);
+
+            if (status[0])
+            {
+                nmatches++;
+                // TODO: Do all necessary steps to make it work with remaining steps
+            }
+        }
+
+        return nmatches;
+    }
+
     bool PhotoTracker::trackMapPoint(MapPoint *pMP, Frame &CurrentFrame,
             Eigen::Vector3d featureInLast, Eigen::Matrix4d Tba, Eigen::Matrix3d Ka,
             photo::imgStr *lastImage, cv::KeyPoint kp) {

@@ -197,6 +197,9 @@ public:
     std::vector< photo::imgStr* > imagePyramidLeft;
     std::vector< photo::imgStr* > imagePyramidRight;
 
+    // Original image for tracking purposes
+    cv::Mat origImg;
+
     // The following variables need to be accessed trough a mutex to be thread safe.
 protected:
 

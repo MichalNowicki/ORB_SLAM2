@@ -148,6 +148,11 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
             mDepthMapFactor = 1.0f/mDepthMapFactor;
     }
 
+
+    voTrackingRateStream.open("logs/voTrackingRate.txt");
+    voMatchingRateStream.open("logs/voMatchingRate.txt");
+    mapTrackingRateStream.open("logs/mapTrackingRate.txt");
+    mapMatchingRateStream.open("logs/mapMatchingRate.txt");
 }
 
 void Tracking::SetLocalMapper(LocalMapping *pLocalMapper)
@@ -927,13 +932,29 @@ bool Tracking::TrackWithMotionModel()
 
     // TODO: Experimental
     PhotoTracker tracker(15);
-    int photoMatches = tracker.SearchByPhoto(mCurrentFrame, mLastFrame);
+//    int photoMatches = tracker.SearchByPhoto(mCurrentFrame, mLastFrame);
+
+    int photoMatches = tracker.SearchByKLT(mCurrentFrame, mLastFrame);
 
     std::cout<<"PoseOptimization (TrackWithMotionModel): " << std::endl << "\tmatched: " << nmatches << ", tracked: " << photoMatches << std::endl;
 
+    int count = 0;
+    for (int i = 0; i < mLastFrame.N; i++) {
+        MapPoint *pMP = mLastFrame.mvpMapPoints[i];
+
+        if (pMP) {
+            if (!mLastFrame.mvbOutlier[i]) {
+                count++;
+            }
+        }
+    }
+    voMatchingRateStream << double(nmatches) / count << std::endl;
+    voTrackingRateStream << double(photoMatches) / count << std::endl;
+
     // Optimize frame pose with all matches
     Optimizer::PoseOptimization(&mCurrentFrame);
-    Optimizer::PoseOptimizationWithPhotometric(&mLastFrame, &mCurrentFrame);
+//    Optimizer::PoseOptimizationWithPhotometric(&mLastFrame, &mCurrentFrame);
+
 
     // Discard outliers
     int nmatchesMap = 0, totalMatches = 0;
@@ -997,8 +1018,8 @@ bool Tracking:: TrackLocalMap()
         << featuresTracked << " (" << WTF <<")"<< std::endl;
 
     // Optimize Pose
-//    Optimizer::PoseOptimization(&mCurrentFrame);
-    Optimizer::PoseOptimizationWithPhotometric(static_cast<Frame*>(NULL), &mCurrentFrame);
+    Optimizer::PoseOptimization(&mCurrentFrame);
+//    Optimizer::PoseOptimizationWithPhotometric(static_cast<Frame*>(NULL), &mCurrentFrame);
     mnMatchesInliers = 0;
 
     int rescuedLastCount = 0, rescuedAtLeastOnceCount = 0;
@@ -1044,9 +1065,6 @@ bool Tracking:: TrackLocalMap()
              " [rescuedLastCount="<<rescuedLastCount<<", rescuedAtLeastOnceCount=" << rescuedAtLeastOnceCount<<"]" << std::endl;
     std::cout <<"\tlongestMatchAfterRescue = " << longestMatchAfterRescue <<std::endl;
 
-
-    int abc;
-    std::cin >> abc;
 
     // Decide if the tracking was succesful
     // More restrictive if there was a relocalization recently
@@ -1291,10 +1309,13 @@ void Tracking::SearchLocalPoints()
         std::cout <<" \tMap match/track candidates = " << nToMatch << std::endl;
         int succesfulMatches = matcher.SearchByProjection(mCurrentFrame,mvpLocalMapPoints,th);
         std::cout << "\tMap matches = " << succesfulMatches << std::endl;
+        mapMatchingRateStream << double(succesfulMatches)/nToMatch << std::endl;
 
         PhotoTracker tracker(20);
-        int trackedNo = tracker.SearchByPhoto(mCurrentFrame, mvpLocalMapPoints);
+//        int trackedNo = tracker.SearchByPhoto(mCurrentFrame, mvpLocalMapPoints);
+        int trackedNo = tracker.SearchByKLT(mCurrentFrame, mvpLocalMapPoints);
         std::cout << "\tMap tracks = " << trackedNo << std::endl;
+        mapTrackingRateStream << double(trackedNo)/nToMatch << std::endl;
     }
 }
 

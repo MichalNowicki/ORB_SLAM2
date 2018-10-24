@@ -58,6 +58,8 @@ KeyFrame::KeyFrame(Frame &F, Map *pMap, KeyFrameDatabase *pKFDB):
     imagePyramidLeft = F.imagePyramidLeft;
     if (F.mpORBextractorRight)
         imagePyramidRight = F.imagePyramidLeft;
+
+    origImg = F.origImg;
 }
 
 void KeyFrame::ComputeBoW()

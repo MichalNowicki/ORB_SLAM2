@@ -37,6 +37,7 @@
 #include "Initializer.h"
 #include "MapDrawer.h"
 #include "System.h"
+#include <fstream>
 
 #include <mutex>
 
@@ -214,6 +215,10 @@ protected:
     bool mbRGB;
 
     list<MapPoint*> mlpTemporalPoints;
+
+
+    // TODO: Remove later
+    std::ofstream voTrackingRateStream, voMatchingRateStream, mapTrackingRateStream, mapMatchingRateStream;
 };
 
 } //namespace ORB_SLAM

@@ -28,6 +28,10 @@ namespace ORB_SLAM2 {
         // Performs tracking of mappoint found in neighbouring KFs
         int SearchByPhoto(Frame &CurrentFrame, const vector<MapPoint*> &vpMapPoints);
 
+        // KLT
+        int SearchByKLT(Frame &CurrentFrame, Frame &LastFrame);
+        int SearchByKLT(Frame &CurrentFrame, const vector<MapPoint*> &vpMapPoints);
+
     private:
 
         // Add tracked map point to currently observed

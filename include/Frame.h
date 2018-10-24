@@ -199,6 +199,11 @@ public:
     bool itIsKF;
     std::vector< photo::imgStr* > imagePyramidLeft;
     std::vector< photo::imgStr* > imagePyramidRight;
+
+    // Image for LK tracker
+    cv::Mat origImg;
+    std::vector<cv::Mat> origImgPyramid;
+
 private:
 
     // Undistort keypoints given OpenCV distortion parameters.

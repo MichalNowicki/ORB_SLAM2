@@ -58,6 +58,7 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/features2d/features2d.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/video/tracking.hpp>
 #include <vector>
 
 #include "ORBextractor.h"
@@ -1053,7 +1054,10 @@ void ORBextractor::operator()( InputArray _image, InputArray _mask, vector<KeyPo
     ComputePyramid(image);
 
     // Pre-compute the image gradient and floating-point pyramid
-    ComputePhotometricBAPyramid(image);
+    //ComputePhotometricBAPyramid(image);
+
+    // Pre-compute the image pyramid for the LK tracker
+    ComputeLKPyramid(image);
 
     vector < vector<KeyPoint> > allKeypoints;
     ComputeKeyPointsOctTree(allKeypoints);
@@ -1187,6 +1191,12 @@ void ORBextractor::ComputePyramid(cv::Mat image)
                 }
         }
 
+    }
+
+    void ORBextractor::ComputeLKPyramid(cv::Mat image) {
+        // TODO: We could recompute LK pyramid if needed
+        origImg = image;
+        cv::buildOpticalFlowPyramid(image, origImgPyramid, cv::Size(9, 9), 3, true);
     }
 
 } //namespace ORB_SLAM
