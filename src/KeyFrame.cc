@@ -60,6 +60,7 @@ KeyFrame::KeyFrame(Frame &F, Map *pMap, KeyFrameDatabase *pKFDB):
         imagePyramidRight = F.imagePyramidLeft;
 
     origImg = F.origImg;
+    origImgPyramid = F.origImgPyramid;
 }
 
 void KeyFrame::ComputeBoW()

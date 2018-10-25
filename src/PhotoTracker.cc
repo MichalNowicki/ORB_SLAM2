@@ -27,6 +27,12 @@ namespace ORB_SLAM2 {
         neighbours.push_back(make_pair(1, 1));
 
         neighbours.push_back(make_pair(0, 2));
+
+
+        // KLT threshold
+        kltMaxIterations = 30;
+        kltEPS = 0.01;
+        kltError = 4;
     }
 
     int PhotoTracker::SearchByPhoto(Frame &CurrentFrame, Frame &LastFrame) {
@@ -252,45 +258,54 @@ namespace ORB_SLAM2 {
 
         cv::calcOpticalFlowPyrLK(LastFrame.origImgPyramid, CurrentFrame.origImgPyramid,
                                  prevPts, nextPts, status, err, cv::Size(9,9), 3,
-                                 cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, 30, 0.01), cv::OPTFLOW_USE_INITIAL_FLOW);
+                                 cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, kltMaxIterations, kltEPS), cv::OPTFLOW_USE_INITIAL_FLOW);
+
+        cv::imwrite("logs/last.png", LastFrame.origImgPyramid[0]);
+        cv::imwrite("logs/current.png", CurrentFrame.origImgPyramid[0]);
 
 
-        int extra = 0;
+        int belowThCount = 0, extra = 0;
         for(int i=0;i<status.size();i++) {
             if (status[i]) {
 
                 nmatches++;
-                int index = indices[i];
 
-                MapPoint *pMP = LastFrame.mvpMapPoints[index];
+                if (err[i] < kltError) {
+                    belowThCount++;
 
-                // Add artificial feature if it was not matched with descriptors
-                if (!pMP->matchedLast) {
 
-                    // Informing about the state
-                    pMP->rescuedLast = true;
-                    pMP->rescuedAtLeastOnce = true;
+                    int index = indices[i];
 
-                    pMP->fForRescue = &LastFrame;
-                    pMP->kfForRescue = static_cast<KeyFrame*>(NULL);
-                    pMP->featureIndexForRescue = index;
+                    MapPoint *pMP = LastFrame.mvpMapPoints[index];
 
-                    cv::KeyPoint kp = LastFrame.mvKeysUn[index];
-                    addTrackedMapPoint(CurrentFrame, pMP, kp, nextPts[i].x, nextPts[i].y);
+                    // Add artificial feature if it was not matched with descriptors
+                    if (!pMP->matchedLast) {
 
-                    // TODO: For now duplicating the last descriptor
-                    CurrentFrame.mDescriptors.row(CurrentFrame.mDescriptors.rows-1) = LastFrame.mDescriptors.row(index);
+                        // Informing about the state
+                        pMP->rescuedLast = true;
+                        pMP->rescuedAtLeastOnce = true;
 
-                    extra++;
+                        pMP->fForRescue = &LastFrame;
+                        pMP->kfForRescue = static_cast<KeyFrame *>(NULL);
+                        pMP->featureIndexForRescue = index;
+
+                        cv::KeyPoint kp = LastFrame.mvKeysUn[index];
+                        addTrackedMapPoint(CurrentFrame, pMP, kp, nextPts[i].x, nextPts[i].y);
+
+                        // TODO: For now duplicating the last descriptor
+                        CurrentFrame.mDescriptors.row(CurrentFrame.mDescriptors.rows - 1) = LastFrame.mDescriptors.row(
+                                index);
+
+                        extra++;
+                    }
                 }
             }
-
-
         }
 
-        std::cout << "Tracked: " << nmatches << " out of " << status.size() << " | Extra: " << extra << std::endl;
+        std::cout << "Tracked: " << nmatches << " below thr: " << belowThCount << " out of " << status.size() << " | Extra: " << extra << std::endl;
 
-        return nmatches;
+//        exit(0);
+        return belowThCount;
     }
 
     int PhotoTracker::SearchByKLT(Frame &CurrentFrame, const vector<MapPoint*> &vpMapPoints) {
@@ -393,14 +408,29 @@ namespace ORB_SLAM2 {
             prevPts.push_back(kp.pt);
             nextPts.push_back(point);
 
-            cv::calcOpticalFlowPyrLK(pKF->origImg, CurrentFrame.origImg,
+//            cv::calcOpticalFlowPyrLK(pKF->origImg, CurrentFrame.origImg,
+//                                     prevPts, nextPts, status, err, cv::Size(9,9), 3,
+//                                     cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, 30, 0.01), cv::OPTFLOW_USE_INITIAL_FLOW);
+
+            cv::calcOpticalFlowPyrLK(pKF->origImgPyramid, CurrentFrame.origImgPyramid,
                                      prevPts, nextPts, status, err, cv::Size(9,9), 3,
-                                     cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, 30, 0.01), cv::OPTFLOW_USE_INITIAL_FLOW);
+                                     cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, kltMaxIterations, kltEPS), cv::OPTFLOW_USE_INITIAL_FLOW);
 
             if (status[0])
             {
                 nmatches++;
-                // TODO: Do all necessary steps to make it work with remaining steps
+
+                // Informing about the state
+                pMP->rescuedLast = true;
+                pMP->rescuedAtLeastOnce = true;
+                pMP->fForRescue = static_cast<Frame*>(NULL);
+                pMP->kfForRescue = pKF;
+                pMP->featureIndexForRescue = pointInKFIndex;
+
+                addTrackedMapPoint(CurrentFrame, pMP, kp, nextPts[0].x, nextPts[0].y);
+
+                // TODO: For now duplicating the last descriptor
+                CurrentFrame.mDescriptors.row(CurrentFrame.mDescriptors.rows-1) = pKF->mDescriptors.row(pointInKFIndex);
             }
         }
 

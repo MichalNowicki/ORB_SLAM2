@@ -1196,6 +1196,7 @@ void ORBextractor::ComputePyramid(cv::Mat image)
     void ORBextractor::ComputeLKPyramid(cv::Mat image) {
         // TODO: We could recompute LK pyramid if needed
         origImg = image;
+        origImgPyramid.clear();
         cv::buildOpticalFlowPyramid(image, origImgPyramid, cv::Size(9, 9), 3, true);
     }
 

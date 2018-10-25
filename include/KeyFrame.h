@@ -199,6 +199,7 @@ public:
 
     // Original image for tracking purposes
     cv::Mat origImg;
+    std::vector<cv::Mat> origImgPyramid;
 
     // The following variables need to be accessed trough a mutex to be thread safe.
 protected:

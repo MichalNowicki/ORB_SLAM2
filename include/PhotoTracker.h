@@ -50,6 +50,11 @@ namespace ORB_SLAM2 {
         // Photometric error threshold to rescue feature
         double photoThreshold;
 
+        // KLT threshold
+        int kltMaxIterations;
+        double kltEPS;
+        double kltError;
+
     };
 } // namespace ORB_SLAM
 #endif //ORB_SLAM2_PHOTOTRACKER_H
