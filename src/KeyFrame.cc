@@ -59,7 +59,6 @@ KeyFrame::KeyFrame(Frame &F, Map *pMap, KeyFrameDatabase *pKFDB):
     if (F.mpORBextractorRight)
         imagePyramidRight = F.imagePyramidLeft;
 
-    origImg = F.origImg;
     origImgPyramid = F.origImgPyramid;
 }
 

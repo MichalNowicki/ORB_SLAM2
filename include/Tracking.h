@@ -218,7 +218,7 @@ protected:
 
 
     // TODO: Remove later
-    std::ofstream voTrackingRateStream, voMatchingRateStream, mapTrackingRateStream, mapMatchingRateStream;
+    std::ofstream voInlierCountStream, mapInlierCountStream;
 };
 
 } //namespace ORB_SLAM

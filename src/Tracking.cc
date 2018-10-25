@@ -148,11 +148,8 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
             mDepthMapFactor = 1.0f/mDepthMapFactor;
     }
 
-
-    voTrackingRateStream.open("logs/voTrackingRate.txt");
-    voMatchingRateStream.open("logs/voMatchingRate.txt");
-    mapTrackingRateStream.open("logs/mapTrackingRate.txt");
-    mapMatchingRateStream.open("logs/mapMatchingRate.txt");
+    voInlierCountStream.open("logs/voInlierCount.txt");
+    mapInlierCountStream.open("logs/mapInlierCount.txt");
 }
 
 void Tracking::SetLocalMapper(LocalMapping *pLocalMapper)
@@ -948,8 +945,6 @@ bool Tracking::TrackWithMotionModel()
             }
         }
     }
-    voMatchingRateStream << double(nmatches) / count << std::endl;
-    voTrackingRateStream << double(photoMatches) / count << std::endl;
 
     // Optimize frame pose with all matches
     Optimizer::PoseOptimization(&mCurrentFrame);
@@ -982,6 +977,9 @@ bool Tracking::TrackWithMotionModel()
 
     std::cout<<"\tinliers: " << totalMatches << std::endl;
 
+    // Matching / Tracking / Inliers / ALL
+    voInlierCountStream << nmatches << " " << photoMatches << " " << totalMatches << " " << count << std::endl;
+
     if(mbOnlyTracking)
     {
         mbVO = nmatchesMap<10;
@@ -999,11 +997,12 @@ bool Tracking:: TrackLocalMap()
     UpdateLocalMap();
     SearchLocalPoints();
 
-    int featuresMatched = 0, featuresTracked = 0;
+    int featuresMatched = 0, featuresTracked = 0, count = 0;
     int WTF = 0;
     for(int i=0; i<mCurrentFrame.N; i++) {
         if (mCurrentFrame.mvpMapPoints[i]) {
             if (!mCurrentFrame.mvbOutlier[i]) {
+                count++;
                 if (mCurrentFrame.mvpMapPoints[i]->rescuedLast) {
                     featuresTracked++;
                     if (mCurrentFrame.mvpMapPoints[i]->kfForRescue || mCurrentFrame.mvpMapPoints[i]->fForRescue)
@@ -1065,6 +1064,8 @@ bool Tracking:: TrackLocalMap()
              " [rescuedLastCount="<<rescuedLastCount<<", rescuedAtLeastOnceCount=" << rescuedAtLeastOnceCount<<"]" << std::endl;
     std::cout <<"\tlongestMatchAfterRescue = " << longestMatchAfterRescue <<std::endl;
 
+
+    mapInlierCountStream << mnMatchesInliers << " " << count << std::endl;
 
     // Decide if the tracking was succesful
     // More restrictive if there was a relocalization recently
@@ -1311,13 +1312,13 @@ void Tracking::SearchLocalPoints()
         std::cout <<" \tMap match/track candidates = " << nToMatch << std::endl;
         int succesfulMatches = matcher.SearchByProjection(mCurrentFrame,mvpLocalMapPoints,th);
         std::cout << "\tMap matches = " << succesfulMatches << std::endl;
-        mapMatchingRateStream << double(succesfulMatches)/nToMatch << std::endl;
+        mapInlierCountStream << double(succesfulMatches) << " ";
 
         PhotoTracker tracker(20);
 //        int trackedNo = tracker.SearchByPhoto(mCurrentFrame, mvpLocalMapPoints);
         int trackedNo = tracker.SearchByKLT(mCurrentFrame, mvpLocalMapPoints);
         std::cout << "\tMap tracks = " << trackedNo << std::endl;
-        mapTrackingRateStream << double(trackedNo)/nToMatch << std::endl;
+        mapInlierCountStream << double(trackedNo) << " " << nToMatch << " " ;
     }
 }
 

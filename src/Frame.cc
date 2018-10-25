@@ -48,7 +48,7 @@ Frame::Frame(const Frame &frame)
      mfScaleFactor(frame.mfScaleFactor), mfLogScaleFactor(frame.mfLogScaleFactor),
      mvScaleFactors(frame.mvScaleFactors), mvInvScaleFactors(frame.mvInvScaleFactors),
      mvLevelSigma2(frame.mvLevelSigma2), mvInvLevelSigma2(frame.mvInvLevelSigma2), imagePyramidLeft(frame.imagePyramidLeft),
-     itIsKF(frame.itIsKF), origImg(frame.origImg), origImgPyramid(frame.origImgPyramid)
+     itIsKF(frame.itIsKF), origImgPyramid(frame.origImgPyramid)
 {
     for(int i=0;i<FRAME_GRID_COLS;i++)
         for(int j=0; j<FRAME_GRID_ROWS; j++)
@@ -85,7 +85,6 @@ Frame::Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeSt
     imagePyramidLeft = mpORBextractorLeft->photobaImagePyramid;
 
     // Copying the original image
-    origImg = mpORBextractorLeft->origImg;
     origImgPyramid = mpORBextractorLeft->origImgPyramid;
 
     N = mvKeys.size();
@@ -146,8 +145,7 @@ Frame::Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeSt
     // Copying pyramid for photometric calibration
     imagePyramidLeft = mpORBextractorLeft->photobaImagePyramid;
 
-    // Copying the original image
-    origImg = mpORBextractorLeft->origImg;
+    // Copying the original image pyramid
     origImgPyramid = mpORBextractorLeft->origImgPyramid;
 
     N = mvKeys.size();
@@ -208,8 +206,7 @@ Frame::Frame(const cv::Mat &imGray, const double &timeStamp, ORBextractor* extra
     // Copying pyramid for photometric calibration
     imagePyramidLeft = mpORBextractorLeft->photobaImagePyramid;
 
-    // Copying the original image
-    origImg = mpORBextractorLeft->origImg;
+    // Copying the original image pyramid
     origImgPyramid = mpORBextractorLeft->origImgPyramid;
 
     N = mvKeys.size();

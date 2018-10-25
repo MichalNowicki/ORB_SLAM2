@@ -32,7 +32,7 @@ namespace ORB_SLAM2 {
         // KLT threshold
         kltMaxIterations = 30;
         kltEPS = 0.01;
-        kltError = 4;
+        kltError = 9;
     }
 
     int PhotoTracker::SearchByPhoto(Frame &CurrentFrame, Frame &LastFrame) {
@@ -252,16 +252,12 @@ namespace ORB_SLAM2 {
          */
         vector<uchar> status;
         vector<float> err;
-//        cv::calcOpticalFlowPyrLK(LastFrame.origImg, CurrentFrame.origImg,
-//                 	prevPts, nextPts, status, err, cv::Size(9,9), 3,
-//                 	cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, 30, 0.01), cv::OPTFLOW_USE_INITIAL_FLOW);
-
         cv::calcOpticalFlowPyrLK(LastFrame.origImgPyramid, CurrentFrame.origImgPyramid,
                                  prevPts, nextPts, status, err, cv::Size(9,9), 3,
                                  cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, kltMaxIterations, kltEPS), cv::OPTFLOW_USE_INITIAL_FLOW);
 
-        cv::imwrite("logs/last.png", LastFrame.origImgPyramid[0]);
-        cv::imwrite("logs/current.png", CurrentFrame.origImgPyramid[0]);
+//        cv::imwrite("logs/last.png", LastFrame.origImgPyramid[0]);
+//        cv::imwrite("logs/current.png", CurrentFrame.origImgPyramid[0]);
 
 
         int belowThCount = 0, extra = 0;
@@ -346,7 +342,7 @@ namespace ORB_SLAM2 {
             {
                 KeyFrame* tmpKF = mit->first;
 
-                if (!tmpKF->origImg.empty())
+                if (!tmpKF->origImgPyramid.empty())
                 {
                     // Last frame position
                     Taw = tmpKF->GetPoseEigen();
@@ -408,15 +404,11 @@ namespace ORB_SLAM2 {
             prevPts.push_back(kp.pt);
             nextPts.push_back(point);
 
-//            cv::calcOpticalFlowPyrLK(pKF->origImg, CurrentFrame.origImg,
-//                                     prevPts, nextPts, status, err, cv::Size(9,9), 3,
-//                                     cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, 30, 0.01), cv::OPTFLOW_USE_INITIAL_FLOW);
-
             cv::calcOpticalFlowPyrLK(pKF->origImgPyramid, CurrentFrame.origImgPyramid,
                                      prevPts, nextPts, status, err, cv::Size(9,9), 3,
                                      cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, kltMaxIterations, kltEPS), cv::OPTFLOW_USE_INITIAL_FLOW);
 
-            if (status[0])
+            if (status[0] && err[0] < kltError)
             {
                 nmatches++;
 

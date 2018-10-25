@@ -200,8 +200,7 @@ public:
     std::vector< photo::imgStr* > imagePyramidLeft;
     std::vector< photo::imgStr* > imagePyramidRight;
 
-    // Image for LK tracker
-    cv::Mat origImg;
+    // Image pyramid for LK tracker
     std::vector<cv::Mat> origImgPyramid;
 
 private:
