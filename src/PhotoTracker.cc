@@ -3,7 +3,8 @@
 namespace ORB_SLAM2 {
 
 
-    PhotoTracker::PhotoTracker(double photoThreshold) : photoThreshold(photoThreshold) {
+    PhotoTracker::PhotoTracker(double photoThreshold, int kltMaxIterations, double kltEPS, double kltError) :
+        photoThreshold(photoThreshold), kltMaxIterations(kltMaxIterations), kltEPS(kltEPS), kltError(kltError) {
 
         //   x
         //  xxx
@@ -27,12 +28,6 @@ namespace ORB_SLAM2 {
         neighbours.push_back(make_pair(1, 1));
 
         neighbours.push_back(make_pair(0, 2));
-
-
-        // KLT threshold
-        kltMaxIterations = 30;
-        kltEPS = 0.01;
-        kltError = 9;
     }
 
     int PhotoTracker::SearchByPhoto(Frame &CurrentFrame, Frame &LastFrame) {
@@ -188,7 +183,7 @@ namespace ORB_SLAM2 {
         return nmatches;
     }
 
-    int PhotoTracker::SearchByKLT(Frame &CurrentFrame, Frame &LastFrame) {
+    std::pair<int,int> PhotoTracker::SearchByKLT(Frame &CurrentFrame, Frame &LastFrame) {
         // Number of tracked features
         int nmatches = 0;
 
@@ -208,37 +203,43 @@ namespace ORB_SLAM2 {
             if (pMP) {
                 if (!LastFrame.mvbOutlier[i]) {
 
-                    // Project it onto current and last frame to check if depth is positive
-                    Eigen::Vector3d featureInGlobal = pMP->GetWorldPosEigen();
-                    Eigen::Vector3d featureInLast = Taw.block<3,3>(0,0) * featureInGlobal + Taw.block<3,1>(0,3);
-                    Eigen::Vector3d featureInCurrent = Tbw.block<3,3>(0,0) * featureInGlobal + Tbw.block<3,1>(0,3);
-                    if (featureInCurrent(3) < 0 || featureInLast(3) < 0)
-                        continue;
+                    // TODO: Do only tracking if matching failed
+//                    if (!pMP->matchedLast) {
 
-                    /// Information about last frame needed for tracking
-                    // Camera matrix
-                    Eigen::Matrix3d Ka = photo::getCameraMatrix(LastFrame.fx, LastFrame.fy, LastFrame.cx, LastFrame.cy);
+                        // Project it onto current and last frame to check if depth is positive
+                        Eigen::Vector3d featureInGlobal = pMP->GetWorldPosEigen();
+                        Eigen::Vector3d featureInLast = Taw.block<3, 3>(0, 0) * featureInGlobal + Taw.block<3, 1>(0, 3);
+                        Eigen::Vector3d featureInCurrent =
+                                Tbw.block<3, 3>(0, 0) * featureInGlobal + Tbw.block<3, 1>(0, 3);
+                        if (featureInCurrent(3) < 0 || featureInLast(3) < 0)
+                            continue;
 
-                    Eigen::Vector3d projectedInCurrent = Ka * featureInCurrent;
-                    projectedInCurrent = projectedInCurrent / projectedInCurrent(2);
+                        /// Information about last frame needed for tracking
+                        // Camera matrix
+                        Eigen::Matrix3d Ka = photo::getCameraMatrix(LastFrame.fx, LastFrame.fy, LastFrame.cx,
+                                                                    LastFrame.cy);
 
-                    // Projection onto the current image
-                    cv::Point2f point;
-                    point.x = projectedInCurrent(0);
-                    point.y = projectedInCurrent(1);
+                        Eigen::Vector3d projectedInCurrent = Ka * featureInCurrent;
+                        projectedInCurrent = projectedInCurrent / projectedInCurrent(2);
 
-                    if(point.x<CurrentFrame.mnMinX || point.x>CurrentFrame.mnMaxX)
-                        continue;
-                    if(point.y<CurrentFrame.mnMinY || point.y>CurrentFrame.mnMaxY)
-                        continue;
+                        // Projection onto the current image
+                        cv::Point2f point;
+                        point.x = projectedInCurrent(0);
+                        point.y = projectedInCurrent(1);
 
-                    // Point to track in previous and in current
-                    cv::KeyPoint kp = LastFrame.mvKeysUn[i];
-                    //std::cout << "Comparison : " << kp.pt.x << " " << kp.pt.y << " --- " << projectedInCurrent(0) << " " << projectedInCurrent(1) << std::endl;
+                        if (point.x < CurrentFrame.mnMinX || point.x > CurrentFrame.mnMaxX)
+                            continue;
+                        if (point.y < CurrentFrame.mnMinY || point.y > CurrentFrame.mnMaxY)
+                            continue;
 
-                    prevPts.push_back(kp.pt);
-                    nextPts.push_back(point);
-                    indices.push_back(i);
+                        // Point to track in previous and in current
+                        cv::KeyPoint kp = LastFrame.mvKeysUn[i];
+                        //std::cout << "Comparison : " << kp.pt.x << " " << kp.pt.y << " --- " << projectedInCurrent(0) << " " << projectedInCurrent(1) << std::endl;
+
+                        prevPts.push_back(kp.pt);
+                        nextPts.push_back(point);
+                        indices.push_back(i);
+//                    }
                 }
             }
         }
@@ -301,7 +302,7 @@ namespace ORB_SLAM2 {
         std::cout << "Tracked: " << nmatches << " below thr: " << belowThCount << " out of " << status.size() << " | Extra: " << extra << std::endl;
 
 //        exit(0);
-        return belowThCount;
+        return std::make_pair(belowThCount, extra);
     }
 
     int PhotoTracker::SearchByKLT(Frame &CurrentFrame, const vector<MapPoint*> &vpMapPoints) {
@@ -323,8 +324,8 @@ namespace ORB_SLAM2 {
                 continue;
 
             // Let's not consider already matched & tracked features in previous VO step
-//            if (pMP->matchedLast || pMP->rescuedLast)
-//                break;
+            if (pMP->matchedLast || pMP->rescuedLast)
+                break;
 
             // Project it onto current and last frame to check if depth is positive
             Eigen::Vector3d featureInGlobal = pMP->GetWorldPosEigen();

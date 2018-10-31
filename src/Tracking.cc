@@ -148,6 +148,17 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
             mDepthMapFactor = 1.0f/mDepthMapFactor;
     }
 
+    performKLT = fSettings["tracking.trackKLT"];
+    kltMaxIterations = fSettings["tracking.kltMaxIterations"];
+    kltEPS = fSettings["tracking.kltEPS"];
+    kltError = fSettings["tracking.kltError"];
+
+    std::cout << "KLT parameters" << std::endl;
+    std::cout << "\tperformKLT = " << performKLT << std::endl;
+    std::cout << "\tkltMaxIterations = " << kltMaxIterations << std::endl;
+    std::cout << "\tkltEPS = " << kltEPS << std::endl;
+    std::cout << "\tkltError = " << kltError << std::endl;
+
     voInlierCountStream.open("logs/voInlierCount.txt");
     mapInlierCountStream.open("logs/mapInlierCount.txt");
 }
@@ -928,12 +939,14 @@ bool Tracking::TrackWithMotionModel()
         return false;
 
     // TODO: Experimental
-    PhotoTracker tracker(15);
+    std::pair<int,int> photoMatches;
+    if (performKLT > 0) {
+        PhotoTracker tracker(15, kltMaxIterations, kltEPS, kltError);
 //    int photoMatches = tracker.SearchByPhoto(mCurrentFrame, mLastFrame);
-
-    int photoMatches = tracker.SearchByKLT(mCurrentFrame, mLastFrame);
-
-    std::cout<<"PoseOptimization (TrackWithMotionModel): " << std::endl << "\tmatched: " << nmatches << ", tracked: " << photoMatches << std::endl;
+        photoMatches = tracker.SearchByKLT(mCurrentFrame, mLastFrame);
+    }
+    std::cout<<"PoseOptimization (TrackWithMotionModel): " << std::endl << "\tmatched: "
+        << nmatches << ", tracked: " << photoMatches.first << ", extra: " << photoMatches.second << std::endl;
 
     int count = 0;
     for (int i = 0; i < mLastFrame.N; i++) {
@@ -977,8 +990,9 @@ bool Tracking::TrackWithMotionModel()
 
     std::cout<<"\tinliers: " << totalMatches << std::endl;
 
-    // Matching / Tracking / Inliers / ALL
-    voInlierCountStream << nmatches << " " << photoMatches << " " << totalMatches << " " << count << std::endl;
+    // AllCandidates / Matching / Tracking / Extra tracking over matching / Inliers
+    voInlierCountStream << count << " " << nmatches << " " << photoMatches.first << " "
+        << photoMatches.second << " " << totalMatches << " " << std::endl;
 
     if(mbOnlyTracking)
     {
@@ -989,7 +1003,7 @@ bool Tracking::TrackWithMotionModel()
     return nmatchesMap>=10;
 }
 
-bool Tracking:: TrackLocalMap()
+bool Tracking::TrackLocalMap()
 {
     // We have an estimation of the camera pose and some map points tracked in the frame.
     // We retrieve the local map and try to find matches to points in the local map.
@@ -1314,9 +1328,13 @@ void Tracking::SearchLocalPoints()
         std::cout << "\tMap matches = " << succesfulMatches << std::endl;
         mapInlierCountStream << double(succesfulMatches) << " ";
 
-        PhotoTracker tracker(20);
+
+        int trackedNo = 0;
+        if (performKLT > 1) {
+            PhotoTracker tracker(20, kltMaxIterations, kltEPS, kltError);
 //        int trackedNo = tracker.SearchByPhoto(mCurrentFrame, mvpLocalMapPoints);
-        int trackedNo = tracker.SearchByKLT(mCurrentFrame, mvpLocalMapPoints);
+            trackedNo = tracker.SearchByKLT(mCurrentFrame, mvpLocalMapPoints);
+        }
         std::cout << "\tMap tracks = " << trackedNo << std::endl;
         mapInlierCountStream << double(trackedNo) << " " << nToMatch << " " ;
     }

@@ -217,6 +217,9 @@ protected:
     list<MapPoint*> mlpTemporalPoints;
 
 
+    int performKLT, kltMaxIterations;
+    double kltEPS, kltError;
+
     // TODO: Remove later
     std::ofstream voInlierCountStream, mapInlierCountStream;
 };

@@ -13,6 +13,7 @@
 #include "photometricErrorFunctions.h"
 #include "g2oPhotoError.h"
 #include <opencv2/core/eigen.hpp>
+#include <utility>
 
 namespace ORB_SLAM2 {
 
@@ -20,7 +21,7 @@ namespace ORB_SLAM2 {
     public:
 
         // Initializes photometric tracking of features
-        PhotoTracker(double photoThreshold = 20);
+        PhotoTracker(double photoThreshold = 20, int kltMaxIterations=30, double kltEPS=0.01, double kltError=9);
 
         // Performs tracking of feature motion
         int SearchByPhoto(Frame &CurrentFrame, Frame &LastFrame);
@@ -29,7 +30,7 @@ namespace ORB_SLAM2 {
         int SearchByPhoto(Frame &CurrentFrame, const vector<MapPoint*> &vpMapPoints);
 
         // KLT
-        int SearchByKLT(Frame &CurrentFrame, Frame &LastFrame);
+        std::pair<int,int> SearchByKLT(Frame &CurrentFrame, Frame &LastFrame);
         int SearchByKLT(Frame &CurrentFrame, const vector<MapPoint*> &vpMapPoints);
 
     private:
