@@ -29,6 +29,27 @@ namespace photo {
                bottomRight * image[yInt + 1][xInt + 1];
     }
 
+    double getSubpixImageValue(double u, double v, cv::Mat image) {
+
+        const double xInt = int(u), yInt = int(v);
+        const double xSub = u - xInt, ySub = v - yInt;
+
+        const double topLeft = (1.0 - xSub) * (1.0 - ySub);
+        const double topRight = xSub * (1.0 - ySub);
+        const double bottomLeft = (1.0 - xSub) * ySub;
+        const double bottomRight = xSub * ySub;
+
+
+        if (yInt < 0 || xInt < 0 || yInt + 1 >= image.rows || xInt + 1 >= image.cols) {
+            return -1;
+        }
+
+        return topLeft * image.at<uchar>(yInt,xInt) +
+               topRight * image.at<uchar>(yInt,xInt + 1) +
+               bottomLeft * image.at<uchar>(yInt + 1,xInt) +
+               bottomRight * image.at<uchar>(yInt + 1,xInt + 1);
+    }
+
 
     // Computes distance from point3D to plane defined by normal
     double getDistanceToPlane(const Eigen::Vector3d &point3D, const Eigen::Vector3d &normal) {

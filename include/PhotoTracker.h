@@ -15,13 +15,16 @@
 #include <opencv2/core/eigen.hpp>
 #include <utility>
 
+#include <fstream>
+
 namespace ORB_SLAM2 {
 
     class PhotoTracker {
     public:
 
         // Initializes photometric tracking of features
-        PhotoTracker(double photoThreshold = 20, int kltMaxIterations=30, double kltEPS=0.01, double kltError=9);
+        PhotoTracker(double photoThreshold = 20, int kltMaxIterations=30, double kltEPS=0.01, double kltZNCCThr=0.9,
+                int kltPatchSize=9, bool verbose = false);
 
         // Performs tracking of feature motion
         int SearchByPhoto(Frame &CurrentFrame, Frame &LastFrame);
@@ -43,6 +46,8 @@ namespace ORB_SLAM2 {
                 Eigen::Vector3d featureInLast, Eigen::Matrix4d Tba, Eigen::Matrix3d Ka,
                 photo::imgStr *lastImage, cv::KeyPoint kp);
 
+        double computeZNCC(Frame &LastFrame, Frame &CurrentFrame, cv::Point2f &prevPts, cv::Point2f &nextPts, const int &patchSize);
+
         /// Variables
 
         // Defines the neighbourhood used in comparisons
@@ -54,7 +59,11 @@ namespace ORB_SLAM2 {
         // KLT threshold
         int kltMaxIterations;
         double kltEPS;
-        double kltError;
+        double kltZNCCThr;
+        int patchSize;
+
+        bool verbose;
+
 
     };
 } // namespace ORB_SLAM

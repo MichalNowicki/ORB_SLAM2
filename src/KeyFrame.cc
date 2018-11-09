@@ -59,7 +59,8 @@ KeyFrame::KeyFrame(Frame &F, Map *pMap, KeyFrameDatabase *pKFDB):
     if (F.mpORBextractorRight)
         imagePyramidRight = F.imagePyramidLeft;
 
-    origImgPyramid = F.origImgPyramid;
+    // TODO: We do not store this image pyramid to save memory for now
+//    origImgPyramid = F.origImgPyramid;
 }
 
 void KeyFrame::ComputeBoW()

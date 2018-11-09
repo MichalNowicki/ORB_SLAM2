@@ -121,6 +121,9 @@ public:
     int featureIndexForRescue;
     int timesMatchedAfterRescue;
 
+    // TODO: Some tests
+    double lastZNCC;
+
 protected:    
 
      // Position in absolute coordinates

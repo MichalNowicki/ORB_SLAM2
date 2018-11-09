@@ -3,8 +3,9 @@
 namespace ORB_SLAM2 {
 
 
-    PhotoTracker::PhotoTracker(double photoThreshold, int kltMaxIterations, double kltEPS, double kltError) :
-        photoThreshold(photoThreshold), kltMaxIterations(kltMaxIterations), kltEPS(kltEPS), kltError(kltError) {
+    PhotoTracker::PhotoTracker(double photoThreshold, int kltMaxIterations, double kltEPS, double kltZNCCThr, int kltPatchSize, bool verbose) :
+        photoThreshold(photoThreshold), kltMaxIterations(kltMaxIterations), kltEPS(kltEPS), kltZNCCThr(kltZNCCThr), patchSize(kltPatchSize),
+        verbose(verbose){
 
         //   x
         //  xxx
@@ -28,6 +29,7 @@ namespace ORB_SLAM2 {
         neighbours.push_back(make_pair(1, 1));
 
         neighbours.push_back(make_pair(0, 2));
+
     }
 
     int PhotoTracker::SearchByPhoto(Frame &CurrentFrame, Frame &LastFrame) {
@@ -254,12 +256,11 @@ namespace ORB_SLAM2 {
         vector<uchar> status;
         vector<float> err;
         cv::calcOpticalFlowPyrLK(LastFrame.origImgPyramid, CurrentFrame.origImgPyramid,
-                                 prevPts, nextPts, status, err, cv::Size(9,9), 3,
+                                 prevPts, nextPts, status, err, cv::Size(patchSize,patchSize), 3,
                                  cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, kltMaxIterations, kltEPS), cv::OPTFLOW_USE_INITIAL_FLOW);
 
 //        cv::imwrite("logs/last.png", LastFrame.origImgPyramid[0]);
 //        cv::imwrite("logs/current.png", CurrentFrame.origImgPyramid[0]);
-
 
         int belowThCount = 0, extra = 0;
         for(int i=0;i<status.size();i++) {
@@ -267,7 +268,9 @@ namespace ORB_SLAM2 {
 
                 nmatches++;
 
-                if (err[i] < kltError) {
+                double zncc = computeZNCC(LastFrame, CurrentFrame, prevPts[i], nextPts[i], patchSize);
+
+                if (zncc > kltZNCCThr) {
                     belowThCount++;
 
 
@@ -281,6 +284,7 @@ namespace ORB_SLAM2 {
                         // Informing about the state
                         pMP->rescuedLast = true;
                         pMP->rescuedAtLeastOnce = true;
+                        pMP->lastZNCC = zncc;
 
                         pMP->fForRescue = &LastFrame;
                         pMP->kfForRescue = static_cast<KeyFrame *>(NULL);
@@ -299,7 +303,8 @@ namespace ORB_SLAM2 {
             }
         }
 
-        std::cout << "Tracked: " << nmatches << " below thr: " << belowThCount << " out of " << status.size() << " | Extra: " << extra << std::endl;
+        if (verbose)
+            std::cout << "Tracked: " << nmatches << " below thr: " << belowThCount << " out of " << status.size() << " | Extra: " << extra << std::endl;
 
 //        exit(0);
         return std::make_pair(belowThCount, extra);
@@ -409,7 +414,9 @@ namespace ORB_SLAM2 {
                                      prevPts, nextPts, status, err, cv::Size(9,9), 3,
                                      cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, kltMaxIterations, kltEPS), cv::OPTFLOW_USE_INITIAL_FLOW);
 
-            if (status[0] && err[0] < kltError)
+
+            // TODO: error is not properly defined with ZNCC
+            if (status[0]) // & ZNCC
             {
                 nmatches++;
 
@@ -532,4 +539,40 @@ namespace ORB_SLAM2 {
         cv::Mat emptyDescriptor = cv::Mat::zeros(1, CurrentFrame.mDescriptors.cols, CurrentFrame.mDescriptors.type());
         CurrentFrame.mDescriptors.push_back(emptyDescriptor);
     }
+
+    double PhotoTracker::computeZNCC(Frame &LastFrame, Frame &CurrentFrame, cv::Point2f &lastPt, cv::Point2f &curPt, const int &patchSize) {
+        const int halfPatchSize = patchSize/2;
+        const int sqPatchSize = patchSize * patchSize;
+
+        // ZNNC
+        double avgOrig = 0, avgCur = 0;
+        for (int xShift=-halfPatchSize;xShift<=halfPatchSize;xShift++) {
+            for (int yShift=-halfPatchSize;yShift<=halfPatchSize;yShift++) {
+
+                double origVal = photo::getSubpixImageValue(lastPt.x+xShift,lastPt.y+yShift,LastFrame.origImgPyramid[0]);
+                double curVal = photo::getSubpixImageValue(curPt.x+xShift,curPt.y+yShift,CurrentFrame.origImgPyramid[0]);
+
+                avgOrig += origVal;
+                avgCur += curVal;
+            }
+        }
+
+        avgOrig /= sqPatchSize;
+        avgCur /= sqPatchSize;
+
+        double nom = 0, sigmaOrig = 0, sigmaCur = 0;
+        for (int xShift=-halfPatchSize;xShift<=halfPatchSize;xShift++) {
+            for (int yShift=-halfPatchSize;yShift<=halfPatchSize;yShift++) {
+
+                double origVal = photo::getSubpixImageValue(lastPt.x+xShift,lastPt.y+yShift,LastFrame.origImgPyramid[0]);
+                double curVal = photo::getSubpixImageValue(curPt.x+xShift,curPt.y+yShift,CurrentFrame.origImgPyramid[0]);
+
+                nom += (origVal - avgOrig)*(curVal - avgCur);
+                sigmaOrig += pow(origVal - avgOrig, 2);
+                sigmaCur += pow(curVal - avgCur, 2);
+            }
+        }
+        return nom / sqrt(sigmaOrig * sigmaCur);
+    }
+
 }

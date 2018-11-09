@@ -4,6 +4,7 @@
 
 #include <vector>
 #include <Eigen/Eigen>
+#include<opencv2/core/core.hpp>
 
 namespace photo {
 
@@ -16,6 +17,7 @@ namespace photo {
 
     // Gets the subpixel value using bilinear interpolation
     double getSubpixImageValue(double u, double v, std::vector <std::vector<float>> &image);
+    double getSubpixImageValue(double u, double v, cv::Mat image);
 
     // Computes distance from point3D to plane defined by normal
     double getDistanceToPlane(const Eigen::Vector3d &point3D, const Eigen::Vector3d &normal);

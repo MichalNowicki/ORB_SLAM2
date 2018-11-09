@@ -217,11 +217,13 @@ protected:
     list<MapPoint*> mlpTemporalPoints;
 
 
-    int performKLT, kltMaxIterations;
-    double kltEPS, kltError;
+    int kltTrack, kltMaxIterations;
+    double kltEPS, kltZNCCThreshold, kltPatchSize;
 
     // TODO: Remove later
     std::ofstream voInlierCountStream, mapInlierCountStream;
+
+    int verbose;
 };
 
 } //namespace ORB_SLAM

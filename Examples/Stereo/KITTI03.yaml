@@ -50,13 +50,22 @@ ORBextractor.nLevels: 8
 ORBextractor.iniThFAST: 20
 ORBextractor.minThFAST: 7
 
+## EXPERIMENTAL SECTION
+# trackKLT: 0 - turned off, 1 - only VO, 2 - VO + localMap
+tracking.verbose: 0
+tracking.kltTrack: 1
+tracking.kltMaxIterations: 30
+tracking.kltEPS: 0.01
+tracking.kltZNCCThreshold: 0.990000
+tracking.kltPatchSize: 9
+
 #--------------------------------------------------------------------------------------------
 # Viewer Parameters
 #--------------------------------------------------------------------------------------------
 Viewer.KeyFrameSize: 0.6
 Viewer.KeyFrameLineWidth: 2
 Viewer.GraphLineWidth: 1
-Viewer.PointSize:2
+Viewer.PointSize: 2
 Viewer.CameraSize: 0.7
 Viewer.CameraLineWidth: 3
 Viewer.ViewpointX: 0

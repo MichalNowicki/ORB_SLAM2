@@ -148,19 +148,25 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
             mDepthMapFactor = 1.0f/mDepthMapFactor;
     }
 
-    performKLT = fSettings["tracking.trackKLT"];
+    verbose = fSettings["tracking.verbose"];
+    kltTrack = fSettings["tracking.kltTrack"];
     kltMaxIterations = fSettings["tracking.kltMaxIterations"];
     kltEPS = fSettings["tracking.kltEPS"];
-    kltError = fSettings["tracking.kltError"];
+    kltZNCCThreshold = fSettings["tracking.kltZNCCThreshold"];
+    kltPatchSize = fSettings["tracking.kltPatchSize"];
+
 
     std::cout << "KLT parameters" << std::endl;
-    std::cout << "\tperformKLT = " << performKLT << std::endl;
+    std::cout << "\tverbose = " << verbose << std::endl;
+    std::cout << "\tkltTrack = " << kltTrack << std::endl;
     std::cout << "\tkltMaxIterations = " << kltMaxIterations << std::endl;
     std::cout << "\tkltEPS = " << kltEPS << std::endl;
-    std::cout << "\tkltError = " << kltError << std::endl;
+    std::cout << "\tkltZNCCThreshold = " << kltZNCCThreshold << std::endl;
+    std::cout << "\tkltPatchSize = " << kltPatchSize << std::endl;
 
     voInlierCountStream.open("logs/voInlierCount.txt");
     mapInlierCountStream.open("logs/mapInlierCount.txt");
+    verbose = false;
 }
 
 void Tracking::SetLocalMapper(LocalMapping *pLocalMapper)
@@ -281,7 +287,8 @@ cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp)
 
 void Tracking::Track()
 {
-    std::cout << "---- " << std::endl;
+    if (verbose)
+        std::cout << "---- " << std::endl;
 
     if(mState==NO_IMAGES_YET)
     {
@@ -786,7 +793,8 @@ void Tracking::CheckReplacedInLastFrame()
 
 bool Tracking::TrackReferenceKeyFrame()
 {
-    std::cout << "Tracking::TrackReferenceKeyFrame()" << std::endl;
+    if (verbose)
+        std::cout << "Tracking::TrackReferenceKeyFrame()" << std::endl;
 
     // Compute Bag of Words vector
     mCurrentFrame.ComputeBoW();
@@ -908,7 +916,8 @@ void Tracking::UpdateLastFrame()
 
 bool Tracking::TrackWithMotionModel()
 {
-    std::cout << "Tracking::TrackWithMotionModel()" << std::endl;
+    if (verbose)
+        std::cout << "Tracking::TrackWithMotionModel()" << std::endl;
 
     ORBmatcher matcher(0.9,true);
 
@@ -940,13 +949,14 @@ bool Tracking::TrackWithMotionModel()
 
     // TODO: Experimental
     std::pair<int,int> photoMatches;
-    if (performKLT > 0) {
-        PhotoTracker tracker(15, kltMaxIterations, kltEPS, kltError);
+    if (kltTrack > 0) {
+        PhotoTracker tracker(15, kltMaxIterations, kltEPS, kltZNCCThreshold, kltPatchSize, verbose);
 //    int photoMatches = tracker.SearchByPhoto(mCurrentFrame, mLastFrame);
         photoMatches = tracker.SearchByKLT(mCurrentFrame, mLastFrame);
     }
-    std::cout<<"PoseOptimization (TrackWithMotionModel): " << std::endl << "\tmatched: "
-        << nmatches << ", tracked: " << photoMatches.first << ", extra: " << photoMatches.second << std::endl;
+    if (verbose)
+        std::cout<<"PoseOptimization (TrackWithMotionModel): " << std::endl << "\tmatched: "
+            << nmatches << ", tracked: " << photoMatches.first << ", extra: " << photoMatches.second << std::endl;
 
     int count = 0;
     for (int i = 0; i < mLastFrame.N; i++) {
@@ -966,33 +976,44 @@ bool Tracking::TrackWithMotionModel()
 
     // Discard outliers
     int nmatchesMap = 0, totalMatches = 0;
+    double sumZNCC=0, cntZNCC=0;
     for(int i =0; i<mCurrentFrame.N; i++)
     {
         if(mCurrentFrame.mvpMapPoints[i])
         {
+            MapPoint* pMP = mCurrentFrame.mvpMapPoints[i];
             if(mCurrentFrame.mvbOutlier[i])
             {
-                MapPoint* pMP = mCurrentFrame.mvpMapPoints[i];
-
                 mCurrentFrame.mvpMapPoints[i]=static_cast<MapPoint*>(NULL);
                 mCurrentFrame.mvbOutlier[i]=false;
                 pMP->mbTrackInView = false;
                 pMP->mnLastFrameSeen = mCurrentFrame.mnId;
             }
-            else if(mCurrentFrame.mvpMapPoints[i]->Observations()>0) {
-                nmatchesMap++;
+            else {
                 totalMatches++;
+                if (mCurrentFrame.mvpMapPoints[i]->Observations() > 0) {
+                    nmatchesMap++;
+                }
+
+                if (pMP->rescuedLast) {
+                    sumZNCC+=pMP->lastZNCC;
+                    cntZNCC ++;
+                }
             }
-            else
-                totalMatches++;
         }
     }
 
-    std::cout<<"\tinliers: " << totalMatches << std::endl;
+    if (verbose)
+        std::cout<<"\tinliers: " << totalMatches << std::endl;
+    double avgZNCC = 0;
+    if (cntZNCC >0)
+        avgZNCC = sumZNCC/cntZNCC;
+    if (verbose)
+        std::cout<<"\ttracking inliers: " << cntZNCC << " avgZNCC="<< avgZNCC<< std::endl;
 
     // AllCandidates / Matching / Tracking / Extra tracking over matching / Inliers
     voInlierCountStream << count << " " << nmatches << " " << photoMatches.first << " "
-        << photoMatches.second << " " << totalMatches << " " << std::endl;
+        << photoMatches.second << " " << totalMatches << " " << cntZNCC << " " << avgZNCC << std::endl;
 
     if(mbOnlyTracking)
     {
@@ -1027,8 +1048,9 @@ bool Tracking::TrackLocalMap()
             }
         }
     }
-    std::cout<<"PoseOptimization (trackLocalMap) --- " << std::endl << "\tmatched: " << featuresMatched << ", tracked: "
-        << featuresTracked << " (" << WTF <<")"<< std::endl;
+    if (verbose)
+        std::cout<<"PoseOptimization (trackLocalMap) --- " << std::endl << "\tmatched: " << featuresMatched << ", tracked: "
+            << featuresTracked << " (" << WTF <<")"<< std::endl;
 
     // Optimize Pose
     Optimizer::PoseOptimization(&mCurrentFrame);
@@ -1074,10 +1096,12 @@ bool Tracking::TrackLocalMap()
         }
     }
 
-    std::cout<<"\tinliers: " << mnMatchesInliers <<
-             " [rescuedLastCount="<<rescuedLastCount<<", rescuedAtLeastOnceCount=" << rescuedAtLeastOnceCount<<"]" << std::endl;
-    std::cout <<"\tlongestMatchAfterRescue = " << longestMatchAfterRescue <<std::endl;
-
+    if (verbose) {
+        std::cout << "\tinliers: " << mnMatchesInliers <<
+                  " [rescuedLastCount=" << rescuedLastCount << ", rescuedAtLeastOnceCount=" << rescuedAtLeastOnceCount
+                  << "]" << std::endl;
+        std::cout << "\tlongestMatchAfterRescue = " << longestMatchAfterRescue << std::endl;
+    }
 
     mapInlierCountStream << mnMatchesInliers << " " << count << std::endl;
 
@@ -1153,7 +1177,8 @@ bool Tracking::NeedNewKeyFrame()
     // Condition 2: Few tracked points compared to reference keyframe. Lots of visual odometry compared to map matches.
     const bool c2 = ((mnMatchesInliers<nRefMatches*thRefRatio|| bNeedToInsertClose) && mnMatchesInliers>15);
 
-    std::cout << "Tracking::NeedNewKeyFrame() - c1a=" <<c1a << " c1b=" <<c1b<< " c1c=" <<c1c << " c2="<<c2 << std::endl;
+    if (verbose)
+        std::cout << "Tracking::NeedNewKeyFrame() - c1a=" <<c1a << " c1b=" <<c1b<< " c1c=" <<c1c << " c2="<<c2 << std::endl;
 
     if((c1a||c1b||c1c)&&c2)
     {
@@ -1321,21 +1346,27 @@ void Tracking::SearchLocalPoints()
             }
         }
 
-        std::cout << "Tracking::SearchLocalPoints()" << std::endl;
-        std::cout << "\tInliers from frame2frame: " << alreadyVisible << std::endl;
-        std::cout <<" \tMap match/track candidates = " << nToMatch << std::endl;
+
         int succesfulMatches = matcher.SearchByProjection(mCurrentFrame,mvpLocalMapPoints,th);
-        std::cout << "\tMap matches = " << succesfulMatches << std::endl;
+
+        if (verbose) {
+            std::cout << "Tracking::SearchLocalPoints()" << std::endl;
+            std::cout << "\tInliers from frame2frame: " << alreadyVisible << std::endl;
+            std::cout << " \tMap match/track candidates = " << nToMatch << std::endl;
+            std::cout << "\tMap matches = " << succesfulMatches << std::endl;
+        }
+
         mapInlierCountStream << double(succesfulMatches) << " ";
 
 
         int trackedNo = 0;
-        if (performKLT > 1) {
-            PhotoTracker tracker(20, kltMaxIterations, kltEPS, kltError);
+        if (kltTrack > 1) {
+            PhotoTracker tracker(20, kltMaxIterations, kltEPS, kltZNCCThreshold, kltPatchSize, verbose);
 //        int trackedNo = tracker.SearchByPhoto(mCurrentFrame, mvpLocalMapPoints);
             trackedNo = tracker.SearchByKLT(mCurrentFrame, mvpLocalMapPoints);
         }
-        std::cout << "\tMap tracks = " << trackedNo << std::endl;
+        if (verbose)
+            std::cout << "\tMap tracks = " << trackedNo << std::endl;
         mapInlierCountStream << double(trackedNo) << " " << nToMatch << " " ;
     }
 }
