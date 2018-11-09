@@ -66,7 +66,7 @@ int main(int argc, char **argv)
     cv::Mat imLeft, imRight;
     for(int ni=0; ni<nImages; ni++)
     {
-        std::cout << "Image: " << ni << " out of " << nImages << std::endl;
+        std::cout << "Image: " << ni << " out of " << nImages <<  std::endl;
 
         // Read left and right images from file
         imLeft = cv::imread(vstrImageLeft[ni],CV_LOAD_IMAGE_UNCHANGED);
