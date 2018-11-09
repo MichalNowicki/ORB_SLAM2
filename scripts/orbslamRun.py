@@ -34,15 +34,15 @@ sequences = [
 '01', \
 '02', \
 '03', \
-# '04', \
-# '05', \
-# '06', \
-# '07', \
-# '08', \
-# '09', \
-# '10', \
-# '11', \
-# '12', \
+'04', \
+'05', \
+'06', \
+'07', \
+'08', \
+'09', \
+'10', \
+'11', \
+'12', \
     ];
 
 runsPerSequence = 1;
@@ -96,7 +96,7 @@ else:
                 yamlName = "KITTI04-12.yaml";
 
             setYamlFile("Examples/Stereo/" + yamlName, "tracking.kltTrack: ", kltTracking);
-            setYamlFile("Examples/Stereo/" + yamlName, "kltZNCCThreshold: ", kltZNCCThreshold);
+            setYamlFile("Examples/Stereo/" + yamlName, "tracking.kltZNCCThreshold: ", kltZNCCThreshold);
 
             # Create dir for chosen detector
             if not os.path.exists("results/klt_" + str(kltTracking) + "_znccThr_" + str(kltZNCCThreshold) + "/sequence_" + str(seq)):
@@ -112,6 +112,6 @@ else:
             call('./Examples/Stereo/stereo_kitti Vocabulary/ORBvoc.txt Examples/Stereo/' + yamlName + ' '  + str(mainDatasetPath) +'/' + seq +'/', shell=True);
 
             # Copy results
-            call('mv CameraTrajectory.txt results/klt_' + str(kltTracking) + '_znccThr_' +  str(kltZNCCThreshold) + '/sequence_' + str(seq) + '/', shell=True);
+            call('mv CameraTrajectory.txt results/klt_' + str(kltTracking) + '_znccThr_' +  str(kltZNCCThreshold) + '/' + str(seq) + '.txt', shell=True);
             call('mv logs/*.txt results/klt_' + str(kltTracking) + '_znccThr_' +  str(kltZNCCThreshold) +  '/sequence_' + str(seq) + '/', shell=True);
             call('rm logs/*.txt', shell=True);
