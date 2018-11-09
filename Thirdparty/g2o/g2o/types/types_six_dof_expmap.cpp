@@ -236,7 +236,7 @@ void EdgeStereoSE3ProjectXYZ::linearizeOplus() {
 
 //Only Pose
 
-bool cam_project::read(std::istream& is){
+bool EdgeSE3ProjectXYZOnlyPose::read(std::istream& is){
   for (int i=0; i<2; i++){
     is >> _measurement[i];
   }
