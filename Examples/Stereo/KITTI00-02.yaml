@@ -53,10 +53,10 @@ ORBextractor.minThFAST: 7
 ## EXPERIMENTAL SECTION
 # trackKLT: 0 - turned off, 1 - only VO, 2 - VO + localMap
 tracking.verbose: 0
-tracking.kltTrack: 1
+tracking.kltTrack: 0
 tracking.kltMaxIterations: 30
 tracking.kltEPS: 0.01
-kltZNCCThreshold: 0.95
+tracking.kltZNCCThreshold: 0.0
 tracking.kltPatchSize: 9
 
 #--------------------------------------------------------------------------------------------

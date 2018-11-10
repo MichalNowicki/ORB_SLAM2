@@ -2,7 +2,9 @@ clear;
 clc;
 close all;
 
-dir = '../results/kltErrValue_0.9/sequence_01/';
+dir = '../results/lrm2/klt_1_znccThr_0.9/sequence_02/';
+% dir = '../results/lrm2/klt_1_znccThr_0.95/sequence_02/';
+% dir = '../results/lrm2/klt_0_znccThr_0.0/sequence_02/';
 
 %
 % candidates (1), matches (2), tracks (3), extra tracks over matches (4), inliers (5),
