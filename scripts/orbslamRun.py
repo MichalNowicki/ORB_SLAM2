@@ -91,7 +91,7 @@ else:
             if seq in ['00', '01', '02']:
                 yamlName = "KITTI00-02.yaml";
             elif seq in ['03']:
-                yamlName = "KITTI00-03.yaml";
+                yamlName = "KITTI03.yaml";
             else:
                 yamlName = "KITTI04-12.yaml";
 
