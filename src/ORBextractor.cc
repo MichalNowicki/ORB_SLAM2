@@ -409,9 +409,9 @@ static int bit_pattern_31_[256*4] =
 };
 
 ORBextractor::ORBextractor(int _nfeatures, float _scaleFactor, int _nlevels,
-         int _iniThFAST, int _minThFAST):
+         int _iniThFAST, int _minThFAST, int patchSize):
     nfeatures(_nfeatures), scaleFactor(_scaleFactor), nlevels(_nlevels),
-    iniThFAST(_iniThFAST), minThFAST(_minThFAST)
+    iniThFAST(_iniThFAST), minThFAST(_minThFAST), patchSize(patchSize)
 {
     mvScaleFactor.resize(nlevels);
     mvLevelSigma2.resize(nlevels);
@@ -1197,7 +1197,7 @@ void ORBextractor::ComputePyramid(cv::Mat image)
         // TODO: We could recompute LK pyramid if needed
         origImg = image;
         origImgPyramid.clear();
-        cv::buildOpticalFlowPyramid(image, origImgPyramid, cv::Size(9, 9), 3, true);
+        cv::buildOpticalFlowPyramid(image, origImgPyramid, cv::Size(patchSize, patchSize), 3, true);
     }
 
 } //namespace ORB_SLAM

@@ -97,14 +97,16 @@ else:
 
             setYamlFile("Examples/Stereo/" + yamlName, "tracking.kltTrack: ", kltTracking);
             setYamlFile("Examples/Stereo/" + yamlName, "tracking.kltZNCCThreshold: ", kltZNCCThreshold);
-            setYamlFile("Examples/Stereo/" + yamlName, "tracking.kltPatchSize: ",kltPatchSize);
+            setYamlFile("Examples/Stereo/" + yamlName, "tracking.kltPatchSize: ", kltPatchSize);
+
+            # Patch depending on the parameters
+            dir = "klt_" + str(kltTracking) + "_znccThr_" + str(kltZNCCThreshold) + "_patchSize_" + str(kltPatchSize);
 
             # Create dir for chosen detector
-            if not os.path.exists("results/klt_" + str(kltTracking) + "_znccThr_" + str(kltZNCCThreshold) + "/sequence_" + str(seq)):
-                os.makedirs("results/klt_" + str(kltTracking) + "_znccThr_" + str(kltZNCCThreshold) + "/sequence_" + str(seq));
+            if not os.path.exists("results/" + dir + "/sequence_" + str(seq)):
+                os.makedirs("results/" + dir + "/sequence_" + str(seq));
             else:
-                call('rm results/klt_' + str(kltTracking) + '_znccThr_' +  str(kltZNCCThreshold) + '/sequence_' + str(seq) + '/*', shell=True);
-
+                call('rm results/' + dir + '/sequence_' + str(seq) + '/*', shell=True);
 
             # We call this command
             print('./Examples/Stereo/stereo_kitti Vocabulary/ORBvoc.txt Examples/Stereo/' + yamlName + ' ' + str(mainDatasetPath) +'/' + seq +'/');
@@ -113,6 +115,6 @@ else:
             call('./Examples/Stereo/stereo_kitti Vocabulary/ORBvoc.txt Examples/Stereo/' + yamlName + ' '  + str(mainDatasetPath) +'/' + seq +'/', shell=True);
 
             # Copy results
-            call('mv CameraTrajectory.txt results/klt_' + str(kltTracking) + '_znccThr_' +  str(kltZNCCThreshold) + '/' + str(seq) + '.txt', shell=True);
-            call('mv logs/*.txt results/klt_' + str(kltTracking) + '_znccThr_' +  str(kltZNCCThreshold) +  '/sequence_' + str(seq) + '/', shell=True);
+            call('mv CameraTrajectory.txt results/' + dir + '/' + str(seq) + '.txt', shell=True);
+            call('mv logs/*.txt results/' + dir +  '/sequence_' + str(seq) + '/', shell=True);
             call('rm logs/*.txt', shell=True);
