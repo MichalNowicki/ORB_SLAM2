@@ -76,12 +76,12 @@ else:
     #   - tracking.kltZNCCThreshold: 0.900000
     #   - tracking.kltPatchSize: 9
     #
-    kltTrackings = [0, 1, 1];
-    kltZNCCThresholds = [0.0, 0.9, 0.95];
-
+    kltTrackings = [1, 1, 1, 1];
+    kltZNCCThresholds = [0.85, 0.97, 0.95, 0.95];
+    kltPatchSizes = [9, 9, 12, 15];
 
     # For chosen detector
-    for (kltTracking,kltZNCCThreshold) in zip(kltTrackings, kltZNCCThresholds):
+    for (kltTracking,kltZNCCThreshold,kltPatchSize) in zip(kltTrackings, kltZNCCThresholds,kltPatchSizes):
 
         # For all selected sequences
         for seq in sequences:
@@ -97,6 +97,7 @@ else:
 
             setYamlFile("Examples/Stereo/" + yamlName, "tracking.kltTrack: ", kltTracking);
             setYamlFile("Examples/Stereo/" + yamlName, "tracking.kltZNCCThreshold: ", kltZNCCThreshold);
+            setYamlFile("Examples/Stereo/" + yamlName, "tracking.kltPatchSize: ",kltPatchSize);
 
             # Create dir for chosen detector
             if not os.path.exists("results/klt_" + str(kltTracking) + "_znccThr_" + str(kltZNCCThreshold) + "/sequence_" + str(seq)):
