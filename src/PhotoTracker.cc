@@ -206,7 +206,7 @@ namespace ORB_SLAM2 {
                 if (!LastFrame.mvbOutlier[i]) {
 
                     // TODO: Do only tracking if matching failed
-//                    if (!pMP->matchedLast) {
+                    if (!pMP->matchedLast) {
 
                         // Project it onto current and last frame to check if depth is positive
                         Eigen::Vector3d featureInGlobal = pMP->GetWorldPosEigen();
@@ -241,7 +241,7 @@ namespace ORB_SLAM2 {
                         prevPts.push_back(kp.pt);
                         nextPts.push_back(point);
                         indices.push_back(i);
-//                    }
+                    }
                 }
             }
         }
