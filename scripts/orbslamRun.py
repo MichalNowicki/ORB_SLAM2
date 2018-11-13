@@ -74,14 +74,16 @@ else:
     #   - tracking.kltMaxIterations: 30
     #   - tracking.kltEPS: 0.01
     #   - tracking.kltZNCCThreshold: 0.900000
-    #   - tracking.kltPatchSize: 9
+    #   - tracking.kltPatchSize: 11
+    #   - tracking.kltMaxMovement: 5
     #
     kltTrackings = [1, 1, 1, 1];
-    kltZNCCThresholds = [0.85, 0.97, 0.95, 0.95];
-    kltPatchSizes = [9, 9, 12, 15];
+    kltZNCCThresholds = [0.85, 0.9, 0.92, 0.95];
+    kltPatchSizes = [11, 11, 11, 11];
+    kltMaxMovements = [5, 5, 5, 5];
 
     # For chosen detector
-    for (kltTracking,kltZNCCThreshold,kltPatchSize) in zip(kltTrackings, kltZNCCThresholds,kltPatchSizes):
+    for (kltTracking,kltZNCCThreshold,kltPatchSize, kltMaxMovement) in zip(kltTrackings, kltZNCCThresholds,kltPatchSizes, kltMaxMovements):
 
         # For all selected sequences
         for seq in sequences:
@@ -98,15 +100,22 @@ else:
             setYamlFile("Examples/Stereo/" + yamlName, "tracking.kltTrack: ", kltTracking);
             setYamlFile("Examples/Stereo/" + yamlName, "tracking.kltZNCCThreshold: ", kltZNCCThreshold);
             setYamlFile("Examples/Stereo/" + yamlName, "tracking.kltPatchSize: ", kltPatchSize);
+            setYamlFile("Examples/Stereo/" + yamlName, "tracking.kltMaxMovement: ", kltMaxMovement);
 
             # Patch depending on the parameters
-            dir = "klt_" + str(kltTracking) + "_znccThr_" + str(kltZNCCThreshold) + "_patchSize_" + str(kltPatchSize);
+            dir = "klt_" + str(kltTracking) + "_znccThr_" + str(kltZNCCThreshold) + "_patchSize_" + str(kltPatchSize) + "_kltMaxMovement_" + str(kltMaxMovement);
 
             # Create dir for chosen detector
-            if not os.path.exists("results/" + dir + "/sequence_" + str(seq)):
-                os.makedirs("results/" + dir + "/sequence_" + str(seq));
+            if not os.path.exists("results/" + dir + "/sequence_" + str(seq) + "/data"):
+                os.makedirs("results/" + dir + "/sequence_" + str(seq) + "/data");
             else:
-                call('rm results/' + dir + '/sequence_' + str(seq) + '/*', shell=True);
+                call('rm results/' + dir + '/sequence_' + str(seq) + '/data/*', shell=True);
+
+            if not os.path.exists("results/" + dir + "/sequence_" + str(seq) + "/inliers"):
+                os.makedirs("results/" + dir + "/sequence_" + str(seq) + "/inliers");
+            else:
+                call('rm results/' + dir + '/sequence_' + str(seq) + '/inliers/*', shell=True);
+
 
             # We call this command
             print('./Examples/Stereo/stereo_kitti Vocabulary/ORBvoc.txt Examples/Stereo/' + yamlName + ' ' + str(mainDatasetPath) +'/' + seq +'/');
@@ -115,6 +124,6 @@ else:
             call('./Examples/Stereo/stereo_kitti Vocabulary/ORBvoc.txt Examples/Stereo/' + yamlName + ' '  + str(mainDatasetPath) +'/' + seq +'/', shell=True);
 
             # Copy results
-            call('mv CameraTrajectory.txt results/' + dir + '/' + str(seq) + '.txt', shell=True);
-            call('mv logs/*.txt results/' + dir +  '/sequence_' + str(seq) + '/', shell=True);
+            call('mv CameraTrajectory.txt results/' + dir + '/data/' + str(seq) + '.txt', shell=True);
+            call('mv logs/*.txt results/' + dir +  '/sequence_' + str(seq) + '/inliers/', shell=True);
             call('rm logs/*.txt', shell=True);

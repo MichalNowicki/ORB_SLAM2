@@ -218,7 +218,7 @@ protected:
 
 
     int kltTrack, kltMaxIterations;
-    double kltEPS, kltZNCCThreshold, kltPatchSize;
+    double kltEPS, kltZNCCThreshold, kltPatchSize, kltMaxMovement;
 
     // TODO: Remove later
     std::ofstream voInlierCountStream, mapInlierCountStream;

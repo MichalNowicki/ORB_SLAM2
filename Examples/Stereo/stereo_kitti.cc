@@ -68,6 +68,10 @@ int main(int argc, char **argv)
     {
         std::cout << "Image: " << ni << " out of " << nImages <<  std::endl;
 
+//        if (ni > 500)
+//            break;
+
+
         // Read left and right images from file
         imLeft = cv::imread(vstrImageLeft[ni],CV_LOAD_IMAGE_UNCHANGED);
         imRight = cv::imread(vstrImageRight[ni],CV_LOAD_IMAGE_UNCHANGED);

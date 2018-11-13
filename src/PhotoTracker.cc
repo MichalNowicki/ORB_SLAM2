@@ -3,9 +3,10 @@
 namespace ORB_SLAM2 {
 
 
-    PhotoTracker::PhotoTracker(double photoThreshold, int kltMaxIterations, double kltEPS, double kltZNCCThr, int kltPatchSize, bool verbose) :
+    PhotoTracker::PhotoTracker(double photoThreshold, int kltMaxIterations, double kltEPS, double kltZNCCThr, int kltPatchSize,
+            bool verbose, double kltMaxMovement) :
         photoThreshold(photoThreshold), kltMaxIterations(kltMaxIterations), kltEPS(kltEPS), kltZNCCThr(kltZNCCThr), patchSize(kltPatchSize),
-        verbose(verbose){
+        verbose(verbose), kltMaxMovement(kltMaxMovement) {
 
         //   x
         //  xxx
@@ -246,6 +247,8 @@ namespace ORB_SLAM2 {
             }
         }
 
+        std::vector<cv::Point2f> motionGuessPts = nextPts;
+
         /*  KLT TRACKING
          *      Size 	winSize = Size(21, 21),
                 int 	maxLevel = 3,
@@ -263,15 +266,18 @@ namespace ORB_SLAM2 {
 //        cv::imwrite("logs/current.png", CurrentFrame.origImgPyramid[0]);
 
         int belowThCount = 0, extra = 0;
+        double avgTravel = 0;
         for(int i=0;i<status.size();i++) {
             if (status[i]) {
 
                 nmatches++;
 
                 double zncc = computeZNCC(LastFrame, CurrentFrame, prevPts[i], nextPts[i], patchSize);
+                double travelDistance = cv::norm(motionGuessPts[i]-nextPts[i]);
 
-                if (zncc > kltZNCCThr) {
+                if (zncc > kltZNCCThr && travelDistance < kltMaxMovement) {
                     belowThCount++;
+                    avgTravel += travelDistance;
 
 
                     int index = indices[i];
@@ -304,7 +310,8 @@ namespace ORB_SLAM2 {
         }
 
         if (verbose)
-            std::cout << "Tracked: " << nmatches << " below thr: " << belowThCount << " out of " << status.size() << " | Extra: " << extra << std::endl;
+            std::cout << "Tracked: " << nmatches << " below thr: " << belowThCount << " out of " << status.size() <<
+                " | Extra: " << extra << " Avg travel dist: " << avgTravel/belowThCount << std::endl;
 
 //        exit(0);
         return std::make_pair(belowThCount, extra);

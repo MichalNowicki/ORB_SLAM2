@@ -2,9 +2,11 @@ clear;
 clc;
 close all;
 
-dir = '../results/lrm2/klt_1_znccThr_0.9/sequence_02/';
-% dir = '../results/lrm2/klt_1_znccThr_0.95/sequence_02/';
-% dir = '../results/lrm2/klt_0_znccThr_0.0/sequence_02/';
+% dir = '/home/mnowicki/Projects/Tardos/KITTI/orbslam2_klt/klt0.85_patchSize9/inliers/sequence_10/';
+% dir = '/home/mnowicki/Projects/Tardos/KITTI/orbslam2_klt/klt0.9_run1/inliers/sequence_10/';
+% dir = '/home/mnowicki/Projects/Tardos/KITTI/orbslam2_klt/klt0.95_run1/inliers/sequence_01/';
+%dir = '/home/mnowicki/Projects/Tardos/KITTI/orbslam2_klt/orig_run1/inliers/sequence_01/';
+dir = '/home/mnowicki/Projects/Tardos/ORB_SLAM2/logs/';
 
 %
 % candidates (1), matches (2), tracks (3), extra tracks over matches (4), inliers (5),
@@ -45,7 +47,7 @@ title('Tracking inliers vs avg zncc');
 clc
 fprintf(['VO\n\tCand: %.2f \n\tMatches: %.2f \n\tTracks: %.2f \n\tMatches + tracks: %.2f (%.2f) ',...
     '\n\tInliers: %.2f (t:%.2f, m:%.2f)\n\tInlier perc. - t:%.2f m:%.2f\n\tAvg znnc of inliners: %.2f\n'], ...
-    mean(voInliers(:,1)), mean(voInliers(:,2)), mean(voInliers(:,3)), mean(voInliers(:,2) + voInliers(:,4)), ...
+    mean(voInliers(:,1)), mean(voInliers(:,2)), mean(voInliers(:,3)), mean(voInliers(:,2) + voInliers(:,4)), ...p[
     mean(voInliers(:,4)), mean(voInliers(:,5)), mean(voInliers(:,6)), mean(voInliers(:,5) - voInliers(:,6)), ...
     mean(voInliers(:,6)) / mean(voInliers(:,4)), ...
     (mean(voInliers(:,5)) - mean(voInliers(:,6))) / mean(voInliers(:,2)), ...

@@ -57,7 +57,8 @@ tracking.kltTrack: 1
 tracking.kltMaxIterations: 30
 tracking.kltEPS: 0.01
 tracking.kltZNCCThreshold: 0.990000
-tracking.kltPatchSize: 9
+tracking.kltPatchSize: 11
+tracking.kltMaxMovement: 5
 
 #--------------------------------------------------------------------------------------------
 # Viewer Parameters

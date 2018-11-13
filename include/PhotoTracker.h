@@ -24,7 +24,7 @@ namespace ORB_SLAM2 {
 
         // Initializes photometric tracking of features
         PhotoTracker(double photoThreshold = 20, int kltMaxIterations=30, double kltEPS=0.01, double kltZNCCThr=0.9,
-                int kltPatchSize=9, bool verbose = false);
+                int kltPatchSize=9, bool verbose = false, double kltMaxMovement=8);
 
         // Performs tracking of feature motion
         int SearchByPhoto(Frame &CurrentFrame, Frame &LastFrame);
@@ -57,10 +57,8 @@ namespace ORB_SLAM2 {
         double photoThreshold;
 
         // KLT threshold
-        int kltMaxIterations;
-        double kltEPS;
-        double kltZNCCThr;
-        int patchSize;
+        int kltMaxIterations, patchSize;
+        double kltEPS, kltZNCCThr, kltMaxMovement;
 
         bool verbose;
 

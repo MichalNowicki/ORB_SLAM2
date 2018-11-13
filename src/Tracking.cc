@@ -155,6 +155,7 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
     kltEPS = fSettings["tracking.kltEPS"];
     kltZNCCThreshold = fSettings["tracking.kltZNCCThreshold"];
     kltPatchSize = fSettings["tracking.kltPatchSize"];
+    kltMaxMovement = fSettings["tracking.kltMaxMovement"];
 
 
     std::cout << "KLT parameters" << std::endl;
@@ -167,7 +168,6 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
 
     voInlierCountStream.open("logs/voInlierCount.txt");
     mapInlierCountStream.open("logs/mapInlierCount.txt");
-    verbose = false;
 }
 
 void Tracking::SetLocalMapper(LocalMapping *pLocalMapper)
@@ -951,7 +951,7 @@ bool Tracking::TrackWithMotionModel()
     // TODO: Experimental
     std::pair<int,int> photoMatches;
     if (kltTrack > 0) {
-        PhotoTracker tracker(15, kltMaxIterations, kltEPS, kltZNCCThreshold, kltPatchSize, verbose);
+        PhotoTracker tracker(15, kltMaxIterations, kltEPS, kltZNCCThreshold, kltPatchSize, verbose, kltMaxMovement);
 //    int photoMatches = tracker.SearchByPhoto(mCurrentFrame, mLastFrame);
         photoMatches = tracker.SearchByKLT(mCurrentFrame, mLastFrame);
     }
@@ -1362,7 +1362,7 @@ void Tracking::SearchLocalPoints()
 
         int trackedNo = 0;
         if (kltTrack > 1) {
-            PhotoTracker tracker(20, kltMaxIterations, kltEPS, kltZNCCThreshold, kltPatchSize, verbose);
+            PhotoTracker tracker(20, kltMaxIterations, kltEPS, kltZNCCThreshold, kltPatchSize, verbose, kltMaxMovement);
 //        int trackedNo = tracker.SearchByPhoto(mCurrentFrame, mvpLocalMapPoints);
             trackedNo = tracker.SearchByKLT(mCurrentFrame, mvpLocalMapPoints);
         }
