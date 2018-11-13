@@ -106,15 +106,15 @@ else:
             dir = "klt_" + str(kltTracking) + "_znccThr_" + str(kltZNCCThreshold) + "_patchSize_" + str(kltPatchSize) + "_kltMaxMovement_" + str(kltMaxMovement);
 
             # Create dir for chosen detector
-            if not os.path.exists("results/" + dir + "/sequence_" + str(seq) + "/data"):
-                os.makedirs("results/" + dir + "/sequence_" + str(seq) + "/data");
+            if not os.path.exists("results/" + dir + "/data"):
+                os.makedirs("results/" + dir + "/data");
             else:
-                call('rm results/' + dir + '/sequence_' + str(seq) + '/data/*', shell=True);
+                call('rm results/' + dir + '/data/*', shell=True);
 
-            if not os.path.exists("results/" + dir + "/sequence_" + str(seq) + "/inliers"):
-                os.makedirs("results/" + dir + "/sequence_" + str(seq) + "/inliers");
+            if not os.path.exists("results/" + dir + "/inliers/sequence_" + str(seq)):
+                os.makedirs("results/" + dir + "/inliers/sequence_" + str(seq));
             else:
-                call('rm results/' + dir + '/sequence_' + str(seq) + '/inliers/*', shell=True);
+                call('rm results/' + dir + 'inliers/sequence_' + str(seq) + '/*', shell=True);
 
 
             # We call this command
@@ -125,5 +125,5 @@ else:
 
             # Copy results
             call('mv CameraTrajectory.txt results/' + dir + '/data/' + str(seq) + '.txt', shell=True);
-            call('mv logs/*.txt results/' + dir +  '/sequence_' + str(seq) + '/inliers/', shell=True);
+            call('mv logs/*.txt results/' + dir +  '/inliers/sequence_' + str(seq) + '/', shell=True);
             call('rm logs/*.txt', shell=True);
