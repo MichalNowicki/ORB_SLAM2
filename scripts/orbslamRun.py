@@ -85,6 +85,15 @@ else:
     # For chosen detector
     for (kltTracking,kltZNCCThreshold,kltPatchSize, kltMaxMovement) in zip(kltTrackings, kltZNCCThresholds,kltPatchSizes, kltMaxMovements):
 
+        # Patch depending on the parameters
+        dir = "klt_" + str(kltTracking) + "_znccThr_" + str(kltZNCCThreshold) + "_patchSize_" + str(kltPatchSize) + "_kltMaxMovement_" + str(kltMaxMovement);
+
+        # Create dir
+        if not os.path.exists("results/" + dir + "/data"):
+            os.makedirs("results/" + dir + "/data");
+        else:
+            call('rm results/' + dir + '/data/*', shell=True);
+
         # For all selected sequences
         for seq in sequences:
 
@@ -102,28 +111,22 @@ else:
             setYamlFile("Examples/Stereo/" + yamlName, "tracking.kltPatchSize: ", kltPatchSize);
             setYamlFile("Examples/Stereo/" + yamlName, "tracking.kltMaxMovement: ", kltMaxMovement);
 
-            # Patch depending on the parameters
-            dir = "klt_" + str(kltTracking) + "_znccThr_" + str(kltZNCCThreshold) + "_patchSize_" + str(kltPatchSize) + "_kltMaxMovement_" + str(kltMaxMovement);
-
-            # Create dir for chosen detector
-            if not os.path.exists("results/" + dir + "/data"):
-                os.makedirs("results/" + dir + "/data");
-            else:
-                call('rm results/' + dir + '/data/*', shell=True);
-
+            # Create dir
             if not os.path.exists("results/" + dir + "/inliers/sequence_" + str(seq)):
                 os.makedirs("results/" + dir + "/inliers/sequence_" + str(seq));
             else:
-                call('rm results/' + dir + 'inliers/sequence_' + str(seq) + '/*', shell=True);
+                call('rm results/' + dir + '/inliers/sequence_' + str(seq) + '/*', shell=True);
 
 
             # We call this command
             print('./Examples/Stereo/stereo_kitti Vocabulary/ORBvoc.txt Examples/Stereo/' + yamlName + ' ' + str(mainDatasetPath) +'/' + seq +'/');
 
             # Run code
-            call('./Examples/Stereo/stereo_kitti Vocabulary/ORBvoc.txt Examples/Stereo/' + yamlName + ' '  + str(mainDatasetPath) +'/' + seq +'/', shell=True);
+            #call('./Examples/Stereo/stereo_kitti Vocabulary/ORBvoc.txt Examples/Stereo/' + yamlName + ' '  + str(mainDatasetPath) +'/' + seq +'/', shell=True);
 
             # Copy results
+            print('mv CameraTrajectory.txt results/' + dir + '/data/' + str(seq) + '.txt');
             call('mv CameraTrajectory.txt results/' + dir + '/data/' + str(seq) + '.txt', shell=True);
+
             call('mv logs/*.txt results/' + dir +  '/inliers/sequence_' + str(seq) + '/', shell=True);
             call('rm logs/*.txt', shell=True);
