@@ -77,10 +77,10 @@ else:
     #   - tracking.kltPatchSize: 11
     #   - tracking.kltMaxMovement: 5
     #
-    kltTrackings = [1, 1, 1, 1];
-    kltZNCCThresholds = [0.85, 0.9, 0.92, 0.95];
-    kltPatchSizes = [11, 11, 11, 11];
-    kltMaxMovements = [5, 5, 5, 5];
+    kltTrackings = [1, 1, 1, 1, 1];
+    kltZNCCThresholds = [0.6, 0.7, 0.85, 0.85, 0.85];
+    kltPatchSizes = [11, 11, 13, 9, 7];
+    kltMaxMovements = [5, 5, 6, 4, 3];
 
     # For chosen detector
     for (kltTracking,kltZNCCThreshold,kltPatchSize, kltMaxMovement) in zip(kltTrackings, kltZNCCThresholds,kltPatchSizes, kltMaxMovements):
@@ -122,7 +122,7 @@ else:
             print('./Examples/Stereo/stereo_kitti Vocabulary/ORBvoc.txt Examples/Stereo/' + yamlName + ' ' + str(mainDatasetPath) +'/' + seq +'/');
 
             # Run code
-            #call('./Examples/Stereo/stereo_kitti Vocabulary/ORBvoc.txt Examples/Stereo/' + yamlName + ' '  + str(mainDatasetPath) +'/' + seq +'/', shell=True);
+            call('./Examples/Stereo/stereo_kitti Vocabulary/ORBvoc.txt Examples/Stereo/' + yamlName + ' '  + str(mainDatasetPath) +'/' + seq +'/', shell=True);
 
             # Copy results
             print('mv CameraTrajectory.txt results/' + dir + '/data/' + str(seq) + '.txt');
