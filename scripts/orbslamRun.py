@@ -86,7 +86,7 @@ else:
     for (kltTracking,kltZNCCThreshold,kltPatchSize, kltMaxMovement) in zip(kltTrackings, kltZNCCThresholds,kltPatchSizes, kltMaxMovements):
 
         # Patch depending on the parameters
-        dir = "klt_" + str(kltTracking) + "_znccThr_" + str(kltZNCCThreshold) + "_patchSize_" + str(kltPatchSize) + "_kltMaxMovement_" + str(kltMaxMovement);
+        dir = "klt" + str(kltZNCCThreshold) + "_patchSize_" + str(kltPatchSize) + "_kltMaxMovement_" + str(kltMaxMovement);
 
         # Create dir
         if not os.path.exists("results/" + dir + "/data"):
