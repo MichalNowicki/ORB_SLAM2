@@ -123,6 +123,7 @@ public:
 
     // TODO: Some tests
     double lastZNCC;
+    double sumChi2;
 
 protected:    
 

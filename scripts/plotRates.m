@@ -5,8 +5,14 @@ close all;
 % dir = '/home/mnowicki/Projects/Tardos/KITTI/orbslam2_klt/klt0.85_patchSize9/inliers/sequence_10/';
 % dir = '/home/mnowicki/Projects/Tardos/KITTI/orbslam2_klt/klt0.9_run1/inliers/sequence_10/';
 % dir = '/home/mnowicki/Projects/Tardos/KITTI/orbslam2_klt/klt0.95_run1/inliers/sequence_01/';
-%dir = '/home/mnowicki/Projects/Tardos/KITTI/orbslam2_klt/orig_run1/inliers/sequence_01/';
-dir = '/home/mnowicki/Projects/Tardos/ORB_SLAM2/logs/';
+% dir = '/home/mnowicki/Projects/Tardos/KITTI/orbslam2_klt/orig_run1/inliers/sequence_01/';
+%dir = '/home/mnowicki/Projects/Tardos/ORB_SLAM2/logs/';
+
+% dir = '/home/mnowicki/Projects/Tardos/KITTI/orbslam2_klt/klt0.85_patchSize_11_kltMaxMovement_5/inliers/sequence_01/';
+% dir = '/home/mnowicki/Projects/Tardos/KITTI/orbslam2_klt/klt0.9_patchSize_11_kltMaxMovement_5/inliers/sequence_01/';
+% dir = '/home/mnowicki/Projects/Tardos/KITTI/orbslam2_klt/klt0.92_patchSize_11_kltMaxMovement_5/inliers/sequence_01/';
+dir = '/home/mnowicki/Projects/Tardos/KITTI/orbslam2_klt/klt0.95_patchSize_11_kltMaxMovement_5/inliers/sequence_01/';
+
 
 %
 % candidates (1), matches (2), tracks (3), extra tracks over matches (4), inliers (5),
@@ -63,9 +69,10 @@ plot(mapInliers(:,5), 'm', 'LineWidth',2);
 legend('Map matches', 'Map tracks', 'Map add cand', 'Map inliers', 'Map total cand');
 title('Map - frame2localFrames');
 
-fprintf('Map\n\tAdd cand: %f \n\tAdd matches: %f \n\tAdd tracks: %f \n\tInliers: %f \n\tTotal: %f\n\n', ...
+fprintf(['Map\n\tAdd cand: %f \n\tAdd matches: %f \n\tAdd tracks: %f \n\tInliers: %f \n\tTotal: %f', ...
+    '\n\tInlier perc. - m:%.2f\n\n'], ...
     mean(mapInliers(:,3)), mean(mapInliers(:,1)), mean(mapInliers(:,2)), ...
-    mean(mapInliers(:,4)), mean(mapInliers(:,5)))
+    mean(mapInliers(:,4)), mean(mapInliers(:,5)), mean(mapInliers(:,4))/mean(mapInliers(:,5)))
 
 % figure;
 % plot(voInliers(:,3) ./voInliers(:,4), 'r', 'LineWidth',2);

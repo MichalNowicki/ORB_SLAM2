@@ -70,7 +70,8 @@ src/KeyFrameDatabase.cc
 src/Sim3Solver.cc
 src/Initializer.cc
 src/Viewer.cc
-src/g2oPhotoError.cpp)
+src/g2oPhotoError.cpp
+        src/vertex_pointxyz.cpp)
 
 target_link_libraries(${PROJECT_NAME}
 ${OpenCV_LIBS}

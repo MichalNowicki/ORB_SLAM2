@@ -60,6 +60,9 @@ public:
 
     // PoseOptimizationWithPhotometric
     int static PoseOptimizationWithPhotometric(Frame *lastFrame, Frame* pFrame);
+
+    // TODO: Optimizes feature world position assuming that KFs are fixed
+    int static FeatureOptimization(MapPoint* mp);
 };
 
 } //namespace ORB_SLAM

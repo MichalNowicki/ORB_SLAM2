@@ -84,7 +84,6 @@ public:
 
     std::vector<cv::Mat> mvImagePyramid;
     std::vector<photo::imgStr*> photobaImagePyramid;
-    cv::Mat origImg;
     std::vector<cv::Mat> origImgPyramid;
 
 protected:
