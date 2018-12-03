@@ -460,12 +460,13 @@ namespace ORB_SLAM2 {
 //        std::cout << "Optimizer::FeatureOptimization - end" << std::endl;
 
         // TODO: Simple selection based on the number of obs
-        if (lLocalMapPoints.size() > 1500) {
+        const int maxNumberOfLBA=500;
+        if (lLocalMapPoints.size() > maxNumberOfLBA) {
             lLocalMapPoints.sort([](const MapPoint *a, const MapPoint *b) {
                 return a->nObs > b->nObs;
             });
-            std::cout << "Resize performed! From " << lLocalMapPoints.size() << " to 1500" << std::endl;
-            lLocalMapPoints.resize(1500);
+            std::cout << "Resize performed! From " << lLocalMapPoints.size() << " to " << maxNumberOfLBA << std::endl;
+            lLocalMapPoints.resize(maxNumberOfLBA);
         }
 
 
