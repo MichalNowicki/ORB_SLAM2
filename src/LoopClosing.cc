@@ -58,8 +58,8 @@ void LoopClosing::Run()
 {
     mbFinished =false;
 
-    while(1)
-    {
+//    while(1)
+//    {
 //        // Check if there are keyframes in the queue
 //        if(CheckNewKeyFrames())
 //        {
@@ -80,9 +80,9 @@ void LoopClosing::Run()
 //
 //        if(CheckFinish())
 //            break;
-
-        usleep(5000);
-    }
+//
+//        usleep(5000);
+//    }
 
     SetFinish();
 }
