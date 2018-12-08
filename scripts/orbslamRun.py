@@ -81,10 +81,10 @@ else:
     # kltZNCCThresholds = [0.6, 0.7, 0.85, 0.85, 0.85];
     # kltPatchSizes = [11, 11, 13, 9, 7];
     # kltMaxMovements = [5, 5, 6, 4, 3];
-    kltTrackings = [1];
-    kltZNCCThresholds = [0.8];
-    kltPatchSizes = [11];
-    kltMaxMovements = [5];
+    kltTrackings = [0, 1];
+    kltZNCCThresholds = [0, 0.8];
+    kltPatchSizes = [0, 11];
+    kltMaxMovements = [0, 5];
 
     # For chosen detector
     for (kltTracking,kltZNCCThreshold,kltPatchSize, kltMaxMovement) in zip(kltTrackings, kltZNCCThresholds,kltPatchSizes, kltMaxMovements):

@@ -454,20 +454,20 @@ namespace ORB_SLAM2 {
 
         // TODO: We should do it only for features that were previously not selected. Now for every
 //        std::cout << "Optimizer::FeatureOptimization - begin" << std::endl;
-        for(list<MapPoint*>::iterator lit=lLocalMapPoints.begin(), lend=lLocalMapPoints.end(); lit!=lend; lit++) {
-            Optimizer::FeatureOptimization(lLocalMapPoints.front());
-        }
+//        for(list<MapPoint*>::iterator lit=lLocalMapPoints.begin(), lend=lLocalMapPoints.end(); lit!=lend; lit++) {
+//            Optimizer::FeatureOptimization(lLocalMapPoints.front());
+//        }
 //        std::cout << "Optimizer::FeatureOptimization - end" << std::endl;
 
         // TODO: Simple selection based on the number of obs
-        const int maxNumberOfLBA=500;
-        if (lLocalMapPoints.size() > maxNumberOfLBA) {
-            lLocalMapPoints.sort([](const MapPoint *a, const MapPoint *b) {
-                return a->nObs > b->nObs;
-            });
-            std::cout << "Resize performed! From " << lLocalMapPoints.size() << " to " << maxNumberOfLBA << std::endl;
-            lLocalMapPoints.resize(maxNumberOfLBA);
-        }
+//        const int maxNumberOfLBA=500;
+//        if (lLocalMapPoints.size() > maxNumberOfLBA) {
+//            lLocalMapPoints.sort([](const MapPoint *a, const MapPoint *b) {
+//                return a->nObs > b->nObs;
+//            });
+//            std::cout << "Resize performed! From " << lLocalMapPoints.size() << " to " << maxNumberOfLBA << std::endl;
+//            lLocalMapPoints.resize(maxNumberOfLBA);
+//        }
 
 
 
