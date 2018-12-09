@@ -62,6 +62,10 @@ else:
     if "lrm2" in sys.argv[1]:
         mainDatasetPath = '/mnt/data/Datasets/kitti/sequences';
 
+    # LRM2
+    if "adas-server" in sys.argv[1]:
+        mainDatasetPath = '/home/mnowicki/kitti/sequences';
+
     # Toshiba Portege Z30
     if "local" in sys.argv[1]:
         mainDatasetPath = '/home/mnowicki/Projects/Datasets/KITTI/sequences';
