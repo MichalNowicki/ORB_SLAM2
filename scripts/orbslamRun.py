@@ -117,6 +117,7 @@ else:
             setYamlFile("Examples/Stereo/" + yamlName, "tracking.kltZNCCThreshold: ", kltZNCCThreshold);
             setYamlFile("Examples/Stereo/" + yamlName, "tracking.kltPatchSize: ", kltPatchSize);
             setYamlFile("Examples/Stereo/" + yamlName, "tracking.kltMaxMovement: ", kltMaxMovement);
+            setYamlFile("Examples/Stereo/" + yamlName, "mapping.wantedNumberInLBA: ", wantedNo);
 
             # Create dir
             if not os.path.exists("results/" + dir + "/inliers/sequence_" + str(seq)):
