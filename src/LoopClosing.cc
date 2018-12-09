@@ -58,9 +58,9 @@ void LoopClosing::Run()
 {
     mbFinished =false;
 
-//    while(1)
-//    {
-//        // Check if there are keyframes in the queue
+    while(1)
+    {
+        // Check if there are keyframes in the queue
 //        if(CheckNewKeyFrames())
 //        {
 //            // Detect loop candidates and check covisibility consistency
@@ -75,14 +75,14 @@ void LoopClosing::Run()
 //               }
 //            }
 //        }
-//
-//        ResetIfRequested();
-//
-//        if(CheckFinish())
-//            break;
-//
-//        usleep(5000);
-//    }
+
+        ResetIfRequested();
+
+        if(CheckFinish())
+            break;
+
+        usleep(5000);
+    }
 
     SetFinish();
 }
