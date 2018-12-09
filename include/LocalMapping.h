@@ -42,7 +42,7 @@ class Map;
 class LocalMapping
 {
 public:
-    LocalMapping(Map* pMap, const float bMonocular);
+    LocalMapping(Map* pMap, const float bMonocular, const string &strSettingPath);
 
     void SetLoopCloser(LoopClosing* pLoopCloser);
 
@@ -126,6 +126,7 @@ protected:
 
 
     std::queue<KeyFrame*> lastKFs;
+    int wantedFeatureCountInLBA;
 };
 
 } //namespace ORB_SLAM

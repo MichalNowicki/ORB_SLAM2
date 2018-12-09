@@ -41,8 +41,6 @@ sequences = [
 '08', \
 '09', \
 '10', \
-'11', \
-'12', \
     ];
 
 runsPerSequence = 1;
@@ -85,16 +83,17 @@ else:
     # kltZNCCThresholds = [0.6, 0.7, 0.85, 0.85, 0.85];
     # kltPatchSizes = [11, 11, 13, 9, 7];
     # kltMaxMovements = [5, 5, 6, 4, 3];
-    kltTrackings = [0, 1];
-    kltZNCCThresholds = [0.8, 0.8];
-    kltPatchSizes = [11, 11];
-    kltMaxMovements = [5, 5];
+    kltTrackings = [0, 0, 0, 0, 1, 1, 1, 1];
+    kltZNCCThresholds = [0, 0, 0, 0, 0.8, 0.8, 0.8, 0.8];
+    kltPatchSizes = [11, 11, 11, 11, 11, 11, 11, 11];
+    kltMaxMovements = [0, 0, 0, 0, 5, 5, 5, 5];
+    wantedFeatureNumberInLBA = [500, 1000, 1500, 5000, 500, 1000, 1500, 5000]
 
     # For chosen detector
-    for (kltTracking,kltZNCCThreshold,kltPatchSize, kltMaxMovement) in zip(kltTrackings, kltZNCCThresholds,kltPatchSizes, kltMaxMovements):
+    for (kltTracking,kltZNCCThreshold,kltPatchSize, kltMaxMovement, wantedNo) in zip(kltTrackings, kltZNCCThresholds,kltPatchSizes, kltMaxMovements, wantedFeatureNumberInLBA):
 
         # Patch depending on the parameters
-        dir = "klt" + str(kltZNCCThreshold) + "_patchSize_" + str(kltPatchSize) + "_kltMaxMovement_" + str(kltMaxMovement);
+        dir = "klt_" + str(kltZNCCThreshold) + "_pSize_" + str(kltPatchSize) + "_kltMaxMov_" + str(kltMaxMovement) + "_LBA_" + str(wantedNo);
 
         # Create dir
         if not os.path.exists("results/" + dir + "/data"):

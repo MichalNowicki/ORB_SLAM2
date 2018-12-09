@@ -28,10 +28,15 @@
 namespace ORB_SLAM2
 {
 
-LocalMapping::LocalMapping(Map *pMap, const float bMonocular):
+LocalMapping::LocalMapping(Map *pMap, const float bMonocular, const string &strSettingPath) :
     mbMonocular(bMonocular), mbResetRequested(false), mbFinishRequested(false), mbFinished(true), mpMap(pMap),
     mbAbortBA(false), mbStopped(false), mbStopRequested(false), mbNotStop(false), mbAcceptKeyFrames(true)
 {
+    cv::FileStorage fSettings(strSettingPath, cv::FileStorage::READ);
+    wantedFeatureCountInLBA = fSettings["mapping.wantedNumberInLBA"];
+
+    std::cout << "Mapping parameters" << std::endl;
+    std::cout << "\twantedNumberInLBA = " << wantedFeatureCountInLBA << std::endl;
 }
 
 void LocalMapping::SetLoopCloser(LoopClosing* pLoopCloser)
@@ -78,7 +83,7 @@ void LocalMapping::Run()
             {
                 // Local BA
                 if(mpMap->KeyFramesInMap()>2)
-                    Optimizer::LocalBundleAdjustment(mpCurrentKeyFrame,&mbAbortBA, mpMap);
+                    Optimizer::LocalBundleAdjustment(mpCurrentKeyFrame,&mbAbortBA, mpMap, wantedFeatureCountInLBA);
 
                 // Check redundant local Keyframes
                 KeyFrameCulling();

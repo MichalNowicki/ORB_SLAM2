@@ -421,7 +421,7 @@ namespace ORB_SLAM2 {
         return nInitialCorrespondences - nBad;
     }
 
-    void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool *pbStopFlag, Map *pMap) {
+    void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool *pbStopFlag, Map *pMap, const int &wantedFeatureCountInLBA) {
         // Local KeyFrames: First Breath Search from Current Keyframe
         list<KeyFrame *> lLocalKeyFrames;
 
@@ -452,12 +452,49 @@ namespace ORB_SLAM2 {
             }
         }
 
-        // TODO: We should do it only for features that were previously not selected. Now for every
-//        std::cout << "Optimizer::FeatureOptimization - begin" << std::endl;
-//        for(list<MapPoint*>::iterator lit=lLocalMapPoints.begin(), lend=lLocalMapPoints.end(); lit!=lend; lit++) {
-//            Optimizer::FeatureOptimization(lLocalMapPoints.front());
-//        }
-//        std::cout << "Optimizer::FeatureOptimization - end" << std::endl;
+        // TODO: Dividing into mature and immature
+        list<MapPoint*> localImmatureMapPoints, localMatureMapPoints, additionalImmature, leftOutImmature;
+        for(list<MapPoint*>::iterator lit=lLocalMapPoints.begin(), lend=lLocalMapPoints.end(); lit!=lend; lit++) {
+            MapPoint *pMP = *lit;
+
+            if (pMP->status == MapPoint::MP_STATUS::IMMATURE)
+                localImmatureMapPoints.push_back(pMP);
+            else if (pMP->status == MapPoint::MP_STATUS::MATURE)
+                localMatureMapPoints.push_back(pMP);
+        }
+
+
+        // We want at least X features so add some immature to mature set
+        if (localMatureMapPoints.size() < wantedFeatureCountInLBA) {
+
+            // Sorting immature by the number of observations
+            localImmatureMapPoints.sort([](const MapPoint *a, const MapPoint *b) {
+                return a->nObs > b->nObs;
+            });
+
+            // Number of wanted additional features
+            int numberOfNeeded = wantedFeatureCountInLBA - localMatureMapPoints.size();
+            if (numberOfNeeded < localImmatureMapPoints.size())
+            {
+                std::cout << "We could be selective: " << numberOfNeeded << " out of " << localImmatureMapPoints.size() << std::endl;
+                auto end = std::next(localImmatureMapPoints.begin(), numberOfNeeded);
+                additionalImmature = list<MapPoint*> (localImmatureMapPoints.begin() , end);
+                leftOutImmature = list<MapPoint*>(end, localImmatureMapPoints.end());
+
+                // Creating map as mature + some immature
+                lLocalMapPoints.clear();
+                lLocalMapPoints.insert(lLocalMapPoints.end(), localMatureMapPoints.begin(),localMatureMapPoints.end());
+                lLocalMapPoints.insert(lLocalMapPoints.end(), additionalImmature.begin(),additionalImmature.end());
+            }
+            else {
+                std::cout << "We have to use all mature and all immature points" << std::endl;
+                // We do nothing as this list already contains all features
+            }
+        }
+        else
+            std::cout << "We rely on mature points!" << std::endl;
+
+
 
         // TODO: Simple selection based on the number of obs
 //        const int maxNumberOfLBA=500;
@@ -469,8 +506,6 @@ namespace ORB_SLAM2 {
 //            lLocalMapPoints.resize(maxNumberOfLBA);
 //        }
 
-
-
 //        // TODO: Simple selection based on the average chi2()
 //        lLocalMapPoints.sort([]( const MapPoint* &a, const MapPoint* &b ) {
 //            return a->sumChi2/a->nObs > b->sumChi2/b->nObs;
@@ -478,35 +513,6 @@ namespace ORB_SLAM2 {
 
 
 
-        // TODO: Distribution test
-//    std::vector<std::vector<int>> distributionCount (4, std::vector<int>(4,0));
-//    int divX = ceil(Frame::mnMaxX/4.0), divY = ceil(Frame::mnMaxY/4.0); // Rough approximation
-//    for(list<MapPoint*>::iterator lit=lLocalMapPoints.begin(), lend=lLocalMapPoints.end(); lit!=lend; lit++) {
-//        // TODO: experimental code
-//        (*lit)->sumChi2 = 0;
-//
-//
-//        // 3D in absolute coordinates
-//        cv::Mat P = (*lit)->GetWorldPos();
-//
-//        // 3D in camera coordinates
-//        const cv::Mat Pc = pKF->GetRotation() * P + pKF->GetTranslation();
-//        const float &PcX = Pc.at<float>(0);
-//        const float &PcY = Pc.at<float>(1);
-//        const float &PcZ = Pc.at<float>(2);
-//
-//        // Check positive depth
-//        if (PcZ > 0.0f) {
-//
-//            // Project in image and check it is not outside
-//            const float invz = 1.0f / PcZ;
-//            const float u = pKF->fx * PcX * invz + pKF->cx;
-//            const float v = pKF->fy * PcY * invz + pKF->cy;
-//
-//            if (u > Frame::mnMinX && u < Frame::mnMaxX && v > Frame::mnMinY && v < Frame::mnMaxY)
-//                distributionCount[u / divX][v / divY]++;
-//        }
-//    }
 
         // Fixed Keyframes. Keyframes that see Local MapPoints but that are not Local Keyframes
         list<KeyFrame *> lFixedCameras;
@@ -802,6 +808,18 @@ namespace ORB_SLAM2 {
             pMP->UpdateNormalAndDepth();
 
 //        std::cout << "Mappoint: avgChi2 = " << pMP->sumChi2 / pMP->GetObservations().size() << " obsNum = " << pMP->GetObservations().size() << std::endl;
+        }
+
+        // TODO: Additional immatures become matures!
+        for(list<MapPoint*>::iterator lit=additionalImmature.begin(), lend=additionalImmature.end(); lit!=lend; lit++) {
+            MapPoint *pMP = *lit;
+            pMP->status = MapPoint::MP_STATUS::MATURE;
+        }
+
+        // TODO: We update the 3D estimate for immature points that were not used in the processing
+        std::cout << "FeatureOptimization for leftOutImmature.size() = " << leftOutImmature.size() << std::endl;
+        for(list<MapPoint*>::iterator lit=leftOutImmature.begin(), lend=leftOutImmature.end(); lit!=lend; lit++) {
+            Optimizer::FeatureOptimization(*lit);
         }
     }
 

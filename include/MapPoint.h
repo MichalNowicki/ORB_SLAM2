@@ -39,6 +39,8 @@ class Frame;
 class MapPoint
 {
 public:
+    enum MP_STATUS {IMMATURE, MATURE};
+
     MapPoint(const cv::Mat &Pos, KeyFrame* pRefKF, Map* pMap);
     MapPoint(const cv::Mat &Pos,  Map* pMap, Frame* pFrame, const int &idxF);
 
@@ -124,6 +126,8 @@ public:
     // TODO: Some tests
     double lastZNCC;
     double sumChi2;
+    MP_STATUS status;
+
 
 protected:    
 
