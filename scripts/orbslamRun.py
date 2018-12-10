@@ -87,13 +87,13 @@ else:
     kltZNCCThresholds = [0, 0, 0, 0, 0.8, 0.8, 0.8, 0.8];
     kltPatchSizes = [11, 11, 11, 11, 11, 11, 11, 11];
     kltMaxMovements = [0, 0, 0, 0, 5, 5, 5, 5];
-    wantedFeatureNumberInLBA = [500, 1000, 1500, 5000, 500, 1000, 1500, 5000]
+    wantedFeatureNumberInLBA = [75, 100, 150, 200, 75, 100, 150, 200];
 
     # For chosen detector
     for (kltTracking,kltZNCCThreshold,kltPatchSize, kltMaxMovement, wantedNo) in zip(kltTrackings, kltZNCCThresholds,kltPatchSizes, kltMaxMovements, wantedFeatureNumberInLBA):
 
         # Patch depending on the parameters
-        dir = "klt" + str(kltZNCCThreshold) + "_pSize_" + str(kltPatchSize) + "_kltMaxMov_" + str(kltMaxMovement) + "_LBA_" + str(wantedNo) + "_avgChi2";
+        dir = "klt" + str(kltZNCCThreshold) + "_pSize_" + str(kltPatchSize) + "_kltMaxMov_" + str(kltMaxMovement) + "_LBAperKF_" + str(wantedNo) + "_early";
 
         # Create dir
         if not os.path.exists("results/" + dir + "/data"):

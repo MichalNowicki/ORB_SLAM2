@@ -465,8 +465,12 @@ namespace ORB_SLAM2 {
         }
 
 
+        // Number of features depending on the number of KF
+        int localKFSize = lLocalKeyFrames.size();
+        int wantedFeatureCount = wantedFeatureCountInLBA * localKFSize;
+
         // We want at least X features so add some immature to mature set
-        if (localMatureMapPoints.size() < wantedFeatureCountInLBA) {
+        if (localMatureMapPoints.size() < wantedFeatureCount) {
 
             // Sorting immature by the number of observations
             localImmatureMapPoints.sort([](const MapPoint *a, const MapPoint *b) {
@@ -474,7 +478,7 @@ namespace ORB_SLAM2 {
             });
 
             // Number of wanted additional features
-            int numberOfNeeded = wantedFeatureCountInLBA - localMatureMapPoints.size();
+            int numberOfNeeded = wantedFeatureCount - localMatureMapPoints.size();
             if (numberOfNeeded < localImmatureMapPoints.size())
             {
                 std::cout << "We could be selective: " << numberOfNeeded << " out of " << localImmatureMapPoints.size() << std::endl;
