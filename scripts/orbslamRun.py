@@ -93,7 +93,7 @@ else:
     for (kltTracking,kltZNCCThreshold,kltPatchSize, kltMaxMovement, wantedNo) in zip(kltTrackings, kltZNCCThresholds,kltPatchSizes, kltMaxMovements, wantedFeatureNumberInLBA):
 
         # Patch depending on the parameters
-        dir = "klt_" + str(kltZNCCThreshold) + "_pSize_" + str(kltPatchSize) + "_kltMaxMov_" + str(kltMaxMovement) + "_LBA_" + str(wantedNo);
+        dir = "klt" + str(kltZNCCThreshold) + "_pSize_" + str(kltPatchSize) + "_kltMaxMov_" + str(kltMaxMovement) + "_LBA_" + str(wantedNo) + "_avgChi2";
 
         # Create dir
         if not os.path.exists("results/" + dir + "/data"):
