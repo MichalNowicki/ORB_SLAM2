@@ -472,19 +472,21 @@ namespace ORB_SLAM2 {
         // We want at least X features so add some immature to mature set
         if (localMatureMapPoints.size() < wantedFeatureCount) {
 
-            // Sorting immature by the number of observations
-            localImmatureMapPoints.sort([](const MapPoint *a, const MapPoint *b) {
-                return a->nObs > b->nObs;
-            });
-
             // Number of wanted additional features
             int numberOfNeeded = wantedFeatureCount - localMatureMapPoints.size();
             if (numberOfNeeded < localImmatureMapPoints.size())
             {
+                // Sorting immature by the number of observations
+                localImmatureMapPoints.sort([](const MapPoint *a, const MapPoint *b) {
+                    return a->nObs > b->nObs;
+                });
+
                 std::cout << "We could be selective: " << numberOfNeeded << " out of " << localImmatureMapPoints.size() << std::endl;
                 auto end = std::next(localImmatureMapPoints.begin(), numberOfNeeded);
                 additionalImmature = list<MapPoint*> (localImmatureMapPoints.begin() , end);
                 leftOutImmature = list<MapPoint*>(end, localImmatureMapPoints.end());
+
+//                std::cout << "?? " << additionalImmature.size() << " " << leftOutImmature.size() << std::endl;
 
                 // Creating map as mature + some immature
                 lLocalMapPoints.clear();
@@ -494,6 +496,13 @@ namespace ORB_SLAM2 {
             else {
                 std::cout << "We have to use all mature and all immature points" << std::endl;
                 // We do nothing as this list already contains all features
+                additionalImmature = localImmatureMapPoints;
+            }
+
+            // TODO: Additional immatures become matures!
+            for(list<MapPoint*>::iterator lit=additionalImmature.begin(), lend=additionalImmature.end(); lit!=lend; lit++) {
+                MapPoint *pMP = *lit;
+                pMP->status = MapPoint::MP_STATUS::MATURE;
             }
         }
         else
@@ -813,12 +822,6 @@ namespace ORB_SLAM2 {
             pMP->UpdateNormalAndDepth();
 
 //        std::cout << "Mappoint: avgChi2 = " << pMP->sumChi2 / pMP->GetObservations().size() << " obsNum = " << pMP->GetObservations().size() << std::endl;
-        }
-
-        // TODO: Additional immatures become matures!
-        for(list<MapPoint*>::iterator lit=additionalImmature.begin(), lend=additionalImmature.end(); lit!=lend; lit++) {
-            MapPoint *pMP = *lit;
-            pMP->status = MapPoint::MP_STATUS::MATURE;
         }
 
         // TODO: We update the 3D estimate for immature points that were not used in the processing
