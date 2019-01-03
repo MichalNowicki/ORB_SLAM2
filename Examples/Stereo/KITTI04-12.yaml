@@ -56,11 +56,11 @@ tracking.verbose: 0
 tracking.kltTrack: 1
 tracking.kltMaxIterations: 30
 tracking.kltEPS: 0.01
-tracking.kltZNCCThreshold: 0.95
+tracking.kltZNCCThreshold: 0.8
 tracking.kltPatchSize: 11
 tracking.kltMaxMovement: 5
 
-mapping.wantedNumberInLBA: 500
+mapping.wantedNumberInLBA: 10000
 
 #--------------------------------------------------------------------------------------------
 # Viewer Parameters

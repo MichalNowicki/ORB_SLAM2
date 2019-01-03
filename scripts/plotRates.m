@@ -14,16 +14,17 @@ close all;
 
 
 % dirVersion = '/home/mnowicki/Projects/Tardos/KITTI/orbslam2_woLC/klt0.8_patchSize_11_kltMaxMovement_5/';
-dirVersion = '/home/mnowicki/Projects/Tardos/KITTI/orbslam2_woLC/orig_woLC_run1/';
+%dirVersion = '/home/mnowicki/Projects/Tardos/KITTI/orbslam2_woLC/orig_woLC_run1/';
+dirVersion = '/home/mnowicki/Projects/Tardos/KITTI/orbslam2_woLC/test/';
 
-seq = 'sequence_07';
+seq = 'sequence_01';
 
 dir = strcat(dirVersion, 'inliers/', seq);
 
 
 %
 % candidates (1), matches (2), tracks (3), extra tracks over matches (4), inliers (5),
-% inliersTracking (6), zncc (7)
+% inliersTracking (6), zncc (7), avgTravelDist (8)
 %
 voInliers = importdata(strcat(dir, '/voInlierCount.txt'));
 

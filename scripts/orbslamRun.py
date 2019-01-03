@@ -30,17 +30,17 @@ else:
 
 
 sequences = [
-'00', \
+# '00', \
 '01', \
-'02', \
-'03', \
-'04', \
-'05', \
-'06', \
-'07', \
-'08', \
-'09', \
-'10', \
+# '02', \
+# '03', \
+# '04', \
+# '05', \
+# '06', \
+# '07', \
+# '08', \
+# '09', \
+# '10', \
     ];
 
 runsPerSequence = 1;
@@ -83,11 +83,17 @@ else:
     # kltZNCCThresholds = [0.6, 0.7, 0.85, 0.85, 0.85];
     # kltPatchSizes = [11, 11, 13, 9, 7];
     # kltMaxMovements = [5, 5, 6, 4, 3];
-    kltTrackings = [2, 1, 0];
-    kltZNCCThresholds = [0.8, 0.8, 0.0];
-    kltPatchSizes = [11, 11, 11];
-    kltMaxMovements = [5, 5, 5];
-    wantedFeatureNumberInLBA = [10000, 10000, 10000];
+    # kltTrackings = [2, 1, 0];
+    # kltZNCCThresholds = [0.8, 0.8, 0.0];
+    # kltPatchSizes = [11, 11, 11];
+    # kltMaxMovements = [5, 5, 5];
+    # wantedFeatureNumberInLBA = [10000, 10000, 10000];
+
+    kltTrackings = [1];
+    kltZNCCThresholds = [0.8];
+    kltPatchSizes = [11];
+    kltMaxMovements = [5];
+    wantedFeatureNumberInLBA = [100000];
 
     # For chosen detector
     for (kltTracking,kltZNCCThreshold,kltPatchSize, kltMaxMovement, wantedNo) in zip(kltTrackings, kltZNCCThresholds,kltPatchSizes, kltMaxMovements, wantedFeatureNumberInLBA):

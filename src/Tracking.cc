@@ -928,51 +928,78 @@ bool Tracking::TrackWithMotionModel()
 
     mCurrentFrame.SetPose(mVelocity*mLastFrame.mTcw);
 
-    fill(mCurrentFrame.mvpMapPoints.begin(),mCurrentFrame.mvpMapPoints.end(),static_cast<MapPoint*>(NULL));
+    // TODO: Repeat until it is ok - max 3 times
+    int nmatches = 0, count = 0, inliers = 0;
+    photoTrackerResult photoMatches;
 
-    // Project points seen in previous frame
-    int th;
-    if(mSensor!=System::STEREO)
-        th=15;
-    else
-        th=7;
-    int nmatches = matcher.SearchByProjection(mCurrentFrame,mLastFrame,th,mSensor==System::MONOCULAR);
+    int iter = 0;
+    for (; iter < 5; iter++) {
+        fill(mCurrentFrame.mvpMapPoints.begin(), mCurrentFrame.mvpMapPoints.end(), static_cast<MapPoint *>(NULL));
 
-    // If few matches, uses a wider window search
-    if(nmatches<20)
-    {
-        fill(mCurrentFrame.mvpMapPoints.begin(),mCurrentFrame.mvpMapPoints.end(),static_cast<MapPoint*>(NULL));
-        nmatches = matcher.SearchByProjection(mCurrentFrame,mLastFrame,2*th,mSensor==System::MONOCULAR);
-    }
+        // Project points seen in previous frame
+        int th;
+        if (mSensor != System::STEREO)
+            th = 15;
+        else
+            th = 7;
+        nmatches = matcher.SearchByProjection(mCurrentFrame, mLastFrame, th, mSensor == System::MONOCULAR);
 
-    if(nmatches<20)
-        return false;
+        // If few matches, uses a wider window search
+        if (nmatches < 20) {
+            fill(mCurrentFrame.mvpMapPoints.begin(), mCurrentFrame.mvpMapPoints.end(), static_cast<MapPoint *>(NULL));
+            nmatches = matcher.SearchByProjection(mCurrentFrame, mLastFrame, 2 * th, mSensor == System::MONOCULAR);
+        }
 
-    // TODO: Experimental
-    std::pair<int,int> photoMatches;
-    if (kltTrack > 0) {
-        PhotoTracker tracker(15, kltMaxIterations, kltEPS, kltZNCCThreshold, kltPatchSize, verbose, kltMaxMovement);
-//    int photoMatches = tracker.SearchByPhoto(mCurrentFrame, mLastFrame);
-        photoMatches = tracker.SearchByKLT(mCurrentFrame, mLastFrame);
-    }
-    if (verbose)
-        std::cout<<"PoseOptimization (TrackWithMotionModel): " << std::endl << "\tmatched: "
-            << nmatches << ", tracked: " << photoMatches.first << ", extra: " << photoMatches.second << std::endl;
+        if (nmatches < 20)
+            return false;
 
-    int count = 0;
-    for (int i = 0; i < mLastFrame.N; i++) {
-        MapPoint *pMP = mLastFrame.mvpMapPoints[i];
+        // TODO: Experimental
+        if (kltTrack > 0) {
+            PhotoTracker tracker(15, kltMaxIterations, kltEPS, kltZNCCThreshold, kltPatchSize, verbose, kltMaxMovement);
+            //    int photoMatches = tracker.SearchByPhoto(mCurrentFrame, mLastFrame);
+            photoMatches = tracker.SearchByKLT(mCurrentFrame, mLastFrame);
+        }
+        if (verbose)
+            std::cout << "PoseOptimization (TrackWithMotionModel): " << std::endl << "\tmatched: "
+                      << nmatches << ", tracked: " << photoMatches.trackedBelowTh << ", extra: "
+                      << photoMatches.extraOverMatchings << std::endl;
 
-        if (pMP) {
-            if (!mLastFrame.mvbOutlier[i]) {
-                count++;
+        for (int i = 0; i < mLastFrame.N; i++) {
+            MapPoint *pMP = mLastFrame.mvpMapPoints[i];
+
+            if (pMP) {
+                if (!mLastFrame.mvbOutlier[i]) {
+                    count++;
+                }
+            }
+        }
+
+        // Optimize frame pose with all matches
+        inliers = Optimizer::PoseOptimization(&mCurrentFrame);
+        //    Optimizer::PoseOptimizationWithPhotometric(&mLastFrame, &mCurrentFrame);
+
+        if (inliers > 200)
+            break;
+        else
+        {
+            std::cout << "!!! Unsufficient number of inliers = " << inliers << std::endl;
+
+            for(int i=0;i<mLastFrame.N;i++)
+            {
+                MapPoint* pMP = mLastFrame.mvpMapPoints[i];
+                if (pMP) {
+                    pMP->rescuedLast = false;
+                    pMP->matchedLast = false;
+                }
             }
         }
     }
+    if (iter > 0) {
+        std::cout << "Now it is : " << inliers << std::endl;
 
-    // Optimize frame pose with all matches
-    Optimizer::PoseOptimization(&mCurrentFrame);
-//    Optimizer::PoseOptimizationWithPhotometric(&mLastFrame, &mCurrentFrame);
+        int a;
+        std::cin >> a;
+    }
 
 
     // Discard outliers
@@ -1013,8 +1040,8 @@ bool Tracking::TrackWithMotionModel()
         std::cout<<"\ttracking inliers: " << cntZNCC << " avgZNCC="<< avgZNCC<< std::endl;
 
     // AllCandidates / Matching / Tracking / Extra tracking over matching / Inliers
-    voInlierCountStream << count << " " << nmatches << " " << photoMatches.first << " "
-        << photoMatches.second << " " << totalMatches << " " << cntZNCC << " " << avgZNCC << std::endl;
+    voInlierCountStream << count << " " << nmatches << " " << photoMatches.trackedBelowTh << " "
+        << photoMatches.extraOverMatchings << " " << totalMatches << " " << cntZNCC << " " << avgZNCC << " " << photoMatches.avgTravelDistForInliers << std::endl;
 
     if(mbOnlyTracking)
     {

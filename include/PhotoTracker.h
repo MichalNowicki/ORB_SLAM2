@@ -19,6 +19,12 @@
 
 namespace ORB_SLAM2 {
 
+    struct photoTrackerResult {
+        int all, tracked, trackedBelowTh, extraOverMatchings;
+        double avgTravelDistForInliers;
+    };
+
+
     class PhotoTracker {
     public:
 
@@ -33,7 +39,7 @@ namespace ORB_SLAM2 {
         int SearchByPhoto(Frame &CurrentFrame, const vector<MapPoint*> &vpMapPoints);
 
         // KLT
-        std::pair<int,int> SearchByKLT(Frame &CurrentFrame, Frame &LastFrame);
+        photoTrackerResult SearchByKLT(Frame &CurrentFrame, Frame &LastFrame);
         int SearchByKLT(Frame &CurrentFrame, const vector<MapPoint*> &vpMapPoints);
 
     private:
@@ -64,5 +70,8 @@ namespace ORB_SLAM2 {
 
 
     };
+
+
+
 } // namespace ORB_SLAM
 #endif //ORB_SLAM2_PHOTOTRACKER_H

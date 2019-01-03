@@ -186,7 +186,7 @@ namespace ORB_SLAM2 {
         return nmatches;
     }
 
-    std::pair<int,int> PhotoTracker::SearchByKLT(Frame &CurrentFrame, Frame &LastFrame) {
+    photoTrackerResult PhotoTracker::SearchByKLT(Frame &CurrentFrame, Frame &LastFrame) {
         // Number of tracked features
         int nmatches = 0;
 
@@ -206,7 +206,8 @@ namespace ORB_SLAM2 {
             if (pMP) {
                 if (!LastFrame.mvbOutlier[i]) {
 
-                    // TODO: Do only tracking if matching failed
+                    // Do only tracking if matching failed
+                    // TODO: Let's give preference for tracking
                     if (!pMP->matchedLast) {
 
                         // Project it onto current and last frame to check if depth is positive
@@ -285,6 +286,7 @@ namespace ORB_SLAM2 {
                     MapPoint *pMP = LastFrame.mvpMapPoints[index];
 
                     // Add artificial feature if it was not matched with descriptors
+//                     TODO: Let's also track if matched - either one or the other due to map for observations
                     if (!pMP->matchedLast) {
 
                         // Informing about the state
@@ -313,8 +315,15 @@ namespace ORB_SLAM2 {
             std::cout << "Tracked: " << nmatches << " below thr: " << belowThCount << " out of " << status.size() <<
                 " | Extra: " << extra << " Avg travel dist: " << avgTravel/belowThCount << std::endl;
 
+        photoTrackerResult result;
+        result.all = status.size();
+        result.tracked = nmatches;
+        result.trackedBelowTh = belowThCount;
+        result.extraOverMatchings = extra;
+        result.avgTravelDistForInliers = avgTravel/belowThCount;
+
 //        exit(0);
-        return std::make_pair(belowThCount, extra);
+        return result;
     }
 
     int PhotoTracker::SearchByKLT(Frame &CurrentFrame, const vector<MapPoint*> &vpMapPoints) {
