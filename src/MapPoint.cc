@@ -113,7 +113,8 @@ void MapPoint::AddObservation(KeyFrame* pKF, size_t idx)
     unique_lock<mutex> lock(mMutexFeatures);
     if(mObservations.count(pKF))
         return;
-    mObservations[pKF]=idx;
+//    mObservations[pKF]=idx;
+    mObservations.insert(std::make_pair(pKF, idx));
 
     if(pKF->mvuRight[idx]>=0)
         nObs+=2;
@@ -121,20 +122,38 @@ void MapPoint::AddObservation(KeyFrame* pKF, size_t idx)
         nObs++;
 }
 
-void MapPoint::EraseObservation(KeyFrame* pKF)
+void MapPoint::EraseObservations(KeyFrame* pKF) {
+
+    // TODO: mutex needed?
+    std::pair<std::multimap<KeyFrame*, size_t>::iterator, std::multimap<KeyFrame*, size_t>::iterator> interval = mObservations.equal_range(pKF);
+    for(auto it = interval.first;it!=interval.second; ++it) {
+            EraseObservation(pKF, it->second);
+    }
+}
+
+void MapPoint::EraseObservation(KeyFrame* pKF, const size_t &idx)
 {
     bool bBad=false;
     {
         unique_lock<mutex> lock(mMutexFeatures);
         if(mObservations.count(pKF))
         {
-            int idx = mObservations[pKF];
+//            int idx = mObservations[pKF];
+
             if(pKF->mvuRight[idx]>=0)
                 nObs-=2;
             else
                 nObs--;
 
-            mObservations.erase(pKF);
+            std::pair<std::multimap<KeyFrame*, size_t>::iterator, std::multimap<KeyFrame*, size_t>::iterator> interval = mObservations.equal_range(pKF);
+            for(auto it = interval.first;it!=interval.second; ++it) {
+                if (it->second == idx) {
+                    mObservations.erase(it);
+                    break;
+                }
+            }
+
+            //mObservations.erase(pKF);
 
             if(mpRefKF==pKF)
                 mpRefKF=mObservations.begin()->first;
@@ -149,7 +168,7 @@ void MapPoint::EraseObservation(KeyFrame* pKF)
         SetBadFlag();
 }
 
-map<KeyFrame*, size_t> MapPoint::GetObservations()
+std::multimap<KeyFrame*, size_t> MapPoint::GetObservations()
 {
     unique_lock<mutex> lock(mMutexFeatures);
     return mObservations;
@@ -163,7 +182,7 @@ int MapPoint::Observations()
 
 void MapPoint::SetBadFlag()
 {
-    map<KeyFrame*,size_t> obs;
+    multimap<KeyFrame*,size_t> obs;
     {
         unique_lock<mutex> lock1(mMutexFeatures);
         unique_lock<mutex> lock2(mMutexPos);
@@ -171,7 +190,7 @@ void MapPoint::SetBadFlag()
         obs = mObservations;
         mObservations.clear();
     }
-    for(map<KeyFrame*,size_t>::iterator mit=obs.begin(), mend=obs.end(); mit!=mend; mit++)
+    for(multimap<KeyFrame*,size_t>::iterator mit=obs.begin(), mend=obs.end(); mit!=mend; mit++)
     {
         KeyFrame* pKF = mit->first;
         pKF->EraseMapPointMatch(mit->second);
@@ -193,7 +212,7 @@ void MapPoint::Replace(MapPoint* pMP)
         return;
 
     int nvisible, nfound;
-    map<KeyFrame*,size_t> obs;
+    multimap<KeyFrame*,size_t> obs;
     {
         unique_lock<mutex> lock1(mMutexFeatures);
         unique_lock<mutex> lock2(mMutexPos);
@@ -205,7 +224,7 @@ void MapPoint::Replace(MapPoint* pMP)
         mpReplaced = pMP;
     }
 
-    for(map<KeyFrame*,size_t>::iterator mit=obs.begin(), mend=obs.end(); mit!=mend; mit++)
+    for(multimap<KeyFrame*,size_t>::iterator mit=obs.begin(), mend=obs.end(); mit!=mend; mit++)
     {
         // Replace measurement in keyframe
         KeyFrame* pKF = mit->first;
@@ -257,7 +276,7 @@ void MapPoint::ComputeDistinctiveDescriptors()
     // Retrieve all observed descriptors
     vector<cv::Mat> vDescriptors;
 
-    map<KeyFrame*,size_t> observations;
+    multimap<KeyFrame*,size_t> observations;
 
     {
         unique_lock<mutex> lock1(mMutexFeatures);
@@ -271,7 +290,7 @@ void MapPoint::ComputeDistinctiveDescriptors()
 
     vDescriptors.reserve(observations.size());
 
-    for(map<KeyFrame*,size_t>::iterator mit=observations.begin(), mend=observations.end(); mit!=mend; mit++)
+    for(multimap<KeyFrame*,size_t>::iterator mit=observations.begin(), mend=observations.end(); mit!=mend; mit++)
     {
         KeyFrame* pKF = mit->first;
 
@@ -329,7 +348,8 @@ int MapPoint::GetIndexInKeyFrame(KeyFrame *pKF)
 {
     unique_lock<mutex> lock(mMutexFeatures);
     if(mObservations.count(pKF))
-        return mObservations[pKF];
+//        return mObservations[pKF];
+        return mObservations.find(pKF)->second; // TODO: IT is a first observation
     else
         return -1;
 }
@@ -342,7 +362,7 @@ bool MapPoint::IsInKeyFrame(KeyFrame *pKF)
 
 void MapPoint::UpdateNormalAndDepth()
 {
-    map<KeyFrame*,size_t> observations;
+    multimap<KeyFrame*,size_t> observations;
     KeyFrame* pRefKF;
     cv::Mat Pos;
     {
@@ -360,7 +380,7 @@ void MapPoint::UpdateNormalAndDepth()
 
     cv::Mat normal = cv::Mat::zeros(3,1,CV_32F);
     int n=0;
-    for(map<KeyFrame*,size_t>::iterator mit=observations.begin(), mend=observations.end(); mit!=mend; mit++)
+    for(multimap<KeyFrame*,size_t>::iterator mit=observations.begin(), mend=observations.end(); mit!=mend; mit++)
     {
         KeyFrame* pKF = mit->first;
         cv::Mat Owi = pKF->GetCameraCenter();
@@ -371,7 +391,9 @@ void MapPoint::UpdateNormalAndDepth()
 
     cv::Mat PC = Pos - pRefKF->GetCameraCenter();
     const float dist = cv::norm(PC);
-    const int level = pRefKF->mvKeysUn[observations[pRefKF]].octave;
+//    const int level = pRefKF->mvKeysUn[observations[pRefKF]].octave;
+    size_t idx = observations.find(pRefKF)->second;
+    const int level = pRefKF->mvKeysUn[idx].octave;
     const float levelScaleFactor =  pRefKF->mvScaleFactors[level];
     const int nLevels = pRefKF->mnScaleLevels;
 

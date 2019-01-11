@@ -242,9 +242,9 @@ void KeyFrame::EraseMapPointMatch(const size_t &idx)
     mvpMapPoints[idx]=static_cast<MapPoint*>(NULL);
 }
 
-void KeyFrame::EraseMapPointMatch(MapPoint* pMP)
+void KeyFrame::EraseMapPointMatch(MapPoint* pMP, const size_t &idx)
 {
-    int idx = pMP->GetIndexInKeyFrame(this);
+//    int idx = pMP->GetIndexInKeyFrame(this);
     if(idx>=0)
         mvpMapPoints[idx]=static_cast<MapPoint*>(NULL);
 }
@@ -332,9 +332,9 @@ void KeyFrame::UpdateConnections()
         if(pMP->isBad())
             continue;
 
-        map<KeyFrame*,size_t> observations = pMP->GetObservations();
+        multimap<KeyFrame*,size_t> observations = pMP->GetObservations();
 
-        for(map<KeyFrame*,size_t>::iterator mit=observations.begin(), mend=observations.end(); mit!=mend; mit++)
+        for(multimap<KeyFrame*,size_t>::iterator mit=observations.begin(), mend=observations.end(); mit!=mend; mit++)
         {
             if(mit->first->mnId==mnId)
                 continue;
@@ -491,7 +491,7 @@ void KeyFrame::SetBadFlag()
 
     for(size_t i=0; i<mvpMapPoints.size(); i++)
         if(mvpMapPoints[i])
-            mvpMapPoints[i]->EraseObservation(this);
+            mvpMapPoints[i]->EraseObservations(this);
     {
         unique_lock<mutex> lock(mMutexConnections);
         unique_lock<mutex> lock1(mMutexFeatures);

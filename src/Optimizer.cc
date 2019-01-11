@@ -100,11 +100,11 @@ namespace ORB_SLAM2 {
             vPoint->setMarginalized(true);
             optimizer.addVertex(vPoint);
 
-            const map<KeyFrame *, size_t> observations = pMP->GetObservations();
+            const multimap<KeyFrame *, size_t> observations = pMP->GetObservations();
 
             int nEdges = 0;
             //SET EDGES
-            for (map<KeyFrame *, size_t>::const_iterator mit = observations.begin(); mit != observations.end(); mit++) {
+            for (multimap<KeyFrame *, size_t>::const_iterator mit = observations.begin(); mit != observations.end(); mit++) {
 
                 KeyFrame *pKF = mit->first;
                 if (pKF->isBad() || pKF->mnId > maxKFid)
@@ -536,8 +536,8 @@ namespace ORB_SLAM2 {
             (*lit)->sumChi2 = 0;
             // END TODO:
 
-            map<KeyFrame *, size_t> observations = (*lit)->GetObservations();
-            for (map<KeyFrame *, size_t>::iterator mit = observations.begin(), mend = observations.end();
+            multimap<KeyFrame *, size_t> observations = (*lit)->GetObservations();
+            for (multimap<KeyFrame *, size_t>::iterator mit = observations.begin(), mend = observations.end();
                  mit != mend; mit++) {
                 KeyFrame *pKFi = mit->first;
 
@@ -610,6 +610,9 @@ namespace ORB_SLAM2 {
         vector<MapPoint *> vpMapPointEdgeMono;
         vpMapPointEdgeMono.reserve(nExpectedSize);
 
+        vector<size_t> vpKFIndexEdgeMono;
+        vpKFIndexEdgeMono.reserve(nExpectedSize);
+
         vector<g2o::EdgeStereoSE3ProjectXYZ *> vpEdgesStereo;
         vpEdgesStereo.reserve(nExpectedSize);
 
@@ -618,6 +621,9 @@ namespace ORB_SLAM2 {
 
         vector<MapPoint *> vpMapPointEdgeStereo;
         vpMapPointEdgeStereo.reserve(nExpectedSize);
+
+        vector<size_t> vpKFIndexEdgeStereo;
+        vpKFIndexEdgeStereo.reserve(nExpectedSize);
 
         const float thHuberMono = sqrt(5.991);
         const float thHuberStereo = sqrt(7.815);
@@ -632,10 +638,10 @@ namespace ORB_SLAM2 {
             vPoint->setMarginalized(true);
             optimizer.addVertex(vPoint);
 
-            const map<KeyFrame *, size_t> observations = pMP->GetObservations();
+            const multimap<KeyFrame *, size_t> observations = pMP->GetObservations();
 
             //Set edges
-            for (map<KeyFrame *, size_t>::const_iterator mit = observations.begin(), mend = observations.end();
+            for (multimap<KeyFrame *, size_t>::const_iterator mit = observations.begin(), mend = observations.end();
                  mit != mend; mit++) {
                 KeyFrame *pKFi = mit->first;
 
@@ -668,6 +674,7 @@ namespace ORB_SLAM2 {
                         vpEdgesMono.push_back(e);
                         vpEdgeKFMono.push_back(pKFi);
                         vpMapPointEdgeMono.push_back(pMP);
+                        vpKFIndexEdgeMono.push_back(mit->second);
                     } else // Stereo observation
                     {
                         Eigen::Matrix<double, 3, 1> obs;
@@ -697,6 +704,7 @@ namespace ORB_SLAM2 {
                         vpEdgesStereo.push_back(e);
                         vpEdgeKFStereo.push_back(pKFi);
                         vpMapPointEdgeStereo.push_back(pMP);
+                        vpKFIndexEdgeStereo.push_back(mit->second);
                     }
                 }
             }
@@ -753,7 +761,14 @@ namespace ORB_SLAM2 {
 
         }
 
-        vector<pair<KeyFrame *, MapPoint *> > vToErase;
+        struct measurementToErase {
+            KeyFrame * pKF;
+            MapPoint * pMP;
+            size_t idx;
+        };
+
+//        vector<pair<KeyFrame *, MapPoint *> > vToErase;
+        vector<measurementToErase > vToErase;
         vToErase.reserve(vpEdgesMono.size() + vpEdgesStereo.size());
 
         // Check inlier observations
@@ -766,7 +781,12 @@ namespace ORB_SLAM2 {
 
             if (e->chi2() > 5.991 || !e->isDepthPositive()) {
                 KeyFrame *pKFi = vpEdgeKFMono[i];
-                vToErase.push_back(make_pair(pKFi, pMP));
+                measurementToErase mte;
+                mte.pKF = pKFi;
+                mte.pMP = pMP;
+                mte.idx = vpKFIndexEdgeMono[i];
+                vToErase.push_back(mte);
+//                vToErase.push_back(make_pair(pKFi, pMP));
             }
                 // TODO: experimental code
             else
@@ -782,7 +802,12 @@ namespace ORB_SLAM2 {
 
             if (e->chi2() > 7.815 || !e->isDepthPositive()) {
                 KeyFrame *pKFi = vpEdgeKFStereo[i];
-                vToErase.push_back(make_pair(pKFi, pMP));
+                measurementToErase mte;
+                mte.pKF = pKFi;
+                mte.pMP = pMP;
+                mte.idx = vpKFIndexEdgeStereo[i];
+                vToErase.push_back(mte);
+//                vToErase.push_back(make_pair(pKFi, pMP));
             }
                 // TODO: experimental code
             else
@@ -794,10 +819,12 @@ namespace ORB_SLAM2 {
 
         if (!vToErase.empty()) {
             for (size_t i = 0; i < vToErase.size(); i++) {
-                KeyFrame *pKFi = vToErase[i].first;
-                MapPoint *pMPi = vToErase[i].second;
-                pKFi->EraseMapPointMatch(pMPi);
-                pMPi->EraseObservation(pKFi);
+                KeyFrame *pKFi = vToErase[i].pKF;
+                MapPoint *pMPi = vToErase[i].pMP;
+                size_t idx = vToErase[i].idx;
+
+                pKFi->EraseMapPointMatch(pMPi, idx);
+                pMPi->EraseObservation(pKFi, idx);
             }
         }
 
@@ -1725,7 +1752,7 @@ namespace ORB_SLAM2 {
         // TODO ??
 //        unique_lock<mutex> lock(MapPoint::mGlobalMutex);
 
-        std::map<KeyFrame *, size_t> observations = mp->GetObservations();
+        std::multimap<KeyFrame *, size_t> observations = mp->GetObservations();
         int nInitialCorrespondences = 0;
         for (auto it = observations.begin(); it != observations.end(); it++) {
 

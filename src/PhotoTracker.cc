@@ -119,12 +119,12 @@ namespace ORB_SLAM2 {
                  continue;
 
             // Selecting the frame for tracking - one with the closest viewing angle that still contains image pyramid
-            std::map<KeyFrame*,size_t> observations = pMP->GetObservations();
+            std::multimap<KeyFrame*,size_t> observations = pMP->GetObservations();
 
             KeyFrame* pKF = static_cast<KeyFrame*>(NULL);
             int pointInKFIndex = 0;
             double bestAngle = 2;
-            for(map<KeyFrame*,size_t>::iterator mit=observations.begin(), mend=observations.end(); mit!=mend; mit++)
+            for(multimap<KeyFrame*,size_t>::iterator mit=observations.begin(), mend=observations.end(); mit!=mend; mit++)
             {
                 KeyFrame* tmpKF = mit->first;
 
@@ -208,7 +208,7 @@ namespace ORB_SLAM2 {
 
                     // Do only tracking if matching failed
                     // TODO: Let's give preference for tracking
-                    if (!pMP->matchedLast) {
+//                    if (!pMP->matchedLast) {
 
                         // Project it onto current and last frame to check if depth is positive
                         Eigen::Vector3d featureInGlobal = pMP->GetWorldPosEigen();
@@ -243,7 +243,7 @@ namespace ORB_SLAM2 {
                         prevPts.push_back(kp.pt);
                         nextPts.push_back(point);
                         indices.push_back(i);
-                    }
+//                    }
                 }
             }
         }
@@ -287,7 +287,7 @@ namespace ORB_SLAM2 {
 
                     // Add artificial feature if it was not matched with descriptors
 //                     TODO: Let's also track if matched - either one or the other due to map for observations
-                    if (!pMP->matchedLast) {
+//                    if (!pMP->matchedLast) {
 
                         // Informing about the state
                         pMP->rescuedLast = true;
@@ -306,7 +306,7 @@ namespace ORB_SLAM2 {
                                 index);
 
                         extra++;
-                    }
+//                    }
                 }
             }
         }
@@ -355,12 +355,12 @@ namespace ORB_SLAM2 {
                 continue;
 
             // Selecting the frame for tracking - one with the closest viewing angle that still contains image
-            std::map<KeyFrame*,size_t> observations = pMP->GetObservations();
+            std::multimap<KeyFrame*,size_t> observations = pMP->GetObservations();
 
             KeyFrame* pKF = static_cast<KeyFrame*>(NULL);
             int pointInKFIndex = 0;
             double bestAngle = 2;
-            for(map<KeyFrame*,size_t>::iterator mit=observations.begin(), mend=observations.end(); mit!=mend; mit++)
+            for(multimap<KeyFrame*,size_t>::iterator mit=observations.begin(), mend=observations.end(); mit!=mend; mit++)
             {
                 KeyFrame* tmpKF = mit->first;
 

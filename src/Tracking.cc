@@ -996,9 +996,9 @@ bool Tracking::TrackWithMotionModel()
     }
     if (iter > 0) {
         std::cout << "Now it is : " << inliers << std::endl;
-
-        int a;
-        std::cin >> a;
+//
+//        int a;
+//        std::cin >> a;
     }
 
 
@@ -1446,8 +1446,8 @@ void Tracking::UpdateLocalKeyFrames()
             MapPoint* pMP = mCurrentFrame.mvpMapPoints[i];
             if(!pMP->isBad())
             {
-                const map<KeyFrame*,size_t> observations = pMP->GetObservations();
-                for(map<KeyFrame*,size_t>::const_iterator it=observations.begin(), itend=observations.end(); it!=itend; it++)
+                const multimap<KeyFrame*,size_t> observations = pMP->GetObservations();
+                for(multimap<KeyFrame*,size_t>::const_iterator it=observations.begin(), itend=observations.end(); it!=itend; it++)
                     keyframeCounter[it->first]++;
             }
             else

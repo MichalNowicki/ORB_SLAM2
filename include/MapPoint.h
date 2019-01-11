@@ -51,11 +51,12 @@ public:
     cv::Mat GetNormal();
     KeyFrame* GetReferenceKeyFrame();
 
-    std::map<KeyFrame*,size_t> GetObservations();
+    std::multimap<KeyFrame*,size_t> GetObservations();
     int Observations();
 
     void AddObservation(KeyFrame* pKF,size_t idx);
-    void EraseObservation(KeyFrame* pKF);
+    void EraseObservations(KeyFrame* pKF);
+    void EraseObservation(KeyFrame* pKF, const size_t &idx);
 
     int GetIndexInKeyFrame(KeyFrame* pKF);
     bool IsInKeyFrame(KeyFrame* pKF);
@@ -135,7 +136,7 @@ protected:
      cv::Mat mWorldPos;
 
      // Keyframes observing the point and associated index in keyframe
-     std::map<KeyFrame*,size_t> mObservations;
+     std::multimap<KeyFrame*,size_t> mObservations;
 
      // Mean viewing direction
      cv::Mat mNormalVector;
